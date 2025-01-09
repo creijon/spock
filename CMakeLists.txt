@@ -9,6 +9,8 @@ set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 1)
 set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
+set(CMAKE_CXX_STANDARD 11)
+
 find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
 
@@ -16,9 +18,7 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL  "GLFW lib only")
 set(GLFW_INSTALL OFF CACHE BOOL  "GLFW lib only")
 set(GLAD_GL "")
 
-add_subdirectory("deps/glfw")
-add_subdirectory("deps/glm")
-add_subdirectory("deps/imgui")
+add_subdirectory("deps")
 
 option(USE_GLFW_GLAD "Use GLAD from GLFW" ON)
 
