@@ -14,8 +14,9 @@ namespace Geo2D
     bool test(glm::fvec2 const& p, Rect const& rect)
     {
         auto acr = glm::abs(p - rect.centre());
-        auto res = glm::greaterThan(acr, rect.extents());
 
+        // Surprisingly easy since we represent rect as centre and extents.
+        auto res = glm::greaterThan(acr, rect.extents());
         if (glm::any(res)) return false;
 
         return true;
@@ -25,8 +26,9 @@ namespace Geo2D
     {
         auto e = rect1.extents() + rect2.extents();
         auto acr = glm::abs(rect1.centre() - rect2.centre());
-        auto res = glm::greaterThan(acr, e);
 
+        // Surprisingly easy since we represent rect as centre and extents.
+        auto res = glm::greaterThan(acr, e);
         if (glm::any(res)) return false;
 
         return true;
@@ -39,7 +41,7 @@ namespace Geo2D
         auto aha = glm::abs(ha);
 
         // Will fail with negative extents, could do an abs() beforehand.
-     
+
         auto res = glm::greaterThan(glm::abs(cr), rect.extents() + aha);
         if (glm::any(res)) return false;
 
