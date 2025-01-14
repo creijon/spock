@@ -3,48 +3,25 @@
 
 #include <glm.hpp>
 
-#include <edge.h>
-#include <rect.h>
-
-#include <limits>
-
 namespace Geo2D
 {
-    static constexpr float EPSILON = std::numeric_limits<float>::epsilon();
+    class Edge;
+    class Rect;
+    class Triangle;
 
-    bool test(glm::fvec2 p, Rect const& rect)
-    {
-        auto acr = glm::abs(p - rect.centre());
-        auto res = glm::greaterThan(acr, rect.extents());
+    bool test(glm::fvec2 const& p, Rect const& rect);
 
-        if (glm::any(res)) return false;
+    bool test(Rect const& rect1, Rect const& rect2);
 
-        return true;
-    }
+    bool test(Edge const& edge, Rect const& rect);
 
-    bool test(Rect const& rect1, Rect const& rect2)
-    {
-        auto e = rect1.extents() + rect2.extents();
-        auto acr = glm::abs(rect1.centre() - rect2.centre());
-        auto res = glm::greaterThan(acr, e);
+    bool test(Edge const& a, Edge const& b, float& t);
 
-        if (glm::any(res)) return false;
+    bool test(Edge const& a, Edge const& b);
 
-        return true;
-    }
+    bool test(glm::fvec2 const& p, Triangle const& tri);
 
-    bool test(Edge const& edge, Rect const& rect)
-    {
-        auto cr = edge.centre() - rect.centre();
-        auto ha = edge.axis() * 0.5f;
-        auto aha = glm::abs(ha);
-        auto res = glm::greaterThan(glm::abs(cr), rect.extents() + aha);
-
-        if (glm::any(res)) return false;
-        if (glm::abs(ha.x * cr.y - ha.y * cr.x) > rect.extents().x * aha.y + rect.extents().y * aha.x + EPSILON) return false;
-
-        return true;
-    }
+    bool test(Triangle const& tri, Rect const& rect);
 }
 
 #endif // SPOCK_GEO2D_INTERSECTIONS_H_INCLUDED
