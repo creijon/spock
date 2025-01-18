@@ -1,9 +1,22 @@
 #include <triangle.h>
 
-namespace Geo2D
+namespace Geo3D
 {
 
-glm::fvec2 Triangle::calcBarycentric(glm::fvec2 const& p) const
+glm::fvec3 Triangle::calcNormal() const
+{
+    return normalize(cross());
+}
+
+Plane Triangle::calcPlane() const
+{
+    auto n = calcNormal();
+    float d = dot(_v0, n);
+
+    return {n, d};
+}
+
+glm::fvec2 Triangle::calcBarycentric(glm::fvec3 const& p) const
 {
     auto e1 = _v1 - _v0;
     auto e0 = _v2 - _v0;

@@ -1,9 +1,11 @@
 #include <intersect.h>
 
-#include <edge.h>
-#include <rect.h>
-#include <triangle.h>
-#include <util.h>
+#define GLM_FORCE_SWIZZLE
+
+#include <geo2d/edge.h>
+#include <geo2d/rect.h>
+#include <geo2d/triangle.h>
+#include <geo2d/util.h>
 
 #include <limits>
 

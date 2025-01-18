@@ -1,5 +1,5 @@
-#ifndef SPOCK_GEO2D_INTERSECTIONS_H_INCLUDED
-#define SPOCK_GEO2D_INTERSECTIONS_H_INCLUDED
+#ifndef SPOCK_GEO2D_INTERSECT_H_INCLUDED
+#define SPOCK_GEO2D_INTERSECT_H_INCLUDED
 
 #include <glm.hpp>
 
@@ -24,4 +24,4 @@ namespace Geo2D
     bool test(Triangle const& tri, Rect const& rect);
 }
 
-#endif // SPOCK_GEO2D_INTERSECTIONS_H_INCLUDED
+#endif // SPOCK_GEO2D_INTERSECT_H_INCLUDED
