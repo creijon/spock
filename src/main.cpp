@@ -4,10 +4,13 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <glm/glm.hpp>
+
 int main()
 {
 	try
 	{
+		std::cout << "Done" << std::endl;
 	}
 	catch(const std::exception& e)
 	{

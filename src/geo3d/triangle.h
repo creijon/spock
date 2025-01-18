@@ -1,15 +1,18 @@
 #ifndef SPOCK_GEO3D_TRIANGLE_H_INCLUDED
 #define SPOCK_GEO3D_TRIANGLE_H_INCLUDED
 
-#define GLM_SWIZZLE
+#define GLM_FORCE_SWIZZLE
 
 #include <glm.hpp>
 
+#include <aabb.h>
 #include <edge.h>
+#include <plane.h>
+#include <util.h>
 
 #include <geo2d/triangle.h>
 
-namespace Geo2D
+namespace Geo3D
 {
 
 class Triangle
@@ -52,6 +55,11 @@ public:
         return {_v2, _v0};
     }
 
+    glm::fvec3 cross() const
+    {
+        return glm::cross(_v1 - _v0, _v1 - _v2);
+    }
+
     Geo2D::Triangle xy() const
     {
         return {_v0.xy(), _v1.xy(), _v2.xy()};
@@ -65,6 +73,24 @@ public:
     Geo2D::Triangle zx() const
     {
         return {_v0.zx(), _v1.zx(), _v2.zx()};
+    }
+
+    AABB calcBounds() const
+    {
+        return {min(_v0, _v1, _v2), max(_v0, _v1, _v2), true};
+    }
+
+    glm::fvec3 calcNormal() const
+    {
+        return normalize(cross());
+    }
+
+    Plane calcPlane()
+    {
+        auto n = calcNormal();
+        float d = dot(_v0, n);
+
+        return {n, d};
     }
 
     glm::fvec3 calcBarycentric(glm::fvec3 const& p) const;

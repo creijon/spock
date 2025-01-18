@@ -1,13 +1,13 @@
 #ifndef SPOCK_GEO3D_AABB_H_INCLUDED
 #define SPOCK_GEO3D_AABB_H_INCLUDED
 
-#define GLM_SWIZZLE
+#define GLM_FORCE_SWIZZLE
 
 #include <glm.hpp>
 
 #include <geo2d/rect.h>
 
-namespace Geo2D
+namespace Geo3D
 {
 
 class AABB
@@ -32,6 +32,11 @@ public:
     glm::fvec3 extents() const
     {
         return _extents;
+    }
+
+    glm::fvec3 size() const
+    {
+        return _extents * 2.0f;
     }
 
     glm::fvec3 min() const
@@ -73,6 +78,11 @@ public:
     Geo2D::Rect zx() const
     {
         return {_centre.zx(), _extents.zx()};
+    }
+
+    void include(glm::fvec3 const& p)
+    {
+        setMinMax(glm::min(p, min()), glm::max(p, max()));
     }
 
 private:
