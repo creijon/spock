@@ -16,14 +16,24 @@ public:
     {
     }
 
-    float signedDistance(glm::fvec3 const& p)
+    glm::fvec3 n() const
     {
-        return dot(_plane.xyz(), p) - _plane.w;
+        return _plane.xyz();
     }
 
-    glm::fvec3 Project(glm::fvec3 const& p)
+    float d() const
     {
-        return p - (signedDistance(p) * _plane.w);
+        return _plane.w;
+    }
+
+    float signedDistance(glm::fvec3 const& p) const
+    {
+        return dot(n(), p) - d();
+    }
+
+    glm::fvec3 project(glm::fvec3 const& p) const
+    {
+        return p - (signedDistance(p) * d());
     }
 
 private:

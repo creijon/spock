@@ -1,7 +1,5 @@
 #include <intersect.h>
 
-#define GLM_FORCE_SWIZZLE
-
 #include <geo2d/edge.h>
 #include <geo2d/rect.h>
 #include <geo2d/triangle.h>
@@ -41,8 +39,6 @@ namespace Geo2D
         auto cr = edge.centre() - rect.centre();
         auto ha = edge.axis() * 0.5f;
         auto aha = glm::abs(ha);
-
-        // Will fail with negative extents, could do an abs() beforehand.
 
         auto res = glm::greaterThan(glm::abs(cr), rect.extents() + aha);
         if (glm::any(res)) return false;
