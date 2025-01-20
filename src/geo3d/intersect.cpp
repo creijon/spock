@@ -121,14 +121,6 @@ namespace Geo3D
         return abs(s) <= r;
     }
 
-    bool test(Triangle const& tri, AABB const& aabb)
-    {
-        // Early out if the AABB of the triangle is disjoint with the AABB.
-        if (!test(tri.bounds(), aabb)) return false;
-
-        return testNoBB(tri, aabb);
-    }
-
     bool test(glm::fvec3 const& p, Triangle const& tri)
     {
         auto e1 = tri.v2() - tri.v0();
@@ -151,6 +143,19 @@ namespace Geo3D
 
         auto denom = dot00 * dot11 - dot01 * dot01;
         if (denom < u + v) return false;
+
+        return true;
+    }
+
+    bool test(Edge const& edge, Plane const& plane, float& t)
+    {
+        t = 0.0f;
+        auto d0 = plane.signedDistance(edge.v0());
+        auto d1 = plane.signedDistance(edge.v1());
+
+        if (d0 * d1 > 0.0f) return false;
+
+        t = d0 / (d0 - d1);
 
         return true;
     }
@@ -225,5 +230,13 @@ namespace Geo3D
         }
 
         return false;
+    }
+
+    bool test(Triangle const& tri, AABB const& aabb)
+    {
+        // Early out if the AABB of the triangle is disjoint with the AABB.
+        if (!test(tri.bounds(), aabb)) return false;
+
+        return testNoBB(tri, aabb);
     }
 }

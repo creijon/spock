@@ -22,14 +22,18 @@ namespace Geo3D
 
     bool test(glm::fvec3 const& p, Triangle const& tri);
 
+    bool test(Edge const& edge, Plane const& plane, float& t);
+
     // Adapted from Schwarz-Seidel triangle-box intersection:
     // https://michael-schwarz.com/research/publ/2010/vox/
     bool testSS(Triangle const& tri, AABB const& aabb);
 
-    // Includes an early BB check to reject disjoint triangles.
-    bool test(Triangle const& tri, AABB const& aabb);
-
+    // Triangle-AABB test without a bounding box check.
     bool testNoBB(Triangle const& tri, AABB const& aabb);
+
+    // Includes an early BB check to reject disjoint triangles.
+    // Then uses testNoBB()
+    bool test(Triangle const& tri, AABB const& aabb);
 }
 
 #endif // SPOCK_GEO3D_INTERSECT_H_INCLUDED
