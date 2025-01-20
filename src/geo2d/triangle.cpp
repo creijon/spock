@@ -1,4 +1,4 @@
-#include <triangle.h>
+#include "triangle.h"
 
 namespace Geo2D
 {
@@ -22,4 +22,4 @@ glm::fvec2 Triangle::calcBarycentric(glm::fvec2 const& p) const
     return {u, v};
 }
 
-}
+} // namespace Geo2D

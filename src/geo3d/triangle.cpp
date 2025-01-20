@@ -1,4 +1,6 @@
-#include <triangle.h>
+#include "triangle.h"
+
+#include "plane.h"
 
 namespace Geo3D
 {
@@ -35,4 +37,4 @@ glm::fvec2 Triangle::calcBarycentric(glm::fvec3 const& p) const
     return {u, v};
 }
 
-}
+} // namespace Geo3D

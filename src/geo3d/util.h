@@ -24,6 +24,6 @@ namespace Geo3D
     {
         return (v.x > v.z) ? ((v.x > v.y) ? v.x : v.y) : ((v.y > v.z) ? v.y : v.z);
     }
-}
+} // namespace Geo3D
 
 #endif // SPOCK_GEO3D_UTIL_H_INCLUDED

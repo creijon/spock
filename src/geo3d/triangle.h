@@ -3,17 +3,18 @@
 
 #define GLM_FORCE_SWIZZLE
 
-#include <glm.hpp>
-
-#include <geo3d/aabb.h>
-#include <geo3d/edge.h>
-#include <geo3d/plane.h>
-#include <geo3d/util.h>
+#include "aabb.h"
+#include "edge.h"
+#include "util.h"
 
 #include <geo2d/triangle.h>
 
+#include <glm.hpp>
+
 namespace Geo3D
 {
+
+class Plane;
 
 class Triangle
 {
@@ -92,6 +93,6 @@ private:
     glm::fvec3 _v2;
 };
 
-}
+} // namespace Geo3D
 
 #endif // SPOCK_GEO3D_TRIANGLE_H_INCLUDED

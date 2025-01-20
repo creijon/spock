@@ -40,6 +40,6 @@ private:
     glm::fvec4 _plane;
 };
 
-}
+} // namespace Geo3D
 
 #endif // SPOCK_GEO3D_PLANE_H_INCLUDED

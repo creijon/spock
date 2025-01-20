@@ -30,6 +30,6 @@ private:
     glm::fvec3 _dir;
 };
 
-}
+} // namespace Geo3D
 
 #endif // SPOCK_GEO3D_RAY_H_INCLUDED

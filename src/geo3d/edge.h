@@ -45,6 +45,6 @@ private:
     glm::fvec3 _v1;
 };
 
-}
+} // namespace Geo3D
 
 #endif // SPOCK_GEO3D_EDGE_H_INCLUDED

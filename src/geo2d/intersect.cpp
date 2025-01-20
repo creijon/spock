@@ -1,13 +1,15 @@
-#include <intersect.h>
+#include "intersect.h"
 
-#include <geo2d/edge.h>
-#include <geo2d/rect.h>
-#include <geo2d/triangle.h>
-#include <geo2d/util.h>
+#include "edge.h"
+#include "rect.h"
+#include "triangle.h"
+#include "util.h"
 
 #include <limits>
 
 namespace Geo2D
+{
+namespace Intersect
 {
     static constexpr float EPSILON = std::numeric_limits<float>::epsilon();
 
@@ -113,4 +115,6 @@ namespace Geo2D
 
         return false;
     }
-}
+} // namespace Intersect
+
+} // namespace Geo2D

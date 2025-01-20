@@ -45,6 +45,6 @@ private:
     glm::fvec2 _v1;
 };
 
-}
+} // namespace Geo2D
 
 #endif // SPOCK_GEO2D_EDGE_H_INCLUDED

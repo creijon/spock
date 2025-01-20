@@ -9,6 +9,8 @@ namespace Geo2D
     class Rect;
     class Triangle;
 
+namespace Intersect
+{
     bool test(glm::fvec2 const& p, Rect const& rect);
 
     bool test(Rect const& rect1, Rect const& rect2);
@@ -22,6 +24,8 @@ namespace Geo2D
     bool test(glm::fvec2 const& p, Triangle const& tri);
 
     bool test(Triangle const& tri, Rect const& rect);
-}
+} // namespace Intersect
+
+} // namespace Geo2D
 
 #endif // SPOCK_GEO2D_INTERSECT_H_INCLUDED

@@ -3,9 +3,9 @@
 
 #define GLM_FORCE_SWIZZLE
 
-#include <glm.hpp>
-
 #include <geo2d/rect.h>
+
+#include <glm.hpp>
 
 namespace Geo3D
 {
@@ -90,6 +90,6 @@ private:
     glm::fvec3 _extents;
 };
 
-}
+} // namespace Geo3D
 
 #endif // SPOCK_GEO3D_AABB_H_INCLUDED

@@ -16,6 +16,6 @@ namespace Geo2D
         auto cb = b - c;
         return ca.x * cb.y - ca.y * cb.x;
     }
-}
+} // namespace Geo2D
 
 #endif // SPOCK_GEO2D_UTIL_H_INCLUDED

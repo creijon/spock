@@ -9,9 +9,12 @@ namespace Geo3D
 {
     class AABB;
     class Edge;
+    class Plane;
     class Ray;
     class Triangle;
 
+namespace Intersect
+{
     bool test(glm::fvec3 const& p, AABB const& aabb);
 
     bool test(AABB const& aabb1, AABB const& aabb2);
@@ -34,6 +37,9 @@ namespace Geo3D
     // Includes an early BB check to reject disjoint triangles.
     // Then uses testNoBB()
     bool test(Triangle const& tri, AABB const& aabb);
-}
+
+} // namespace Intersect
+
+} // namespace Geo3D
 
 #endif // SPOCK_GEO3D_INTERSECT_H_INCLUDED

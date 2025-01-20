@@ -1,9 +1,9 @@
 #ifndef SPOCK_GEO2D_TRIANGLE_H_INCLUDED
 #define SPOCK_GEO2D_TRIANGLE_H_INCLUDED
 
-#include <glm.hpp>
+#include "edge.h"
 
-#include <geo2d/edge.h>
+#include <glm.hpp>
 
 namespace Geo2D
 {
@@ -56,6 +56,6 @@ private:
     glm::fvec2 _v2;
 };
 
-}
+} // namespace Geo2D
 
 #endif // SPOCK_GEO2D_TRIANGLE_H_INCLUDED

@@ -51,6 +51,6 @@ private:
     glm::fvec2 _extents;
 };
 
-}
+} // namespace Geo2D
 
 #endif // SPOCK_GEO2D_RECT_H_INCLUDED

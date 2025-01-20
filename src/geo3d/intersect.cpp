@@ -1,17 +1,20 @@
-#include <intersect.h>
+#include "intersect.h"
 
-#include <geo3d/aabb.h>
-#include <geo3d/edge.h>
-#include <geo3d/plane.h>
-#include <geo3d/ray.h>
-#include <geo3d/triangle.h>
-#include <geo3d/util.h>
+#include "aabb.h"
+#include "edge.h"
+#include "plane.h"
+#include "ray.h"
+#include "triangle.h"
+#include "util.h"
 
 #include <geo2d/intersect.h>
 
 #include <limits>
 
 namespace Geo3D
+{
+
+namespace Intersect
 {
     static constexpr float EPSILON = std::numeric_limits<float>::epsilon();
 
@@ -170,9 +173,9 @@ namespace Geo3D
         auto s = dot(n, aabb.centre() - tri.v0());
         if (abs(s) > r) return false;
 
-        if (!Geo2D::test(tri.xy(), aabb.xy())) return false;
-        if (!Geo2D::test(tri.yz(), aabb.yz())) return false;
-        if (!Geo2D::test(tri.zx(), aabb.zx())) return false;
+        if (!Geo2D::Intersect::test(tri.xy(), aabb.xy())) return false;
+        if (!Geo2D::Intersect::test(tri.yz(), aabb.yz())) return false;
+        if (!Geo2D::Intersect::test(tri.zx(), aabb.zx())) return false;
 
         return true;
     }
@@ -239,4 +242,7 @@ namespace Geo3D
 
         return testNoBB(tri, aabb);
     }
-}
+
+} // namespace Intersect
+
+} // namespace Geo3D
