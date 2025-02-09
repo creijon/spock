@@ -1,7 +1,7 @@
 #ifndef SPOCK_GEO3D_EDGE_H_INCLUDED
 #define SPOCK_GEO3D_EDGE_H_INCLUDED
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace Geo3D
 {

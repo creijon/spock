@@ -9,7 +9,7 @@
 
 #include <geo2d/triangle.h>
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace Geo3D
 {

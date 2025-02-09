@@ -1,7 +1,7 @@
 #ifndef SPOCK_GEO2D_INTERSECT_H_INCLUDED
 #define SPOCK_GEO2D_INTERSECT_H_INCLUDED
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace Geo2D
 {

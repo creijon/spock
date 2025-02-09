@@ -1,7 +1,7 @@
 #ifndef SPOCK_GEO2D_RECT_H_INCLUDED
 #define SPOCK_GEO2D_RECT_H_INCLUDED
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace Geo2D
 {

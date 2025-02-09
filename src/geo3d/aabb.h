@@ -5,7 +5,7 @@
 
 #include <geo2d/rect.h>
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace Geo3D
 {

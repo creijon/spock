@@ -3,7 +3,7 @@
 
 #include "edge.h"
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace Geo2D
 {

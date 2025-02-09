@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.15)
 
 set(PROJECT_NAME "Spock")
 set(BINARY_NAME "spock")
@@ -10,6 +10,11 @@ set(PROJECT_VERSION_MINOR 1)
 set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
 set(CMAKE_CXX_STANDARD 11)
+
+if (CMAKE_SYSTEM_NAME STREQUAL Windows)
+    add_definitions(-D_USE_MATH_DEFINES)
+    add_definitions(-DNOMINMAX)
+ENDIF ()
 
 find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -31,12 +36,14 @@ if(MSVC)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup")
 endif()
 
-set(SOURCE_FILES
-    "src/main.cpp"
-)
+add_subdirectory("src")
 
-add_executable(${BINARY_NAME} WIN32 ${SOURCE_FILES} ${GLAD_GL})
-target_include_directories(${BINARY_NAME} PRIVATE ${OPENGL_INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${GLFW_GAD_INCLUDE_DIRS} "deps/glm")
+message(STATUS "SOURCE=${SOURCE}")
+message(STATUS "HEADERS=${HEADERS}")
+message(STATUS "INCLUDE_PATHS=${INCLUDE_PATHS}")
+
+add_executable(${BINARY_NAME} WIN32 ${GLAD_GL} ${SOURCE} ${HEADERS})
+target_include_directories(${BINARY_NAME} PRIVATE ${INCLUDE_PATHS} ${OPENGL_INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${GLFW_GAD_INCLUDE_DIRS} "deps/glm")
 target_link_libraries(${BINARY_NAME} ${OPENGL_LIBRARIES} ${Vulkan_LIBRARIES} glfw)
 
 if(MSVC)

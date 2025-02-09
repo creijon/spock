@@ -3,7 +3,7 @@
 
 #define GLM_FORCE_SWIZZLE
 
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 namespace Geo3D
 {
