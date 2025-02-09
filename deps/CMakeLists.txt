@@ -8,8 +8,8 @@ set(CMAKE_CXX_STANDARD 11)
 # Set this definition so it does.
 # Also set NOMINMAX so the min and max functions are not overwritten with macros.
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
-	add_definitions(-D_USE_MATH_DEFINES)
-	add_definitions(-DNOMINMAX)
+    add_definitions(-D_USE_MATH_DEFINES)
+    add_definitions(-DNOMINMAX)
 ENDIF ()
 
 include_directories(.)
