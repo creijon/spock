@@ -4,6 +4,7 @@
 
 #include <set>
 #include <stdexcept>
+#include <string.h>
 
 namespace spock
 {

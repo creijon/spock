@@ -13,3 +13,6 @@
 [submodule "deps/glslang"]
 	path = deps/glslang
 	url = git@github.com:KhronosGroup/glslang.git
+[submodule "deps/spirv-tools"]
+	path = deps/spirv-tools
+	url = git@github.com:KhronosGroup/SPIRV-Tools.git
