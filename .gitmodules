@@ -10,3 +10,6 @@
 [submodule "deps/vulkan-hpp"]
 	path = deps/vulkan-hpp
 	url = git@github.com:KhronosGroup/Vulkan-Hpp.git
+[submodule "deps/glslang"]
+	path = deps/glslang
+	url = git@github.com:KhronosGroup/glslang.git
