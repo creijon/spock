@@ -1,5 +1,5 @@
-#ifndef SPOCK_GEO2D_UTIL_H_INCLUDED
-#define SPOCK_GEO2D_UTIL_H_INCLUDED
+#ifndef GEO2D_UTIL_H_INCLUDED
+#define GEO2D_UTIL_H_INCLUDED
 
 #include <glm/glm.hpp>
 
@@ -18,4 +18,4 @@ namespace Geo2D
     }
 } // namespace Geo2D
 
-#endif // SPOCK_GEO2D_UTIL_H_INCLUDED
+#endif // GEO2D_UTIL_H_INCLUDED

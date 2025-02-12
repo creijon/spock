@@ -1,5 +1,5 @@
-#ifndef SPOCK_GEO2D_EDGE_H_INCLUDED
-#define SPOCK_GEO2D_EDGE_H_INCLUDED
+#ifndef GEO2D_EDGE_H_INCLUDED
+#define GEO2D_EDGE_H_INCLUDED
 
 #include <glm/glm.hpp>
 
@@ -47,4 +47,4 @@ private:
 
 } // namespace Geo2D
 
-#endif // SPOCK_GEO2D_EDGE_H_INCLUDED
+#endif // GEO2D_EDGE_H_INCLUDED

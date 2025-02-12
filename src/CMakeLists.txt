@@ -9,6 +9,7 @@ ENDIF ()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/geo2d)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/geo3d)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/spock)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/util)
 
 set(SOURCE
@@ -24,5 +25,7 @@ set(HEADERS
 
 set(INCLUDE_PATHS
     ${CMAKE_CURRENT_SOURCE_DIR}
-PARENT_SCOPE
+    PARENT_SCOPE
 )
+
+#set_target_properties(${BINARY_NAME} PROPERTIES FOLDER "src")

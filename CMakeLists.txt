@@ -16,6 +16,8 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-DNOMINMAX)
 ENDIF ()
 
+add_executable(${BINARY_NAME} WIN32)
+
 find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
 
@@ -23,7 +25,7 @@ set(GLFW_BUILD_DOCS OFF CACHE BOOL  "GLFW lib only")
 set(GLFW_INSTALL OFF CACHE BOOL  "GLFW lib only")
 set(GLAD_GL "")
 
-add_subdirectory("deps")
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 option(USE_GLFW_GLAD "Use GLAD from GLFW" ON)
 
@@ -36,14 +38,11 @@ if(MSVC)
     SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ENTRY:mainCRTStartup")
 endif()
 
+add_subdirectory("deps")
 add_subdirectory("src")
 
-message(STATUS "SOURCE=${SOURCE}")
-message(STATUS "HEADERS=${HEADERS}")
-message(STATUS "INCLUDE_PATHS=${INCLUDE_PATHS}")
-
-add_executable(${BINARY_NAME} WIN32 ${GLAD_GL} ${SOURCE} ${HEADERS})
-target_include_directories(${BINARY_NAME} PRIVATE ${INCLUDE_PATHS} ${OPENGL_INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${GLFW_GAD_INCLUDE_DIRS} "deps/glm")
+target_sources(${BINARY_NAME} PRIVATE ${GLAD_GL} ${SOURCE} ${HEADERS})
+target_include_directories(${BINARY_NAME} PRIVATE ${INCLUDE_PATHS} ${OPENGL_INCLUDE_DIRS} ${Vulkan_INCLUDE_DIRS} ${GLFW_GAD_INCLUDE_DIRS} "deps" "deps/glm")
 target_link_libraries(${BINARY_NAME} ${OPENGL_LIBRARIES} ${Vulkan_LIBRARIES} glfw)
 
 if(MSVC)

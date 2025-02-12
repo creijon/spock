@@ -1,5 +1,5 @@
-#ifndef SPOCK_GEO2D_TRIANGLE_H_INCLUDED
-#define SPOCK_GEO2D_TRIANGLE_H_INCLUDED
+#ifndef GEO2D_TRIANGLE_H_INCLUDED
+#define GEO2D_TRIANGLE_H_INCLUDED
 
 #include "edge.h"
 
@@ -58,4 +58,4 @@ private:
 
 } // namespace Geo2D
 
-#endif // SPOCK_GEO2D_TRIANGLE_H_INCLUDED
+#endif // GEO2D_TRIANGLE_H_INCLUDED

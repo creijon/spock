@@ -1,5 +1,5 @@
-#ifndef SPOCK_TASKPOOL_H_INCLUDED
-#define SPOCK_TASKPOOL_H_INCLUDED
+#ifndef TASKPOOL_H_INCLUDED
+#define TASKPOOL_H_INCLUDED
 
 #include <atomic>
 #include <functional>
@@ -8,7 +8,7 @@
 #include <thread>
 #include <vector>
 
-namespace Spock
+namespace Util
 {
 
 class Task
@@ -107,4 +107,4 @@ inline void TaskPool::WaitToComplete()
 
 } // namespace Spock
 
-#endif // SPOCK_TASKPOOL_H_INCLUDED
+#endif // TASKPOOL_H_INCLUDED

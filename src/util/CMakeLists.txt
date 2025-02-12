@@ -9,11 +9,13 @@ ENDIF ()
 
 set(SOURCE
     ${SOURCE}
-   PARENT_SCOPE
+    PARENT_SCOPE
 )
 
 set(HEADERS
-   ${HEADERS}
-   ${CMAKE_CURRENT_SOURCE_DIR}/taskpool.h
-   PARENT_SCOPE
+    ${HEADERS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/taskpool.h
+    PARENT_SCOPE
 )
+
+#set_target_properties(${BINARY_NAME} PROPERTIES FOLDER "src/util")

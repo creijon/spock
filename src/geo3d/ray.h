@@ -1,5 +1,5 @@
-#ifndef SPOCK_GEO3D_RAY_H_INCLUDED
-#define SPOCK_GEO3D_RAY_H_INCLUDED
+#ifndef GEO3D_RAY_H_INCLUDED
+#define GEO3D_RAY_H_INCLUDED
 
 #include <glm/glm.hpp>
 
@@ -32,4 +32,4 @@ private:
 
 } // namespace Geo3D
 
-#endif // SPOCK_GEO3D_RAY_H_INCLUDED
+#endif // GEO3D_RAY_H_INCLUDED

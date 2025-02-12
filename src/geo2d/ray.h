@@ -1,5 +1,5 @@
-#ifndef SPOCK_GEO2D_RAY_H_INCLUDED
-#define SPOCK_GEO2D_RAY_H_INCLUDED
+#ifndef GEO2D_RAY_H_INCLUDED
+#define GEO2D_RAY_H_INCLUDED
 
 #include <glm.hpp>
 
