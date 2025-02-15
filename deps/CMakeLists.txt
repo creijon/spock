@@ -12,7 +12,6 @@ ENDIF ()
 add_subdirectory("glfw")
 add_subdirectory("glm")
 add_subdirectory("glslang")
-add_subdirectory("vulkan-hpp")
 
 add_library(ImGui STATIC
         imgui/imgui.cpp
