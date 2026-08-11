@@ -88,10 +88,9 @@ static const std::string VERTEX_SHADER_SOURCE = R"(
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (std140, binding = 0) uniform buffer
-{
-  mat4 mvp;
-} uniformBuffer;
+layout(push_constant) uniform PushConstants {
+    mat4 mvp;
+} pc;
 
 layout (location = 0) in vec4 pos;
 layout (location = 1) in vec4 inColor;
@@ -101,7 +100,7 @@ layout (location = 0) out vec4 outColor;
 void main()
 {
   outColor = inColor;
-  gl_Position = uniformBuffer.mvp * pos;
+  gl_Position = pc.mvp * pos;
 }
 )";
 
@@ -121,6 +120,11 @@ void main()
 }
 )";
 
+struct PushConstants
+{
+    glm::mat4x4 mvp;
+};
+
 class CubeApp : public spock::Framework
 {
 public:
@@ -132,20 +136,16 @@ public:
             {0.2f, 0.2f, 0.3f, 1.0f}, 
             {1.0f, 0})
     {
-        // Create the sample cube geometry and the uniform buffer for the model-view-projection matrix.
-        m_descriptorSetLayout = spock::createDescriptorSetLayout(m_device, {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, *m_descriptorSetLayout}));
+        // Create the sample cube geometry and the push constants for the model-view-projection matrix.
+        vk::PushConstantRange pushConstantRange{
+            vk::ShaderStageFlagBits::eVertex,
+            0,
+            sizeof(PushConstants)};
+
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, {}, pushConstantRange }));
 
         m_vertexBuffer = spock::BufferWrapper(m_physicalDevice, m_device, CUBE_VERTEX_BUFFER_SIZE, vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory, CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
-
-        // Camera matrix.
-        m_uniformBuffer = spock::BufferWrapper(m_physicalDevice, m_device, sizeof(glm::mat4x4), vk::BufferUsageFlagBits::eUniformBuffer);
-
-        m_descriptorPool = spock::createDescriptorPool(m_device, {{vk::DescriptorType::eUniformBuffer, 1}});
-        m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, {m_descriptorPool, *m_descriptorSetLayout}).front());
-        spock::updateDescriptorSets(
-            m_device, m_descriptorSet, {{vk::DescriptorType::eUniformBuffer, m_uniformBuffer.buffer, VK_WHOLE_SIZE, nullptr}}, {});
 
         // Create the shaders.
         glslang::InitializeProcess();
@@ -180,28 +180,34 @@ public:
     {
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer}, {0});
 
         // Set the camera location.
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
         static const glm::vec3 up(0.0f, -1.0f, 0.0f);
-        glm::mat4x4 mvpcMatrix = spock::createModelViewProjectionClipMatrix(m_extents, m_view, target, up);
-        spock::copyToDevice(m_uniformBuffer.deviceMemory, mvpcMatrix);
+        PushConstants pushConstants;
+        pushConstants.mvp = spock::createModelViewProjectionClipMatrix(m_extents, m_view, target, up);
 
+        auto dataSpan = vk::ArrayProxyNoTemporaries<const uint8_t>(
+            sizeof(PushConstants),
+            reinterpret_cast<const uint8_t*>(&pushConstants)
+        );
+
+        commandBuffer.pushConstants<uint8_t>(
+            m_pipelineLayout,
+            vk::ShaderStageFlagBits::eVertex,       
+            0,
+            dataSpan);
+        
         // Draw all the scene, but for this example it's just a single cube.
         commandBuffer.draw(CUBE_VERTEX_COUNT, 1, 0, 0);
     }
 
 private:
-    vk::raii::DescriptorPool m_descriptorPool{nullptr};
-    vk::raii::DescriptorSet m_descriptorSet{nullptr};
-    vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
 
     spock::BufferWrapper m_vertexBuffer;
-    spock::BufferWrapper m_uniformBuffer;
 
     glm::vec3 m_view;
 };
