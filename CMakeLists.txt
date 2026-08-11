@@ -20,7 +20,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-DNOMINMAX)
 ENDIF ()
 
-add_library(${BINARY_NAME} STATIC)
+add_executable(${BINARY_NAME} WIN32)
 
 find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -59,14 +59,14 @@ endif()
 
 target_sources(${BINARY_NAME} PRIVATE ${GLAD_GL} ${SOURCE} ${HEADERS})
 target_include_directories(
-    ${BINARY_NAME} PUBLIC
+    ${BINARY_NAME} PRIVATE
     ${INCLUDE_PATHS}
     ${OPENGL_INCLUDE_DIRS}
     ${Vulkan_INCLUDE_DIRS}
     ${GLFW_GAD_INCLUDE_DIRS}
     "deps/glm")
 target_link_libraries(
-    ${BINARY_NAME} PUBLIC
+    ${BINARY_NAME} PRIVATE
     ${OPENGL_LIBRARIES}
     ${Vulkan_LIBRARIES}
     Vulkan::Headers
