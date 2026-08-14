@@ -3,6 +3,7 @@
 #include <vulkan/vulkan_raii.hpp>
 
 #include <limits>
+#include <string>
 #include <vector>
 
 namespace spock
@@ -21,6 +22,8 @@ namespace spock
         assert(value <= (std::numeric_limits<TargetType>::max)());
         return static_cast<TargetType>(value);
     }
+
+    void writeLog(const std::string& message);
 
     // Clamp the requested swapchain image count between the supported min and max.
     uint32_t clampSurfaceImageCount(

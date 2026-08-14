@@ -11,6 +11,7 @@
 
 #include "spock/creators.hpp"
 #include "spock/framework.hpp"
+#include "spock/helpers.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
 
@@ -87,7 +88,7 @@ public:
             SHADERLAB_VERTEX_DATA,
             SHADERLAB_VERTEX_COUNT);
 
-        m_shadersValid = createGraphicsPipeline();
+        createGraphicsPipeline();
 
         m_fileWatcher = std::make_unique<efsw::FileWatcher>();
         m_listener = std::make_unique<UpdateListener>(*this);
@@ -107,72 +108,66 @@ public:
         if (filename == FRAGMENT_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
     }
 
-    vk::raii::ShaderModule loadShader(vk::ShaderStageFlagBits shaderStage, std::string const &path)
+    vk::raii::ShaderModule loadShader(vk::ShaderStageFlagBits shaderStage)
     {
-        std::ifstream t(path);
-
-        if (!t.is_open())
+        try
         {
-            return nullptr;
+            auto path = SHADER_PATH + ((shaderStage == vk::ShaderStageFlagBits::eVertex) ? VERTEX_SHADER : FRAGMENT_SHADER);
+
+            std::ifstream t(path);
+
+            if (!t.is_open())
+            {
+                return nullptr;
+            }
+
+            std::stringstream buffer;
+            buffer << t.rdbuf();
+
+            return spock::createShaderModule(m_device, shaderStage, buffer.str());
+        }
+        catch (std::exception const& e)
+        {
+            std::string error = (shaderStage == vk::ShaderStageFlagBits::eVertex) ? "VERTEX" : "FRAGMENT";
+            error += " SHADER ERROR\n";
+            error += e.what();
+            spock::writeLog(error.c_str());
         }
 
-        std::stringstream buffer;
-        buffer << t.rdbuf();
-
-        return spock::createShaderModule(m_device, shaderStage, buffer.str());
+        return nullptr;
     }
 
-    bool createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         glslang::InitializeProcess();
 
-        try
+        if (shaderStages & vk::ShaderStageFlagBits::eVertex)
         {
-            if (shaderStages & vk::ShaderStageFlagBits::eVertex)
-            {
-                m_vertexShader = loadShader(vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
-                OutputDebugString("Vertex shader built.\n");
-            }
-        }
-        catch (std::exception const& e)
-        {
-            std::string error = std::string("VERTEX SHADER ERROR\n") + e.what();
-            OutputDebugString(error.c_str());
-            glslang::FinalizeProcess();
-            return false;
+            m_vertexShader = loadShader(vk::ShaderStageFlagBits::eVertex);
         }
 
-        try
+        if (shaderStages & vk::ShaderStageFlagBits::eFragment)
         {
-            if (shaderStages & vk::ShaderStageFlagBits::eFragment)
-            {
-                m_fragmentShader = loadShader(vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
-                OutputDebugString("Fragment shader built.\n");
-            }
-        }
-        catch (std::exception const& e)
-        {
-            std::string error = std::string("FRAGMENT SHADER ERROR\n") + e.what();
-            OutputDebugString(error.c_str());
-            glslang::FinalizeProcess();
-            return false;
+            m_fragmentShader = loadShader(vk::ShaderStageFlagBits::eFragment);
         }
 
         glslang::FinalizeProcess();
 
-        vk::raii::PipelineCache pipelineCache(m_device, vk::PipelineCacheCreateInfo());
-        m_graphicsPipeline =
-            spock::createGraphicsPipeline(m_device,
-                pipelineCache,
-                m_vertexShader, nullptr,
-                m_fragmentShader, nullptr,
-                SHADERLAB_VERTEX_STRIDE, SHADERLAB_VERTEX_FORMAT,
-                vk::FrontFace::eClockwise,
-                false,
-                m_pipelineLayout,
-                m_renderPass);
-
-        return true;
+        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
+        {
+            m_graphicsPipeline =
+                spock::createGraphicsPipeline(
+                    m_device,
+                    {m_device, vk::PipelineCacheCreateInfo()},
+                    m_vertexShader, nullptr,
+                    m_fragmentShader, nullptr,
+                    SHADERLAB_VERTEX_STRIDE, SHADERLAB_VERTEX_FORMAT,
+                    vk::FrontFace::eClockwise,
+                    false,
+                    m_pipelineLayout,
+                    m_renderPass);
+            spock::writeLog("Shaders compiled successfully.\n");
+        }
     }
 
     void update() override
@@ -188,14 +183,14 @@ public:
         {
             // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
             m_device.waitIdle();
-            m_shadersValid = createGraphicsPipeline(m_modifiedShaders);
+            createGraphicsPipeline(m_modifiedShaders);
             m_modifiedShaders = vk::ShaderStageFlags(0);
         }
     }
 
     void render(vk::raii::CommandBuffer const &commandBuffer) override
     {
-        if (!m_shadersValid) return;
+        if (m_graphicsPipeline == nullptr) return;
 
         // Bind the pipeline.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
@@ -259,7 +254,6 @@ private:
     std::unique_ptr<UpdateListener> m_listener;
     efsw::WatchID m_watchID;
     vk::ShaderStageFlags m_modifiedShaders{0};
-    bool m_shadersValid{false};
 
     glm::dvec2 m_mousePos{0.0, 0.0};
     glm::dvec2 m_mouseClickPos{0.0, 0.0};
