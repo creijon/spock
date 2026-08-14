@@ -305,14 +305,14 @@ namespace spock
         vk::raii::Device const &device,
         vk::raii::RenderPass &renderPass,
         std::vector<vk::raii::ImageView> const &imageViews,
-        vk::raii::ImageView const *pDepthImageView,
+        vk::raii::ImageView const *depthImageView,
         vk::Extent2D const &extent)
     {
         vk::ImageView attachments[2];
-        attachments[1] = pDepthImageView ? *pDepthImageView : vk::ImageView();
+        attachments[1] = depthImageView ? *depthImageView : vk::ImageView();
 
         vk::FramebufferCreateInfo framebufferCreateInfo(
-            vk::FramebufferCreateFlags(), renderPass, pDepthImageView ? 2 : 1, attachments, extent.width, extent.height, 1);
+            vk::FramebufferCreateFlags(), renderPass, depthImageView ? 2 : 1, attachments, extent.width, extent.height, 1);
         std::vector<vk::raii::Framebuffer> framebuffers;
         framebuffers.reserve(imageViews.size());
         for (auto const &imageView : imageViews)

@@ -19,11 +19,13 @@ namespace spock
         uint32_t windowHeight,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
+        bool useDepthBuffer,
         uint32_t framesInFlight,
         std::chrono::microseconds frameDuration)
-        : m_context{}
-        , m_instance{createInstance(m_context, name, {}, getInstanceExtensions())}
-        , m_physicalDevice{vk::raii::PhysicalDevices(m_instance).front()}
+        : m_context()
+        , m_instance(createInstance(m_context, name, {}, getInstanceExtensions()))
+        , m_physicalDevice(vk::raii::PhysicalDevices(m_instance).front())
+        , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
         , m_framesInFlight(framesInFlight)
@@ -95,12 +97,20 @@ namespace spock
             familyIndex.second,
             m_framesInFlight);
  
-        // Color and depth buffers, set up the render pass and framebuffers.
-        m_depthBuffer = DepthBufferWrapper(m_physicalDevice, m_device, vk::Format::eD16Unorm, m_extents);
         vk::Format colorFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface)).format;
-        m_renderPass = createRenderPass(m_device, colorFormat, m_depthBuffer.format);
 
-        m_frameBuffers = createFramebuffers(m_device, m_renderPass, m_presenter->imageViews(), &m_depthBuffer.imageView, m_extents);
+        // Color and depth buffers, set up the render pass and framebuffers.
+        if (m_useDepthBuffer)
+        {
+            m_depthBuffer = DepthBufferWrapper(m_physicalDevice, m_device, vk::Format::eD16Unorm, m_extents);
+            m_renderPass = createRenderPass(m_device, colorFormat, m_depthBuffer.format);
+            m_frameBuffers = createFramebuffers(m_device, m_renderPass, m_presenter->imageViews(), &m_depthBuffer.imageView, m_extents);
+        }
+        else
+        {
+            m_renderPass = createRenderPass(m_device, colorFormat, vk::Format::eUndefined);
+            m_frameBuffers = createFramebuffers(m_device, m_renderPass, m_presenter->imageViews(), nullptr, m_extents);
+        }
     }
 
     void Framework::run()
@@ -109,13 +119,13 @@ namespace spock
         // records commands, submits them, and presents the swap chain image.
         uint32_t inFlightIndex = 0;
         auto startTime{std::chrono::steady_clock::now()};
-        auto frameTime = std::chrono::microseconds(0);
+        m_time = std::chrono::microseconds(0);
 
         while (!glfwWindowShouldClose(m_handle))
         {
             glfwPollEvents();
 
-            update(frameTime);
+            update();
 
             auto waitResult = m_device.waitForFences({ m_frameFences[inFlightIndex] }, VK_TRUE, FenceTimeout);
 
@@ -161,6 +171,7 @@ namespace spock
 
             if (result == vk::Result::eSuboptimalKHR || !m_presenter->isValid())
             {
+                // TODO: rewrite this to use the resizeWindow() function
                 // Wait for all work to be finished.
                 m_device.waitIdle();
 
@@ -187,10 +198,11 @@ namespace spock
                 rebuildSwapchain();
             }
 
-            frameTime += m_frameDuration;
+            m_time += m_frameDuration;
             inFlightIndex = (inFlightIndex + 1) % m_framesInFlight;
+            m_frameCount++;
 
-            std::this_thread::sleep_until(startTime + frameTime);
+            std::this_thread::sleep_until(startTime + m_time);
         }
 
         m_device.waitIdle();

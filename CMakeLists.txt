@@ -13,14 +13,17 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_executable(${BINARY_NAME} WIN32)
+target_compile_definitions(${BINARY_NAME} PRIVATE
+    SPOCK_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+
 option(VULKAN_HPP_USE_WAYLAND "Use Wayland on Linux for the samples instead of XCB" ON)
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-D_USE_MATH_DEFINES)
     add_definitions(-DNOMINMAX)
 ENDIF ()
-
-add_executable(${BINARY_NAME} WIN32)
 
 find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -73,7 +76,8 @@ target_link_libraries(
     glfw
     glslang::glslang
     glslang::glslang-default-resource-limits
-    glslang::SPIRV)
+    glslang::SPIRV
+    efsw)
 
 if(MSVC)
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0")

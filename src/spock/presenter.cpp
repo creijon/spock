@@ -2,6 +2,7 @@
 
 #include "helpers.hpp"
 
+#include <algorithm>
 #include <iostream>
 
 using namespace vk;

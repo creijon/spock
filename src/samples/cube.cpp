@@ -22,55 +22,54 @@ static char const *AppName = "Cube";
 
 struct CubeVertex
 {
-    float x, y, z, w; // Position
-    float r, g, b, a; // Color
+    glm::vec4 pos;
+    glm::vec4 rgba;
 };
 
 static const CubeVertex CUBE_VERTEX_DATA[] =
 {
     // red face
-    {-1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {-1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
     // green face
-    {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 0.0f, 1.0f},
+    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
     // blue face
-    {-1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, 1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
     // yellow face
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
-    {1.0f, -1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f},
+    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
     // magenta face
-    {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
-    {1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
-    {1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
-    {-1.0f, 1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f},
+    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
     // cyan face
-    {1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
-    {1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f, 1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
-    {1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
-    {-1.0f, -1.0f, -1.0f, 1.0f, 0.0f, 1.0f, 1.0f, 1.0f},
-
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}}
 };
 
 static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
@@ -78,7 +77,7 @@ static constexpr uint32_t CUBE_VERTEX_COUNT{std::size(CUBE_VERTEX_DATA)};
 static constexpr uint32_t CUBE_VERTEX_STRIDE{sizeof(CUBE_VERTEX_DATA[0])};
 static const std::vector<std::pair<vk::Format, uint32_t>> CUBE_VERTEX_FORMAT{
     {vk::Format::eR32G32B32A32Sfloat, 0},
-    {vk::Format::eR32G32B32A32Sfloat, 16}
+    {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, rgba))}
 };
 
 
@@ -134,7 +133,8 @@ public:
             windowWidth,
             windowHeight, 
             {0.2f, 0.2f, 0.3f, 1.0f}, 
-            {1.0f, 0})
+            {1.0f, 0},
+            true)
     {
         // Create the sample cube geometry and the push constants for the model-view-projection matrix.
         vk::PushConstantRange pushConstantRange{
@@ -158,21 +158,18 @@ public:
         m_graphicsPipeline =
             spock::createGraphicsPipeline(m_device,
                                           pipelineCache,
-                                          vertexShaderModule,
-                                          nullptr,
-                                          fragmentShaderModule,
-                                          nullptr,
-                                          CUBE_VERTEX_STRIDE,
-                                          CUBE_VERTEX_FORMAT,
+                                          vertexShaderModule, nullptr,
+                                          fragmentShaderModule, nullptr,
+                                          CUBE_VERTEX_STRIDE, CUBE_VERTEX_FORMAT,
                                           vk::FrontFace::eClockwise,
                                           true,
                                           m_pipelineLayout,
                                           m_renderPass);
     }
 
-    void update(std::chrono::microseconds frameTime) override
+    void update() override
     {
-        double angle = frameTime.count() * 0.000002;
+        double angle = m_time.count() * 0.000002;
         m_view = glm::vec3(sinf(angle) * 5.0f, -3.0f, cosf(angle) * 5.0f);
     }
 
@@ -195,7 +192,7 @@ public:
 
         commandBuffer.pushConstants<uint8_t>(
             m_pipelineLayout,
-            vk::ShaderStageFlagBits::eVertex,       
+            vk::ShaderStageFlagBits::eVertex,
             0,
             dataSpan);
         
@@ -209,7 +206,7 @@ private:
 
     spock::BufferWrapper m_vertexBuffer;
 
-    glm::vec3 m_view;
+    glm::vec3 m_view{};
 };
 
 int main()

@@ -20,11 +20,12 @@ namespace spock
     {
     public:
         Framework(
-            char const *name,
+            char const* name,
             uint32_t windowWidth,
             uint32_t windowHeight,
-            vk::ClearColorValue const &clearColor,
-            vk::ClearDepthStencilValue const &clearDepthStencil,
+            vk::ClearColorValue const& clearColor,
+            vk::ClearDepthStencilValue const& clearDepthStencil,
+            bool useDepthBuffer = true,
             uint32_t framesInFlight = 3,
             std::chrono::microseconds frameDuration = 16666us);
 
@@ -35,7 +36,7 @@ namespace spock
 
     protected:
         // Called once per frame before rendering.
-        virtual void update(std::chrono::microseconds frameTime) = 0;
+        virtual void update() = 0;
 
         // Called once per frame with a command buffer that is already inside
         // the render pass and configured with the viewport and scissor.
@@ -66,6 +67,10 @@ namespace spock
 
         std::unique_ptr<Presenter> m_presenter{nullptr};
         DepthBufferWrapper m_depthBuffer;
+        bool m_useDepthBuffer{true};
+
+        uint32_t m_frameCount{0};
+        std::chrono::microseconds m_time{};
 
         const vk::ClearColorValue m_clearColor;
         const vk::ClearDepthStencilValue m_clearDepthStencil;

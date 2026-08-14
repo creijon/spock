@@ -49,7 +49,12 @@ namespace spock
         }
     }
 
-    bool GLSLtoSPV(const vk::ShaderStageFlagBits shaderType, std::string const &glslShader, std::vector<uint32_t> &spvShader)
+    bool convertGLSLtoSPV(
+        const vk::ShaderStageFlagBits shaderType,
+        std::string const &glslShader,
+        std::vector<uint32_t> &spvShader,
+        std::string& log,
+        std::string& debugLog)
     {
         EShLanguage stage = translateShaderStage(shaderType);
 
@@ -64,23 +69,18 @@ namespace spock
 
         if (!shader.parse(GetDefaultResources(), 100, false, messages))
         {
-            puts(shader.getInfoLog());
-            puts(shader.getInfoDebugLog());
+            log = shader.getInfoLog();
+            debugLog = shader.getInfoDebugLog();
             return false; // something didn't work
         }
 
         glslang::TProgram program;
         program.addShader(&shader);
 
-        //
-        // Program-level processing...
-        //
-
         if (!program.link(messages))
         {
-            puts(shader.getInfoLog());
-            puts(shader.getInfoDebugLog());
-            fflush(stdout);
+            log = shader.getInfoLog();
+            debugLog = shader.getInfoDebugLog();
             return false;
         }
 

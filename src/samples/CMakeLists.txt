@@ -7,7 +7,7 @@ ENDIF ()
 
 set(SOURCE
     ${SOURCE}
-    ${CMAKE_CURRENT_SOURCE_DIR}/cube.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/shaderlab.cpp
     PARENT_SCOPE
 )
 

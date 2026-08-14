@@ -9,6 +9,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-DNOMINMAX)
 ENDIF ()
 
+add_subdirectory("efsw")
 add_subdirectory("glfw")
 add_subdirectory("glm")
 add_subdirectory("glslang")

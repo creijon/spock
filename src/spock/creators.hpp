@@ -1,8 +1,11 @@
 #pragma once
 
+#include "shaders.hpp"
 #include "wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
+
+#include <glslang/Public/ShaderLang.h>
 
 #include <GLFW/glfw3.h>
 
@@ -94,6 +97,28 @@ namespace spock
                    vk::raii::BufferView const *>>
         DescriptorSetUpdateData;
 
+    template <typename Dispatcher = VULKAN_HPP_DEFAULT_DISPATCHER_TYPE>
+    vk::raii::ShaderModule createShaderModule(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlagBits shaderStage,
+        std::string const& shaderText)
+    {
+        std::vector<uint32_t> shaderSPV;
+        std::string log;
+        std::string debugLog;
+
+        if (!convertGLSLtoSPV(shaderStage, shaderText, shaderSPV, log, debugLog))
+        {
+            throw std::runtime_error("makeShaderModule failed: " + debugLog);
+        }
+
+        return vk::raii::ShaderModule(
+            device,
+            vk::ShaderModuleCreateInfo(
+                vk::ShaderModuleCreateFlags(),
+                shaderSPV));
+    }
+
     // Update a descriptor set with uniform buffer bindings and optional textures.
     void updateDescriptorSets(
         vk::raii::Device const &device,
@@ -101,5 +126,4 @@ namespace spock
         DescriptorSetUpdateData const &bufferData,
         std::vector<TextureWrapper> const &textureData,
         uint32_t bindingOffset = 0);
-
 } // namespace spock
