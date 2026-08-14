@@ -109,7 +109,7 @@ namespace spock
 
         if (!convertGLSLtoSPV(shaderStage, shaderText, shaderSPV, log, debugLog))
         {
-            throw std::runtime_error("makeShaderModule failed: " + debugLog);
+            throw std::runtime_error(log);
         }
 
         return vk::raii::ShaderModule(

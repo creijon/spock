@@ -52,7 +52,7 @@ static const std::vector<std::pair<vk::Format, uint32_t>> SHADERLAB_VERTEX_FORMA
 // PushConstants have been defined to be mostly compatible with the ShaderToy interface.
 struct PushConstants
 {
-//    glm::vec4 iMouse;       // image/buffer xy = current pixel coords (if LMB is down). zw = click pixel
+    glm::vec4 iMouse;       // image/buffer xy = current pixel coords (if LMB is down). zw = click pixel
     glm::vec3 iResolution;  // image/buffer The viewport resolution (z is pixel aspect ratio, usually 1.0)
     float iTime;            // image/sound/buffer Current time in seconds
     int iFrame;             // image/buffer Current frame
@@ -87,7 +87,7 @@ public:
             SHADERLAB_VERTEX_DATA,
             SHADERLAB_VERTEX_COUNT);
 
-        createGraphicsPipeline();
+        m_shadersValid = createGraphicsPipeline();
 
         m_fileWatcher = std::make_unique<efsw::FileWatcher>();
         m_listener = std::make_unique<UpdateListener>(*this);
@@ -122,7 +122,7 @@ public:
         return spock::createShaderModule(m_device, shaderStage, buffer.str());
     }
 
-    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    bool createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         glslang::InitializeProcess();
 
@@ -131,13 +131,15 @@ public:
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
                 m_vertexShader = loadShader(vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                OutputDebugString("Vertex shader built.\n");
             }
         }
-        catch (std::exception const&)
+        catch (std::exception const& e)
         {
-            // TODO: report the errors.
+            std::string error = std::string("VERTEX SHADER ERROR\n") + e.what();
+            OutputDebugString(error.c_str());
             glslang::FinalizeProcess();
-            return;
+            return false;
         }
 
         try
@@ -145,13 +147,15 @@ public:
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
                 m_fragmentShader = loadShader(vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                OutputDebugString("Fragment shader built.\n");
             }
         }
-        catch (std::exception const&)
+        catch (std::exception const& e)
         {
-            // TODO: report the errors.
+            std::string error = std::string("FRAGMENT SHADER ERROR\n") + e.what();
+            OutputDebugString(error.c_str());
             glslang::FinalizeProcess();
-            return;
+            return false;
         }
 
         glslang::FinalizeProcess();
@@ -167,6 +171,8 @@ public:
                 false,
                 m_pipelineLayout,
                 m_renderPass);
+
+        return true;
     }
 
     void update() override
@@ -182,19 +188,21 @@ public:
         {
             // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
             m_device.waitIdle();
-            createGraphicsPipeline(m_modifiedShaders);
+            m_shadersValid = createGraphicsPipeline(m_modifiedShaders);
             m_modifiedShaders = vk::ShaderStageFlags(0);
         }
     }
 
     void render(vk::raii::CommandBuffer const &commandBuffer) override
     {
+        if (!m_shadersValid) return;
+
         // Bind the pipeline.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
 
         // Update the push constants.
         PushConstants pushConstants;
-        //        pushConstants.iMouse = glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y);
+        pushConstants.iMouse = glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y);
         pushConstants.iResolution = glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f);
         pushConstants.iTime = float(m_time.count() * 0.000001);
         pushConstants.iFrame = m_frameCount;
@@ -251,6 +259,7 @@ private:
     std::unique_ptr<UpdateListener> m_listener;
     efsw::WatchID m_watchID;
     vk::ShaderStageFlags m_modifiedShaders{0};
+    bool m_shadersValid{false};
 
     glm::dvec2 m_mousePos{0.0, 0.0};
     glm::dvec2 m_mouseClickPos{0.0, 0.0};
