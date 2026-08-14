@@ -2,41 +2,6 @@
 
 Spock is a small C++ Vulkan framework and sample project built around Vulkan-Hpp RAII wrappers, GLFW, GLM, and glslang. The library is organized as a shared core library plus separate executable samples for different rendering demos.
 
-## Current project structure
-
-```text
-spock/
-├── CMakeLists.txt
-├── README.md
-├── deps/
-│   ├── glfw/
-│   ├── glm/
-│   └── glslang/
-├── src/
-│   ├── CMakeLists.txt
-│   ├── samples/
-│   │   ├── CMakeLists.txt
-│   │   ├── cube.cpp
-│   │   └── quad.cpp
-│   └── spock/
-│       ├── CMakeLists.txt
-│       ├── creators.cpp
-│       ├── creators.hpp
-│       ├── framework.cpp
-│       ├── framework.hpp
-│       ├── helpers.cpp
-│       ├── helpers.hpp
-│       ├── math.cpp
-│       ├── math.hpp
-│       ├── presenter.cpp
-│       ├── presenter.hpp
-│       ├── shaders.cpp
-│       ├── shaders.hpp
-│       ├── wrappers.cpp
-│       └── wrappers.hpp
-└── build/
-```
-
 ## Build system
 
 The root CMake project defines a static library target named `spock` and then creates sample executables for each demo.
@@ -44,14 +9,14 @@ The root CMake project defines a static library target named `spock` and then cr
 Current targets:
 - `spock` — shared core library
 - `cube` — standalone cube sample
-- `quad` — standalone quad sample
+- `shaderlab` — standalone shaderlab sample
 
 Example:
 
 ```bash
 cmake -S . -B build
 cmake --build build --target cube
-cmake --build build --target quad
+cmake --build build --target shaderlab
 ```
 
 The sample targets link against the shared `spock` library so the reusable framework code is compiled once and reused across demos.
@@ -65,7 +30,7 @@ The reusable engine code lives under `src/spock` and includes:
 - `helpers.*` — utility routines for shader and buffer management
 - `math.*` — matrix/vector helpers used by the samples
 - `presenter.*` — presentation-layer support and render state helpers
-- `shaders.*` — runtime GLSL-to-SPIR-V shader compilation support
+- `shaders.*` — shader compilation support
 - `wrappers.*` — RAII wrappers around Vulkan objects such as buffers and descriptors
 
 ## Samples
@@ -73,7 +38,7 @@ The reusable engine code lives under `src/spock` and includes:
 The current demos are in `src/samples`:
 
 - `cube.cpp` — a simple colored cube example using the framework
-- `quad.cpp` — a simple quad example built as a separate executable target
+- `shaderlab.cpp` — demonstrating live shader recompilation
 
 ## Requirements
 
@@ -84,6 +49,7 @@ The current demos are in `src/samples`:
 - GLFW
 - GLM
 - glslang
+- efsw
 
 ## Platform notes
 
@@ -109,24 +75,6 @@ build/src/samples/Debug/
 or the corresponding build output location for your generator and configuration.
 
 
-### Compiling Shaders at Runtime
-
-```cpp
-glslang::InitializeProcess();
-
-vk::raii::ShaderModule vertShader = 
-    spock::makeShaderModule(device, 
-                           vk::ShaderStageFlagBits::eVertex, 
-                           vertexShaderGLSL);
-
-vk::raii::ShaderModule fragShader = 
-    spock::makeShaderModule(device, 
-                           vk::ShaderStageFlagBits::eFragment, 
-                           fragmentShaderGLSL);
-
-glslang::FinalizeProcess();
-```
-
 ## Building for Release
 
 To create an optimized release build:
@@ -140,20 +88,20 @@ cmake --build . --config Release
 
 ### Adding New Samples
 
-1. Create a new class derived from `spock::Application`
+1. Create a new class derived from `spock::Framework`
 2. Override `update()` and `render()` methods
 3. Add your graphics code in `src/main.cpp` or create a new entry point
 4. Update `CMakeLists.txt` if creating a separate executable
 
-### Customizing the Application Base
+### Customizing the Framework Base
 
-The `Application` class provides hooks for customization:
+The `Framework` class provides hooks for customization:
 - Clear colors and depth values
 - Window dimensions
 - Frame timing
 - Render pass configuration
 
-See `src/spock/application.hpp` for all configurable parameters.
+See `src/spock/framework.hpp` for all configurable parameters.
 
 ## Performance Considerations
 
@@ -200,26 +148,4 @@ This project is licensed under the Apache License 2.0. See `LICENSE` file for de
 - [GLFW Documentation](https://www.glfw.org/documentation.html)
 - [GLM Mathematics Library](https://github.com/g-truc/glm)
 - [glslang Compiler](https://github.com/KhronosGroup/glslang)
-
-## Roadmap
-
-Future enhancements planned for Spock:
-
-- [ ] Texture loading and sampling support
-- [ ] Model loading (glTF/OBJ)
-- [ ] Lighting and shadow rendering
-- [ ] Compute shader support
-- [ ] Performance profiling tools
-- [ ] Asset packaging system
-- [ ] ImGui integration for debugging UI
-
-## Support
-
-For issues, questions, or suggestions:
-- Open an issue on GitHub
-- Check existing documentation and examples
-- Review Vulkan API documentation for lower-level questions
-
----
-
-**Happy coding!** Start with the spinning cube sample and explore from there. Spock is designed to make Vulkan experimentation accessible while maintaining the flexibility needed for advanced graphics work.
+- [efsw Filesystem watcher](https://github.com/SpartanJ/efsw)
