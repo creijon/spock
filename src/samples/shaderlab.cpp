@@ -11,16 +11,13 @@
 
 #include "spock/creators.hpp"
 #include "spock/framework.hpp"
-#include "spock/helpers.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
 
 #include <efsw/efsw.hpp>
 
-#include <fstream>
 #include <iostream>
 #include <iterator>
-#include <stdexcept>
 #include <vector>
 
 static char const *AppName = "ShaderLab";
@@ -38,10 +35,6 @@ static const ShaderLabVertex SHADERLAB_VERTEX_DATA[] =
     {{-1.0f,  3.0f, 1.0f, 1.0f}, {0.0f, 2.0f}},
 };
 
-static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/shaders/";
-static const std::string VERTEX_SHADER = "shaderlab.vs";
-static const std::string FRAGMENT_SHADER = "shaderlab.fs";
-
 static const uint32_t SHADERLAB_VERTEX_BUFFER_SIZE{sizeof(SHADERLAB_VERTEX_DATA)};
 static const uint32_t SHADERLAB_VERTEX_COUNT{std::size(SHADERLAB_VERTEX_DATA)};
 static const uint32_t SHADERLAB_VERTEX_STRIDE{sizeof(SHADERLAB_VERTEX_DATA[0])};
@@ -49,6 +42,10 @@ static const std::vector<std::pair<vk::Format, uint32_t>> SHADERLAB_VERTEX_FORMA
     {vk::Format::eR32G32B32A32Sfloat, 0},
     {vk::Format::eR32G32Sfloat, uint32_t(offsetof(ShaderLabVertex, uv))}
 };
+
+static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/shaders/";
+static const std::string VERTEX_SHADER = "shaderlab.vs";
+static const std::string FRAGMENT_SHADER = "shaderlab.fs";
 
 // PushConstants have been defined to be mostly compatible with the ShaderToy interface.
 struct PushConstants
@@ -108,47 +105,18 @@ public:
         if (filename == FRAGMENT_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
     }
 
-    vk::raii::ShaderModule loadShader(vk::ShaderStageFlagBits shaderStage)
-    {
-        try
-        {
-            auto path = SHADER_PATH + ((shaderStage == vk::ShaderStageFlagBits::eVertex) ? VERTEX_SHADER : FRAGMENT_SHADER);
-
-            std::ifstream t(path);
-
-            if (!t.is_open())
-            {
-                return nullptr;
-            }
-
-            std::stringstream buffer;
-            buffer << t.rdbuf();
-
-            return spock::createShaderModule(m_device, shaderStage, buffer.str());
-        }
-        catch (std::exception const& e)
-        {
-            std::string error = (shaderStage == vk::ShaderStageFlagBits::eVertex) ? "VERTEX" : "FRAGMENT";
-            error += " SHADER ERROR\n";
-            error += e.what();
-            spock::writeLog(error.c_str());
-        }
-
-        return nullptr;
-    }
-
     void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         glslang::InitializeProcess();
 
         if (shaderStages & vk::ShaderStageFlagBits::eVertex)
         {
-            m_vertexShader = loadShader(vk::ShaderStageFlagBits::eVertex);
+            m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
         }
 
         if (shaderStages & vk::ShaderStageFlagBits::eFragment)
         {
-            m_fragmentShader = loadShader(vk::ShaderStageFlagBits::eFragment);
+            m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
         }
 
         glslang::FinalizeProcess();

@@ -3,49 +3,61 @@
 
 #include "shaders.hpp"
 
+#include "creators.hpp"
+#include "helpers.hpp"
+
 #include "glslang/SPIRV/GlslangToSpv.h"
 #include "glslang/Public/ResourceLimits.h"
 #include "glslang/Public/ShaderLang.h"
 
 #include <vulkan/vulkan.hpp>
 
+#include <algorithm>
+#include <fstream>
+
 namespace spock
 {
-    EShLanguage translateShaderStage(vk::ShaderStageFlagBits stage)
+    struct ShaderConversion
+    {
+        EShLanguage stage;
+        char const* string;
+    };
+
+    ShaderConversion translateShaderStage(vk::ShaderStageFlagBits stage)
     {
         switch (stage)
         {
         case vk::ShaderStageFlagBits::eVertex:
-            return EShLangVertex;
+            return { EShLangVertex, "vertex" };
         case vk::ShaderStageFlagBits::eTessellationControl:
-            return EShLangTessControl;
+            return { EShLangTessControl, "tesselation control" };
         case vk::ShaderStageFlagBits::eTessellationEvaluation:
-            return EShLangTessEvaluation;
+            return { EShLangTessEvaluation, "tesselation evaluation" };
         case vk::ShaderStageFlagBits::eGeometry:
-            return EShLangGeometry;
+            return { EShLangGeometry, "geometry" };
         case vk::ShaderStageFlagBits::eFragment:
-            return EShLangFragment;
+            return { EShLangFragment, "fragment" };
         case vk::ShaderStageFlagBits::eCompute:
-            return EShLangCompute;
+            return { EShLangCompute, "compute" };
         case vk::ShaderStageFlagBits::eRaygenNV:
-            return EShLangRayGenNV;
+            return { EShLangRayGenNV, "raygen" };
         case vk::ShaderStageFlagBits::eAnyHitNV:
-            return EShLangAnyHitNV;
+            return { EShLangAnyHitNV, "any hit" };
         case vk::ShaderStageFlagBits::eClosestHitNV:
-            return EShLangClosestHitNV;
+            return { EShLangClosestHitNV, "closest hit" };
         case vk::ShaderStageFlagBits::eMissNV:
-            return EShLangMissNV;
+            return { EShLangMissNV, "miss" };
         case vk::ShaderStageFlagBits::eIntersectionNV:
-            return EShLangIntersectNV;
+            return { EShLangIntersectNV, "intersect" };
         case vk::ShaderStageFlagBits::eCallableNV:
-            return EShLangCallableNV;
+            return { EShLangCallableNV, "callable" };
         case vk::ShaderStageFlagBits::eTaskNV:
-            return EShLangTaskNV;
+            return { EShLangTaskNV, "task" };
         case vk::ShaderStageFlagBits::eMeshNV:
-            return EShLangMeshNV;
+            return { EShLangMeshNV, "mesh" };
         default:
             assert(false && "Unknown shader stage");
-            return EShLangVertex;
+            return { EShLangCount, "unknown" };
         }
     }
 
@@ -56,7 +68,7 @@ namespace spock
         std::string& log,
         std::string& debugLog)
     {
-        EShLanguage stage = translateShaderStage(shaderType);
+        EShLanguage stage = translateShaderStage(shaderType).stage;
 
         const char *shaderStrings[1];
         shaderStrings[0] = glslShader.data();
@@ -89,4 +101,55 @@ namespace spock
         return true;
     }
 
+    vk::raii::ShaderModule compileShader(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlagBits shaderStage,
+        std::string const& shaderSource)
+    {
+        std::vector<uint32_t> shaderSPV;
+        std::string log;
+        std::string debugLog;
+
+        if (!convertGLSLtoSPV(shaderStage, shaderSource, shaderSPV, log, debugLog))
+        {
+            throw std::runtime_error(log);
+        }
+
+        return vk::raii::ShaderModule(
+            device,
+            vk::ShaderModuleCreateInfo(
+                vk::ShaderModuleCreateFlags(),
+                shaderSPV));
+    }
+
+    vk::raii::ShaderModule loadShader(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlagBits shaderStage,
+        std::string const &path)
+    {
+        try
+        {
+            std::ifstream t(path);
+
+            if (!t.is_open())
+            {
+                return nullptr;
+            }
+
+            std::stringstream buffer;
+            buffer << t.rdbuf();
+
+            return compileShader(device, shaderStage, buffer.str());
+        }
+        catch (std::exception const& e)
+        {
+            std::string error = translateShaderStage(shaderStage).string;
+            std::transform(error.begin(), error.end(), error.begin(), ::toupper);
+            error += " SHADER ERROR IN: " + path + "\n";
+            error += e.what();
+            writeLog(error.c_str());
+        }
+
+        return nullptr;
+    }
 } // namespace spock

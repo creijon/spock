@@ -13,10 +13,13 @@
 
 namespace spock
 {
-    bool convertGLSLtoSPV(
-        const vk::ShaderStageFlagBits shaderType,
-        std::string const &glslShader,
-        std::vector<uint32_t> &spvShader,
-        std::string &log,
-        std::string &debugLog);
+    vk::raii::ShaderModule compileShader(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlagBits shaderStage,
+        std::string const& shaderSource);
+
+    vk::raii::ShaderModule loadShader(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlagBits shaderStage,
+        std::string const& path);
 } // namespace spock

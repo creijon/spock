@@ -149,8 +149,8 @@ public:
 
         // Create the shaders.
         glslang::InitializeProcess();
-        auto vertexShaderModule = spock::makeShaderModule(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-        auto fragmentShaderModule = spock::makeShaderModule(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+        auto vertexShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
+        auto fragmentShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
         glslang::FinalizeProcess();
 
         // Finally create the graphics pipeline.
