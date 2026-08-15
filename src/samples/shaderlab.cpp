@@ -1,18 +1,9 @@
-#include "vulkan/vulkan.hpp"
-#if defined(_MSC_VER)
-// no need to ignore any warnings with MSVC
-#elif defined(__GNUC__)
-#if (9 <= __GNUC__)
-#pragma GCC diagnostic ignored "-Winit-list-lifetime"
-#endif
-#else
-// unknow compiler... just ignore the warnings for yourselves ;)
-#endif
-
 #include "spock/creators.hpp"
 #include "spock/framework.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
+
+#include "vulkan/vulkan.hpp"
 
 #include <efsw/efsw.hpp>
 
@@ -167,7 +158,7 @@ public:
         PushConstants pushConstants;
         pushConstants.iMouse = glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y);
         pushConstants.iResolution = glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f);
-        pushConstants.iTime = float(m_time.count() * 0.000001);
+        pushConstants.iTime = std::chrono::duration_cast<std::chrono::duration<float>>(m_time).count();
         pushConstants.iFrame = m_frameCount;
 
         auto dataSpan = vk::ArrayProxyNoTemporaries<const uint8_t>(

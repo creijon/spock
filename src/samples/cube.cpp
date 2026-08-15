@@ -1,18 +1,9 @@
-#include "vulkan/vulkan.hpp"
-#if defined(_MSC_VER)
-// no need to ignore any warnings with MSVC
-#elif defined(__GNUC__)
-#if (9 <= __GNUC__)
-#pragma GCC diagnostic ignored "-Winit-list-lifetime"
-#endif
-#else
-// unknow compiler... just ignore the warnings for yourselves ;)
-#endif
-
 #include "spock/creators.hpp"
 #include "spock/framework.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
+
+#include "vulkan/vulkan.hpp"
 
 #include <iostream>
 #include <iterator>
@@ -169,7 +160,8 @@ public:
 
     void update() override
     {
-        double angle = m_time.count() * 0.000002;
+        using Seconds = std::chrono::duration<double>;
+        double angle = std::chrono::duration_cast<Seconds>(m_time).count();
         m_view = glm::vec3(sinf(angle) * 5.0f, -3.0f, cosf(angle) * 5.0f);
     }
 
