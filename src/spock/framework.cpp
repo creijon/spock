@@ -139,7 +139,7 @@ namespace spock
             commandBuffer.endRenderPass();
             commandBuffer.end();
 
-            vk::Result result = m_presenter->presentFrame(commandBuffer);
+            vk::Result result = m_presenter->submit(commandBuffer);
 
             if (result == vk::Result::eSuboptimalKHR || !m_presenter->isValid())
             {

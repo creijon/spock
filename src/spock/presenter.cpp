@@ -38,7 +38,6 @@ namespace spock
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
         , m_imageIndex(other.m_imageIndex)
-        , m_framesInFlight(other.m_framesInFlight)
         , m_valid(other.m_valid)
     {
     }
@@ -54,7 +53,6 @@ namespace spock
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
             m_imageIndex = other.m_imageIndex;
-            m_framesInFlight = other.m_framesInFlight;
             m_valid = other.m_valid;
         }
 
@@ -97,7 +95,7 @@ namespace spock
                                                                                                              : vk::CompositeAlphaFlagBitsKHR::eOpaque;
         vk::PresentModeKHR presentMode = pickPresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
         vk::SwapchainKHR prevSwapchain = *m_swapchain;
-        uint32_t imageCount = clampSurfaceImageCount(m_framesInFlight, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
+        uint32_t imageCount = clampSurfaceImageCount(framesInFlight, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
         vk::SwapchainCreateInfoKHR swapChainCreateInfo({},
                                                        surface,
                                                        imageCount,
@@ -148,9 +146,9 @@ namespace spock
         m_presentQueue = vk::raii::Queue(device, presentQueueFamilyIndex, 0);
 
         // Synchronisation primitives.
-        m_imageSemaphores.reserve(m_framesInFlight);
-        m_renderSemaphores.reserve(m_framesInFlight);
-        m_frameFences.reserve(m_framesInFlight);
+        m_imageSemaphores.reserve(m_images.size());
+        m_renderSemaphores.reserve(m_images.size());
+        m_frameFences.reserve(m_images.size());
         m_imageSemaphores.clear();
         m_renderSemaphores.clear();
         m_frameFences.clear();
@@ -158,7 +156,7 @@ namespace spock
         vk::FenceCreateInfo fenceInfo{vk::FenceCreateFlagBits::eSignaled};
         vk::SemaphoreCreateInfo semaphoreInfo{};
 
-        for (size_t i = 0; i < m_framesInFlight; i++)
+        for (size_t i = 0; i < m_images.size(); i++)
         {
             m_imageSemaphores.push_back(device.createSemaphore(semaphoreInfo));
             m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
@@ -172,35 +170,35 @@ namespace spock
     {
         static const uint64_t fenceTimeout = 100000000ull;
 
-        vk::Result result = device.waitForFences({ m_frameFences[m_inFlightIndex] }, VK_TRUE, fenceTimeout);
+        vk::Result result = device.waitForFences({ m_frameFences[m_frameIndex] }, VK_TRUE, fenceTimeout);
 
-        std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[m_inFlightIndex]);
+        std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[m_frameIndex]);
 
         m_valid = result == vk::Result::eSuccess;
 
-        device.resetFences({ m_frameFences[m_inFlightIndex] });
+        device.resetFences({ m_frameFences[m_frameIndex] });
     }
 
-    vk::Result Presenter::presentFrame(vk::raii::CommandBuffer const& commandBuffer)
+    vk::Result Presenter::submit(vk::raii::CommandBuffer const& commandBuffer)
     {
         vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         vk::SubmitInfo submitInfo(
-            *m_imageSemaphores[m_inFlightIndex],
+            *m_imageSemaphores[m_frameIndex],
             waitStages,
             *commandBuffer,
-            *m_renderSemaphores[m_inFlightIndex]);
+            *m_renderSemaphores[m_frameIndex]);
 
-        m_graphicsQueue.submit(submitInfo, m_frameFences[m_inFlightIndex]);
+        m_graphicsQueue.submit(submitInfo, m_frameFences[m_frameIndex]);
         
         // Present the rendered image to the swapchain.
         vk::PresentInfoKHR presentInfo;
-        presentInfo.setWaitSemaphores(*m_renderSemaphores[m_inFlightIndex]);
+        presentInfo.setWaitSemaphores(*m_renderSemaphores[m_frameIndex]);
         presentInfo.setSwapchains(*m_swapchain);
         presentInfo.setPImageIndices(&m_imageIndex);
 
         vk::Result result = m_presentQueue.presentKHR(presentInfo);
 
-        m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
+        m_frameIndex = (m_frameIndex + 1) % m_images.size();
 
         return result;
     }

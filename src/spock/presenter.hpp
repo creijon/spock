@@ -54,7 +54,7 @@ namespace spock
         }
 
         void acquireFrame(vk::raii::Device const &device);
-        vk::Result presentFrame(vk::raii::CommandBuffer const& commandBuffer);
+        vk::Result submit(vk::raii::CommandBuffer const& commandBuffer);
 
     private:
         vk::Format m_colorFormat;
@@ -71,8 +71,7 @@ namespace spock
         std::vector<vk::raii::Semaphore> m_renderSemaphores;
         std::vector<vk::raii::Fence> m_frameFences;
 
-        uint32_t m_framesInFlight{3};
-        uint32_t m_inFlightIndex{0};
+        uint32_t m_frameIndex{0};
         bool m_valid{false};
     };
 } // namespace spock

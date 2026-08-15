@@ -112,7 +112,7 @@ void main()
 {	
 	vec2 q = fragCoord.xy/pc.iResolution.xy;
     vec2 p = (gl_FragCoord.xy - 0.5*pc.iResolution.xy)/pc.iResolution.y;
-    bsMo = (pc.iMouse.xy - 0.5*pc.iResolution.xy)/pc.iResolution.y;
+    bsMo = (pc.iMouse.zw - 0.5*pc.iResolution.xy)/pc.iResolution.y;
     
     float time = pc.iTime*3.;
     vec3 ro = vec3(0,0,time);
