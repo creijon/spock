@@ -52,21 +52,6 @@ namespace spock
         {
             m_commandBuffers.emplace_back(createCommandBuffer(m_device, m_commandPool));
         }
-
-        // TODO: move to the Presenter.
-            m_imageSemaphores.reserve(m_framesInFlight);
-            m_renderSemaphores.reserve(m_framesInFlight);
-            m_frameFences.reserve(m_framesInFlight);
-
-            vk::FenceCreateInfo fenceInfo{vk::FenceCreateFlagBits::eSignaled};
-            vk::SemaphoreCreateInfo semaphoreInfo{};
-
-            for (size_t i = 0; i < m_framesInFlight; i++)
-            {
-                m_imageSemaphores.push_back(m_device.createSemaphore(semaphoreInfo));
-                m_renderSemaphores.push_back(m_device.createSemaphore(semaphoreInfo));
-                m_frameFences.push_back(m_device.createFence(fenceInfo));
-            }
     }
 
     void Framework::resizeWindow(char const* name, uint32_t windowWidth, uint32_t windowHeight)
@@ -86,8 +71,6 @@ namespace spock
     {
         std::pair<uint32_t, uint32_t> familyIndex =
             findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
-
-        m_graphicsQueue = vk::raii::Queue(m_device, familyIndex.first, 0);
 
         if (!m_presenter) m_presenter = std::make_unique<Presenter>();
 
@@ -129,10 +112,7 @@ namespace spock
 
             update();
             
-            // m_presenter->acquireFrame();
-                auto waitResult = m_device.waitForFences({ m_frameFences[inFlightIndex] }, VK_TRUE, FenceTimeout);
-                m_presenter->acquireFame(FenceTimeout, m_imageSemaphores[inFlightIndex]);
-                m_device.resetFences({ m_frameFences[inFlightIndex] });
+            m_presenter->acquireFrame(m_device);
 
             // Begin the render pass.
             auto& commandBuffer = m_commandBuffers[inFlightIndex];
@@ -159,14 +139,7 @@ namespace spock
             commandBuffer.endRenderPass();
             commandBuffer.end();
 
-            // m_presenter->presentFrame(m_graphicsQueue, commandBuffer);
-                vk::SubmitInfo submitInfo(*m_imageSemaphores[inFlightIndex],
-                    { vk::PipelineStageFlagBits::eColorAttachmentOutput },
-                    *m_commandBuffers[inFlightIndex],
-                    *m_renderSemaphores[inFlightIndex]);
-
-                m_graphicsQueue.submit(submitInfo, m_frameFences[inFlightIndex]);
-                vk::Result result = m_presenter->presentFrame(m_renderSemaphores[inFlightIndex]);
+            vk::Result result = m_presenter->presentFrame(commandBuffer);
 
             if (result == vk::Result::eSuboptimalKHR || !m_presenter->isValid())
             {

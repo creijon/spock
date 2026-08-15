@@ -9,7 +9,7 @@
 namespace spock
 {
     // The timeout used for waiting on frame fences during rendering.
-    const uint64_t FenceTimeout = 100000000;
+    const uint64_t FenceTimeout = 100000000ull;
 
     template <typename TargetType, typename SourceType>
     TargetType checked_cast(SourceType value)

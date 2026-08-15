@@ -33,7 +33,8 @@ namespace spock
     Presenter::Presenter(Presenter&&other) noexcept
         : m_colorFormat(other.m_colorFormat)
         , m_swapchain(std::move(other.m_swapchain))
-        , m_queue(std::move(other.m_queue))
+        , m_graphicsQueue(std::move(other.m_graphicsQueue))
+        , m_presentQueue(std::move(other.m_presentQueue))
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
         , m_imageIndex(other.m_imageIndex)
@@ -48,7 +49,8 @@ namespace spock
         {
             m_colorFormat = other.m_colorFormat;
             m_swapchain = std::move(other.m_swapchain);
-            m_queue = std::move(other.m_queue);
+            m_graphicsQueue = std::move(other.m_graphicsQueue);
+            m_presentQueue = std::move(other.m_presentQueue);
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
             m_imageIndex = other.m_imageIndex;
@@ -142,34 +144,64 @@ namespace spock
             m_imageViews.emplace_back(device, imageViewCreateInfo);
         }
 
-        m_queue = vk::raii::Queue(device, presentQueueFamilyIndex, 0);
+        m_graphicsQueue = vk::raii::Queue(device, graphicsQueueFamilyIndex, 0);
+        m_presentQueue = vk::raii::Queue(device, presentQueueFamilyIndex, 0);
+
+        // Synchronisation primitives.
+        m_imageSemaphores.reserve(m_framesInFlight);
+        m_renderSemaphores.reserve(m_framesInFlight);
+        m_frameFences.reserve(m_framesInFlight);
+        m_imageSemaphores.clear();
+        m_renderSemaphores.clear();
+        m_frameFences.clear();
+
+        vk::FenceCreateInfo fenceInfo{vk::FenceCreateFlagBits::eSignaled};
+        vk::SemaphoreCreateInfo semaphoreInfo{};
+
+        for (size_t i = 0; i < m_framesInFlight; i++)
+        {
+            m_imageSemaphores.push_back(device.createSemaphore(semaphoreInfo));
+            m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
+            m_frameFences.push_back(device.createFence(fenceInfo));
+        }
 
         m_valid = true;
     }
 
-    void Presenter::acquireFame(uint64_t fenceTimeout, vk::raii::Semaphore const& semaphore)
+    void Presenter::acquireFrame(vk::raii::Device const &device)
     {
-        vk::Result result;
+        static const uint64_t fenceTimeout = 100000000ull;
 
-        std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, semaphore);
+        vk::Result result = device.waitForFences({ m_frameFences[m_inFlightIndex] }, VK_TRUE, fenceTimeout);
 
-        if (result != vk::Result::eSuccess)
-        {
-            m_valid = false;
-        }
-        assert(m_imageIndex < m_images.size());
+        std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[m_inFlightIndex]);
+
+        m_valid = result == vk::Result::eSuccess;
+
+        device.resetFences({ m_frameFences[m_inFlightIndex] });
     }
 
-    vk::Result Presenter::presentFrame(vk::raii::Semaphore const& semaphore)
+    vk::Result Presenter::presentFrame(vk::raii::CommandBuffer const& commandBuffer)
     {
+        vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        vk::SubmitInfo submitInfo(
+            *m_imageSemaphores[m_inFlightIndex],
+            waitStages,
+            *commandBuffer,
+            *m_renderSemaphores[m_inFlightIndex]);
+
+        m_graphicsQueue.submit(submitInfo, m_frameFences[m_inFlightIndex]);
+        
         // Present the rendered image to the swapchain.
         vk::PresentInfoKHR presentInfo;
-        presentInfo.setWaitSemaphores(*semaphore);
+        presentInfo.setWaitSemaphores(*m_renderSemaphores[m_inFlightIndex]);
         presentInfo.setSwapchains(*m_swapchain);
         presentInfo.setPImageIndices(&m_imageIndex);
 
-        return m_queue.presentKHR(presentInfo);
+        vk::Result result = m_presentQueue.presentKHR(presentInfo);
+
+        m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
+
+        return result;
     }
-
-
 } // namespace spock

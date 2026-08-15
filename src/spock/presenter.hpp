@@ -53,18 +53,26 @@ namespace spock
             return m_valid;
         }
 
-        void acquireFame(uint64_t fenceTimeout, vk::raii::Semaphore const& semaphore);
-
-        vk::Result presentFrame(vk::raii::Semaphore const& semaphore);
+        void acquireFrame(vk::raii::Device const &device);
+        vk::Result presentFrame(vk::raii::CommandBuffer const& commandBuffer);
 
     private:
         vk::Format m_colorFormat;
+    
         vk::raii::SwapchainKHR m_swapchain{nullptr};
-        vk::raii::Queue m_queue{nullptr};
+        vk::raii::Queue m_graphicsQueue{nullptr};
+        vk::raii::Queue m_presentQueue{nullptr};
+    
         std::vector<vk::Image> m_images;
         std::vector<vk::raii::ImageView> m_imageViews;
         uint32_t m_imageIndex{0};
+
+        std::vector<vk::raii::Semaphore> m_imageSemaphores;
+        std::vector<vk::raii::Semaphore> m_renderSemaphores;
+        std::vector<vk::raii::Fence> m_frameFences;
+
         uint32_t m_framesInFlight{3};
+        uint32_t m_inFlightIndex{0};
         bool m_valid{false};
     };
 } // namespace spock

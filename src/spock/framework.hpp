@@ -50,15 +50,11 @@ namespace spock
         vk::raii::PhysicalDevice m_physicalDevice{nullptr};
         vk::raii::Device m_device{nullptr};
         vk::raii::CommandPool m_commandPool{nullptr};
-        vk::raii::Queue m_graphicsQueue{nullptr};
         vk::raii::RenderPass m_renderPass{nullptr};
 
         // Per-frame resources used for double buffering.
         std::vector<vk::raii::Framebuffer> m_frameBuffers;
         std::vector<vk::raii::CommandBuffer> m_commandBuffers;
-        std::vector<vk::raii::Semaphore> m_imageSemaphores;
-        std::vector<vk::raii::Semaphore> m_renderSemaphores;
-        std::vector<vk::raii::Fence> m_frameFences;
 
         std::string m_name;
         vk::Extent2D m_extents;
