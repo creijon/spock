@@ -38,6 +38,10 @@ namespace spock
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
         , m_imageIndex(other.m_imageIndex)
+        , m_imageSemaphores(std::move(other.m_imageSemaphores))
+        , m_renderSemaphores(std::move(other.m_renderSemaphores))
+        , m_frameFences(std::move(other.m_frameFences))
+        , m_inFlightIndex(other.m_inFlightIndex)
         , m_valid(other.m_valid)
     {
     }
@@ -53,6 +57,10 @@ namespace spock
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
             m_imageIndex = other.m_imageIndex;
+            m_imageSemaphores = std::move(other.m_imageSemaphores);
+            m_renderSemaphores = std::move(other.m_renderSemaphores);
+            m_frameFences = std::move(other.m_frameFences);
+            m_inFlightIndex = other.m_inFlightIndex;
             m_valid = other.m_valid;
         }
 
@@ -113,7 +121,7 @@ namespace spock
                                                        prevSwapchain);
         if (graphicsQueueFamilyIndex != presentQueueFamilyIndex)
         {
-            uint32_t queueFamilyIndices[2]{graphicsQueueFamilyIndex, presentQueueFamilyIndex};
+            uint32_t queueFamilyIndices[]{graphicsQueueFamilyIndex, presentQueueFamilyIndex};
             // If the graphics and present queues are from different queue families, we either have to explicitly
             // transfer ownership of images between the queues, or we have to create the swapchain with imageSharingMode
             // as vk::SharingMode::eConcurrent
@@ -170,35 +178,38 @@ namespace spock
     {
         static const uint64_t fenceTimeout = 100000000ull;
 
-        vk::Result result = device.waitForFences({ m_frameFences[m_frameIndex] }, VK_TRUE, fenceTimeout);
+        vk::Result result = device.waitForFences({ m_frameFences[m_inFlightIndex] }, VK_TRUE, fenceTimeout);
 
-        std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[m_frameIndex]);
+        std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[m_inFlightIndex]);
 
         m_valid = result == vk::Result::eSuccess;
 
-        device.resetFences({ m_frameFences[m_frameIndex] });
+        device.resetFences({ m_frameFences[m_inFlightIndex] });
     }
 
-    vk::Result Presenter::submit(vk::raii::CommandBuffer const& commandBuffer)
+    void Presenter::submitCommands(vk::raii::CommandBuffer const& commandBuffer)
     {
         vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         vk::SubmitInfo submitInfo(
-            *m_imageSemaphores[m_frameIndex],
+            *m_imageSemaphores[m_inFlightIndex],
             waitStages,
             *commandBuffer,
-            *m_renderSemaphores[m_frameIndex]);
+            *m_renderSemaphores[m_inFlightIndex]);
 
-        m_graphicsQueue.submit(submitInfo, m_frameFences[m_frameIndex]);
-        
+        m_graphicsQueue.submit(submitInfo, m_frameFences[m_inFlightIndex]);
+    }
+
+    vk::Result Presenter::presentFrame()
+    {
         // Present the rendered image to the swapchain.
         vk::PresentInfoKHR presentInfo;
-        presentInfo.setWaitSemaphores(*m_renderSemaphores[m_frameIndex]);
+        presentInfo.setWaitSemaphores(*m_renderSemaphores[m_inFlightIndex]);
         presentInfo.setSwapchains(*m_swapchain);
         presentInfo.setPImageIndices(&m_imageIndex);
 
         vk::Result result = m_presentQueue.presentKHR(presentInfo);
 
-        m_frameIndex = (m_frameIndex + 1) % m_images.size();
+        m_inFlightIndex = (m_inFlightIndex + 1) % m_images.size();
 
         return result;
     }

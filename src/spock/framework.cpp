@@ -119,12 +119,13 @@ namespace spock
 
             commandBuffer.begin({});
 
-            std::array<vk::ClearValue, 2> clearValues;
-            clearValues[0].color = m_clearColor;
-            clearValues[1].depthStencil = m_clearDepthStencil;
+            vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
 
             vk::RenderPassBeginInfo renderPassBeginInfo(
-                m_renderPass, m_frameBuffers[m_presenter->imageIndex()], vk::Rect2D(vk::Offset2D(0, 0), m_extents), clearValues);
+                m_renderPass,
+                m_frameBuffers[m_presenter->imageIndex()],
+                vk::Rect2D(vk::Offset2D(0, 0), m_extents),
+                clearValues);
             commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
             // Setup the viewport and scissor.
@@ -139,7 +140,9 @@ namespace spock
             commandBuffer.endRenderPass();
             commandBuffer.end();
 
-            vk::Result result = m_presenter->submit(commandBuffer);
+            m_presenter->submitCommands(commandBuffer);
+
+            vk::Result result = m_presenter->presentFrame();
 
             if (result == vk::Result::eSuboptimalKHR || !m_presenter->isValid())
             {
