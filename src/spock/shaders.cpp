@@ -23,7 +23,7 @@ namespace spock
         char const* string;
     };
 
-    ShaderConversion translateShaderStage(vk::ShaderStageFlagBits stage)
+    static ShaderConversion translateShaderStage(vk::ShaderStageFlagBits stage)
     {
         switch (stage)
         {
@@ -61,7 +61,7 @@ namespace spock
         }
     }
 
-    bool convertGLSLtoSPV(
+    static bool convertGLSLtoSPV(
         const vk::ShaderStageFlagBits shaderType,
         std::string const &glslShader,
         std::vector<uint32_t> &spvShader,

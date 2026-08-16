@@ -9,8 +9,6 @@
 #include <iterator>
 #include <vector>
 
-static char const *AppName = "Cube";
-
 struct CubeVertex
 {
     glm::vec4 pos;
@@ -120,7 +118,7 @@ class CubeApp : public spock::Framework
 public:
     CubeApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::Framework(
-            AppName,
+            "Cybe",
             windowWidth,
             windowHeight, 
             {0.2f, 0.2f, 0.3f, 1.0f}, 

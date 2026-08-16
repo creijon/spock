@@ -11,8 +11,6 @@
 #include <iterator>
 #include <vector>
 
-static char const *AppName = "ShaderLab";
-
 struct ShaderLabVertex
 {
     glm::vec4 pos;
@@ -34,9 +32,9 @@ static const std::vector<std::pair<vk::Format, uint32_t>> SHADERLAB_VERTEX_FORMA
     {vk::Format::eR32G32Sfloat, uint32_t(offsetof(ShaderLabVertex, uv))}
 };
 
-static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/shaders/";
-static const std::string VERTEX_SHADER = "shaderlab.vs";
-static const std::string FRAGMENT_SHADER = "shaderlab.fs";
+static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/shaders/shaderlab/";
+static const std::string VERTEX_SHADER = "default.vs";
+static const std::string FRAGMENT_SHADER = "default.fs";
 
 // PushConstants have been defined to be mostly compatible with the ShaderToy interface.
 struct PushConstants
@@ -52,7 +50,7 @@ class ShaderLabApp : public spock::Framework
 public:
     ShaderLabApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::Framework(
-            AppName,
+            "ShaderLab",
             windowWidth,
             windowHeight,
             {0.2f, 0.2f, 0.3f, 1.0f},

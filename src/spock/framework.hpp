@@ -51,6 +51,7 @@ namespace spock
         vk::raii::Device m_device{nullptr};
         vk::raii::CommandPool m_commandPool{nullptr};
         vk::raii::RenderPass m_renderPass{nullptr};
+        std::pair<uint32_t, uint32_t> m_familyIndex;
 
         // Per-frame resources used for double buffering.
         std::vector<vk::raii::Framebuffer> m_frameBuffers;

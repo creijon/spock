@@ -88,7 +88,6 @@ namespace spock
     {
     }
 
-
     ImageWrapper const& ImageWrapper::operator=(ImageWrapper&& other)
     {
         if (this != &other)

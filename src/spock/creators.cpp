@@ -309,7 +309,7 @@ namespace spock
         vk::Extent2D const &extent)
     {
         vk::ImageView attachments[2];
-        attachments[1] = depthImageView ? *depthImageView : vk::ImageView();
+        attachments[1] = (depthImageView) ? *depthImageView : vk::ImageView();
 
         vk::FramebufferCreateInfo framebufferCreateInfo(
             vk::FramebufferCreateFlags(), renderPass, depthImageView ? 2 : 1, attachments, extent.width, extent.height, 1);

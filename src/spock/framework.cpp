@@ -41,15 +41,13 @@ namespace spock
             throw std::runtime_error("Failed to create window!");
         m_surface = vk::raii::SurfaceKHR(m_instance, surface);
 
-        std::pair<uint32_t, uint32_t> familyIndex =
-            findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
-        m_device = createDevice(m_physicalDevice, familyIndex.first, getDeviceExtensions());
+        m_familyIndex = findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
+        m_device = createDevice(m_physicalDevice, m_familyIndex.first, getDeviceExtensions());
 
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
             vk::CommandPoolCreateFlagBits::eTransient,
-            familyIndex.first};
-
+            m_familyIndex.first};
         m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
 
         resizeWindow(windowWidth, windowHeight);
@@ -64,17 +62,14 @@ namespace spock
         m_commandBuffers.clear();
         m_presenter.reset();
 
-        std::pair<uint32_t, uint32_t> familyIndex =
-            findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
-
         m_presenter = std::make_unique<Presenter>(
             m_physicalDevice,
             m_device,
             m_surface,
             m_extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-            familyIndex.first,
-            familyIndex.second,
+            m_familyIndex.first,
+            m_familyIndex.second,
             m_framesInFlight);
 
         vk::Format colorFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface)).format;
