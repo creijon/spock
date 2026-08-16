@@ -179,10 +179,8 @@ namespace spock
         static const uint64_t fenceTimeout = 100000000ull;
 
         vk::Result result = device.waitForFences({ m_frameFences[m_inFlightIndex] }, VK_TRUE, fenceTimeout);
-
         std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[m_inFlightIndex]);
-
-        m_valid = result == vk::Result::eSuccess;
+        m_valid = (result == vk::Result::eSuccess);
 
         device.resetFences({ m_frameFences[m_inFlightIndex] });
     }
@@ -201,16 +199,23 @@ namespace spock
 
     vk::Result Presenter::presentFrame()
     {
-        // Present the rendered image to the swapchain.
-        vk::PresentInfoKHR presentInfo;
-        presentInfo.setWaitSemaphores(*m_renderSemaphores[m_inFlightIndex]);
-        presentInfo.setSwapchains(*m_swapchain);
-        presentInfo.setPImageIndices(&m_imageIndex);
+        try
+        {
+            // Present the rendered image to the swapchain.
+            vk::PresentInfoKHR presentInfo;
+            presentInfo.setWaitSemaphores(*m_renderSemaphores[m_inFlightIndex]);
+            presentInfo.setSwapchains(*m_swapchain);
+            presentInfo.setPImageIndices(&m_imageIndex);
 
-        vk::Result result = m_presentQueue.presentKHR(presentInfo);
+            vk::Result result = m_presentQueue.presentKHR(presentInfo);
 
-        m_inFlightIndex = (m_inFlightIndex + 1) % m_images.size();
+            m_inFlightIndex = (m_inFlightIndex + 1) % m_images.size();
 
-        return result;
+            return result;
+        }
+        catch (std::exception const& e)
+        {
+            return vk::Result::eErrorOutOfDateKHR;
+        }
     }
 } // namespace spock

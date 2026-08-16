@@ -152,7 +152,9 @@ namespace spock
             vk::Result result = m_presenter->presentFrame();
 
             // Handle window resizing.
-            if (result == vk::Result::eSuboptimalKHR || !m_presenter->isValid())
+            if (result == vk::Result::eSuboptimalKHR ||
+                result == vk::Result::eErrorOutOfDateKHR ||
+                !m_presenter->isValid())
             {
                 int width, height;
                 glfwGetFramebufferSize(m_handle, &width, &height);

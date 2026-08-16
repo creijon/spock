@@ -13,17 +13,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(${BINARY_NAME} WIN32)
-target_compile_definitions(${BINARY_NAME} PRIVATE
-    SPOCK_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
-)
-
 option(VULKAN_HPP_USE_WAYLAND "Use Wayland on Linux for the samples instead of XCB" ON)
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-D_USE_MATH_DEFINES)
     add_definitions(-DNOMINMAX)
 ENDIF ()
+
+add_library(${BINARY_NAME} STATIC)
 
 find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -47,7 +44,6 @@ if( WIN32 )
 elseif( APPLE )
     target_compile_definitions( ${BINARY_NAME} PUBLIC VK_USE_PLATFORM_METAL_EXT )
 elseif( UNIX )
-    target_compile_definitions( ${BINARY_NAME} PUBLIC VK_USE_PLATFORM_XCB_KHR )
     if ( VULKAN_HPP_USE_WAYLAND )
         target_compile_definitions( ${BINARY_NAME} PUBLIC VK_USE_PLATFORM_WAYLAND_KHR )
     else()
@@ -62,22 +58,21 @@ endif()
 
 target_sources(${BINARY_NAME} PRIVATE ${GLAD_GL} ${SOURCE} ${HEADERS})
 target_include_directories(
-    ${BINARY_NAME} PRIVATE
+    ${BINARY_NAME} PUBLIC
     ${INCLUDE_PATHS}
     ${OPENGL_INCLUDE_DIRS}
     ${Vulkan_INCLUDE_DIRS}
     ${GLFW_GAD_INCLUDE_DIRS}
     "deps/glm")
 target_link_libraries(
-    ${BINARY_NAME} PRIVATE
+    ${BINARY_NAME} PUBLIC
     ${OPENGL_LIBRARIES}
     ${Vulkan_LIBRARIES}
     Vulkan::Headers
     glfw
     glslang::glslang
     glslang::glslang-default-resource-limits
-    glslang::SPIRV
-    efsw)
+    glslang::SPIRV)
 
 if(MSVC)
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0")

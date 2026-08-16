@@ -16,5 +16,6 @@ layout (location = 0) out vec4 fragColor;
 
 void main()
 {
-  fragColor = vec4(fragCoord.x / pc.iResolution.x, fragCoord.y / pc.iResolution.y, 0.5 + 0.5 * sin(pc.iTime), 1.0);
+  vec2 uv = fragCoord.xy / pc.iResolution.xy;
+  fragColor = vec4(uv, 0.5 + 0.5 * sin(pc.iTime), 1.0);
 }

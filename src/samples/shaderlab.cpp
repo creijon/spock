@@ -161,7 +161,7 @@ public:
             glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y),
             glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
             std::chrono::duration_cast<Seconds>(m_time).count(),
-            m_frameCount};
+            (int)m_frameCount};
 
         vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
             sizeof(PushConstants),

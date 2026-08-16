@@ -1,12 +1,3 @@
-// ignore warning 4127: conditional expression is constant
-#if defined(_MSC_VER)
-#pragma warning(disable : 4127)
-#elif defined(__GNUC__)
-// don't know how to switch off that warning here
-#else
-// unknow compiler... just ignore the warnings for yourselves ;)
-#endif
-
 #include "math.hpp"
 
 #include <glm/gtx/rotate_vector.hpp>
