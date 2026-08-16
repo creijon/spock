@@ -24,22 +24,20 @@ namespace spock
         float zNear,
         float zFar)
     {
-        float radians = glm::radians(fov);
-
-        if (extent.width > extent.height)
-        {
-            radians *= static_cast<float>(extent.height) / static_cast<float>(extent.width);
-        }
+        float aspect = extent.height > 0
+            ? static_cast<float>(extent.width) / static_cast<float>(extent.height)
+            : 1.0f;
 
         glm::mat4x4 model = glm::mat4x4(1.0f);
         glm::mat4x4 view = glm::lookAt(eye, center, up);
-        glm::mat4x4 projection = glm::perspective(radians, 1.0f, zNear, zFar);
+        glm::mat4x4 projection = glm::perspective(glm::radians(fov), aspect, zNear, zFar);
         // clang-format off
         // Vulkan clip space has inverted y and half z.
-        glm::mat4x4 clip = glm::mat4x4( 1.0f,  0.0f, 0.0f, 0.0f,
-                                        0.0f, -1.0f, 0.0f, 0.0f,
-                                        0.0f,  0.0f, 0.5f, 0.0f,
-                                        0.0f,  0.0f, 0.5f, 1.0f );
+        glm::mat4x4 clip{
+            1.0f,  0.0f, 0.0f, 0.0f,
+            0.0f, -1.0f, 0.0f, 0.0f,
+            0.0f,  0.0f, 0.5f, 0.0f,
+            0.0f,  0.0f, 0.5f, 1.0f};
         // clang-format on 
 
         return clip * projection * view * model;
