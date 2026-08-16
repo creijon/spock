@@ -25,13 +25,21 @@ namespace spock
         : m_context()
         , m_instance(createInstance(m_context, name, {}, getInstanceExtensions()))
         , m_physicalDevice(vk::raii::PhysicalDevices(m_instance).front())
+        , m_name(name)
+        , m_extents(windowWidth, windowHeight)
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
         , m_framesInFlight(framesInFlight)
         , m_frameDuration(frameDuration)
     {
-        resizeWindow(name, windowWidth, windowHeight);
+        m_handle = createWindow(m_name, m_extents);
+
+        VkSurfaceKHR surface;
+        VkResult err = glfwCreateWindowSurface(*m_instance, m_handle, nullptr, &surface);
+        if (err != VK_SUCCESS)
+            throw std::runtime_error("Failed to create window!");
+        m_surface = vk::raii::SurfaceKHR(m_instance, surface);
 
         std::pair<uint32_t, uint32_t> familyIndex =
             findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
@@ -44,37 +52,22 @@ namespace spock
 
         m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
 
-        rebuildSwapchain();
-
-        m_commandBuffers.reserve(m_framesInFlight);
-
-        for (size_t i = 0; i < m_framesInFlight; i++)
-        {
-            m_commandBuffers.emplace_back(createCommandBuffer(m_device, m_commandPool));
-        }
+        resizeWindow(windowWidth, windowHeight);
     }
 
-    void Framework::resizeWindow(char const* name, uint32_t windowWidth, uint32_t windowHeight)
+    void Framework::resizeWindow(uint32_t width, uint32_t height)
     {
-        m_name = name;
-        m_extents = vk::Extent2D(windowWidth, windowHeight);
-        m_handle = createWindow(name, m_extents);
+        m_extents = vk::Extent2D(width, height);
 
-        VkSurfaceKHR surface;
-        VkResult err = glfwCreateWindowSurface(*m_instance, m_handle, nullptr, &surface);
-        if (err != VK_SUCCESS)
-            throw std::runtime_error("Failed to create window!");
-        m_surface = vk::raii::SurfaceKHR(m_instance, surface);
-    }
+        // For resizing we need to clear out the previous framebuffers and command buffers before the swapchain.
+        m_frameBuffers.clear();
+        m_commandBuffers.clear();
+        m_presenter.reset();
 
-    void Framework::rebuildSwapchain()
-    {
         std::pair<uint32_t, uint32_t> familyIndex =
             findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
 
-        if (!m_presenter) m_presenter = std::make_unique<Presenter>();
-
-        m_presenter->initialise(
+        m_presenter = std::make_unique<Presenter>(
             m_physicalDevice,
             m_device,
             m_surface,
@@ -83,7 +76,7 @@ namespace spock
             familyIndex.first,
             familyIndex.second,
             m_framesInFlight);
- 
+
         vk::Format colorFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface)).format;
 
         // Color and depth buffers, set up the render pass and framebuffers.
@@ -98,6 +91,13 @@ namespace spock
             m_renderPass = createRenderPass(m_device, colorFormat, vk::Format::eUndefined);
             m_frameBuffers = createFramebuffers(m_device, m_renderPass, m_presenter->imageViews(), nullptr, m_extents);
         }
+
+        m_commandBuffers.reserve(m_framesInFlight);
+
+        for (size_t i = 0; i < m_framesInFlight; i++)
+        {
+            m_commandBuffers.emplace_back(createCommandBuffer(m_device, m_commandPool));
+        }
     }
 
     void Framework::run()
@@ -111,7 +111,9 @@ namespace spock
             glfwPollEvents();
 
             update();
-            
+
+            // Aquire the next frame in the swapchain and wait for the fence
+            // to ensure that the previous frame has finished rendering.
             m_presenter->acquireFrame(m_device);
 
             // Begin the render pass.
@@ -128,12 +130,17 @@ namespace spock
                 clearValues);
             commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
-            // Setup the viewport and scissor.
+            // Setup the viewport and scissor rectangle.
             commandBuffer.setViewport(
-                0, vk::Viewport(0.0f, 0.0f, static_cast<float>(m_extents.width), static_cast<float>(m_extents.height), 0.0f, 1.0f));
+                0, vk::Viewport(0.0f,
+                                0.0f,
+                                static_cast<float>(m_extents.width),
+                                static_cast<float>(m_extents.height),
+                                0.0f,
+                                1.0f));
             commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
 
-            // The derived class renders its scene.
+            // The derived class renders its scene into the command buffer.
             render(commandBuffer);
 
             // End the render pass and submit the command buffer.
@@ -144,33 +151,15 @@ namespace spock
 
             vk::Result result = m_presenter->presentFrame();
 
+            // Handle window resizing.
             if (result == vk::Result::eSuboptimalKHR || !m_presenter->isValid())
             {
-                // TODO: rewrite this to use the resizeWindow() function
-                // Wait for all work to be finished.
+                int width, height;
+                glfwGetFramebufferSize(m_handle, &width, &height);
+                
                 m_device.waitIdle();
 
-                int width = 0;
-                int height = 0;
-                glfwGetFramebufferSize(m_handle, &width, &height);
-
-                m_extents.setWidth(width);
-                m_extents.setHeight(height);
-
-                for (size_t i = 0; i < m_framesInFlight; i++) {
-                    m_commandBuffers[i] = createCommandBuffer(m_device, m_commandPool);
-                }
-
-                m_presenter.reset();
-
-                VkSurfaceKHR surface;
-                VkResult err = glfwCreateWindowSurface(*m_instance, m_handle, nullptr, &surface);
-                if (err != VK_SUCCESS)
-                    throw std::runtime_error("Failed to create window!");
-
-                m_surface = vk::raii::SurfaceKHR(m_instance, surface);
-
-                rebuildSwapchain();
+                resizeWindow(width, height);
             }
 
             m_time += m_frameDuration;

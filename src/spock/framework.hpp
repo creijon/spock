@@ -42,8 +42,8 @@ namespace spock
         // the render pass and configured with the viewport and scissor.
         virtual void render(vk::raii::CommandBuffer const &commandBuffer) = 0;
 
-        void resizeWindow(char const* name, uint32_t windowWidth, uint32_t windowHeight);
-        void rebuildSwapchain();
+        void createPresenterAndFrameBuffers();
+        void resizeWindow(uint32_t width, uint32_t height);
 
         vk::raii::Context m_context{};
         vk::raii::Instance m_instance{nullptr};
