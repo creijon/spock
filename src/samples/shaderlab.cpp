@@ -149,22 +149,23 @@ public:
 
     void render(vk::raii::CommandBuffer const &commandBuffer) override
     {
+        // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
         if (m_graphicsPipeline == nullptr) return;
 
         // Bind the pipeline.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
 
         // Update the push constants.
-        PushConstants pushConstants;
-        pushConstants.iMouse = glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y);
-        pushConstants.iResolution = glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f);
-        pushConstants.iTime = std::chrono::duration_cast<std::chrono::duration<float>>(m_time).count();
-        pushConstants.iFrame = m_frameCount;
+        using Seconds = std::chrono::duration<float>;
+        PushConstants pushConstants{
+            glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y),
+            glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
+            std::chrono::duration_cast<Seconds>(m_time).count(),
+            m_frameCount};
 
-        auto dataSpan = vk::ArrayProxyNoTemporaries<const uint8_t>(
+        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
             sizeof(PushConstants),
-            reinterpret_cast<const uint8_t*>(&pushConstants)
-        );
+            reinterpret_cast<const uint8_t*>(&pushConstants)};
 
         commandBuffer.pushConstants<uint8_t>(
             m_pipelineLayout,

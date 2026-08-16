@@ -169,18 +169,16 @@ public:
     {
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
-        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer}, {0});
 
-        // Set the camera location.
+        // Update the push constants.
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
         static const glm::vec3 up(0.0f, -1.0f, 0.0f);
-        PushConstants pushConstants;
-        pushConstants.mvp = spock::createModelViewProjectionClipMatrix(m_extents, m_view, target, up);
+        PushConstants pushConstants{
+            spock::createModelViewProjectionClipMatrix(m_extents, m_view, target, up)};
 
-        auto dataSpan = vk::ArrayProxyNoTemporaries<const uint8_t>(
+        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
             sizeof(PushConstants),
-            reinterpret_cast<const uint8_t*>(&pushConstants)
-        );
+            reinterpret_cast<const uint8_t*>(&pushConstants)};
 
         commandBuffer.pushConstants<uint8_t>(
             m_pipelineLayout,
@@ -189,6 +187,7 @@ public:
             dataSpan);
         
         // Draw all the scene, but for this example it's just a single cube.
+        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer}, {0});
         commandBuffer.draw(CUBE_VERTEX_COUNT, 1, 0, 0);
     }
 

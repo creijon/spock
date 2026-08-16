@@ -16,9 +16,10 @@
 
 ## Fixes/Refactoring
 
-- Clean up the code in the Framework that handles window resizing.
-- Split the renderer out and have it separate from the framework.
+- Split 
 
+- Split the renderer out and have it separate from the framework. UNNECESSARY
+- Clean up the code in the Framework that handles window resizing. DONE
 - Fences and semaphores aren't stable.  Move all the synchronisation primitives into Presenter. DONE
 
 ## Investigations
