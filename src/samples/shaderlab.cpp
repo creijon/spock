@@ -74,7 +74,7 @@ public:
             SHADERLAB_VERTEX_BUFFER_SIZE,
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(
-            m_vertexBuffer.deviceMemory,
+            m_vertexBuffer.deviceMemory(),
             SHADERLAB_VERTEX_DATA,
             SHADERLAB_VERTEX_COUNT);
 
@@ -176,7 +176,7 @@ public:
             dataSpan);
 
         // Draw the single triangle.
-        commandBuffer.bindVertexBuffers(0, { m_vertexBuffer.buffer }, { 0 });
+        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, { 0 });
         commandBuffer.draw(SHADERLAB_VERTEX_COUNT, 1, 0, 0);
     }
 

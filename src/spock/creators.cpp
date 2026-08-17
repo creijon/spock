@@ -222,38 +222,41 @@ namespace spock
         std::vector<vk::AttachmentDescription> attachmentDescriptions;
 
         assert(colorFormat != vk::Format::eUndefined);
-        attachmentDescriptions.emplace_back(vk::AttachmentDescriptionFlags(),
-                                            colorFormat,
-                                            vk::SampleCountFlagBits::e1,
-                                            loadOp,
-                                            vk::AttachmentStoreOp::eStore,
-                                            vk::AttachmentLoadOp::eDontCare,
-                                            vk::AttachmentStoreOp::eDontCare,
-                                            vk::ImageLayout::eUndefined,
-                                            colorFinalLayout);
+        attachmentDescriptions.emplace_back(
+            vk::AttachmentDescriptionFlags(),
+            colorFormat,
+            vk::SampleCountFlagBits::e1,
+            loadOp,
+            vk::AttachmentStoreOp::eStore,
+            vk::AttachmentLoadOp::eDontCare,
+            vk::AttachmentStoreOp::eDontCare,
+            vk::ImageLayout::eUndefined,
+            colorFinalLayout);
 
         if (depthFormat != vk::Format::eUndefined)
         {
-            attachmentDescriptions.emplace_back(vk::AttachmentDescriptionFlags(),
-                                                depthFormat,
-                                                vk::SampleCountFlagBits::e1,
-                                                loadOp,
-                                                vk::AttachmentStoreOp::eDontCare,
-                                                vk::AttachmentLoadOp::eDontCare,
-                                                vk::AttachmentStoreOp::eDontCare,
-                                                vk::ImageLayout::eUndefined,
-                                                vk::ImageLayout::eDepthStencilAttachmentOptimal);
+            attachmentDescriptions.emplace_back(
+                vk::AttachmentDescriptionFlags(),
+                depthFormat,
+                vk::SampleCountFlagBits::e1,
+                loadOp,
+                vk::AttachmentStoreOp::eDontCare,
+                vk::AttachmentLoadOp::eDontCare,
+                vk::AttachmentStoreOp::eDontCare,
+                vk::ImageLayout::eUndefined,
+                vk::ImageLayout::eDepthStencilAttachmentOptimal);
         }
 
         vk::AttachmentReference colorAttachment(0, vk::ImageLayout::eColorAttachmentOptimal);
         vk::AttachmentReference depthAttachment(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
 
-        vk::SubpassDescription subpassDescription(vk::SubpassDescriptionFlags(),
-                                                  vk::PipelineBindPoint::eGraphics,
-                                                  {},
-                                                  colorAttachment,
-                                                  {},
-                                                  (depthFormat != vk::Format::eUndefined) ? &depthAttachment : nullptr);
+        vk::SubpassDescription subpassDescription(
+            vk::SubpassDescriptionFlags(),
+            vk::PipelineBindPoint::eGraphics,
+            {},
+            colorAttachment,
+            {},
+            (depthFormat != vk::Format::eUndefined) ? &depthAttachment : nullptr);
         vk::RenderPassCreateInfo renderPassCreateInfo(vk::RenderPassCreateFlags(), attachmentDescriptions, subpassDescription);
 
         return vk::raii::RenderPass(device, renderPassCreateInfo);
@@ -367,17 +370,18 @@ namespace spock
 
         vk::PipelineViewportStateCreateInfo pipelineViewportStateCreateInfo(vk::PipelineViewportStateCreateFlags(), 1, nullptr, 1, nullptr);
 
-        vk::PipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo(vk::PipelineRasterizationStateCreateFlags(),
-                                                                                      false,
-                                                                                      false,
-                                                                                      vk::PolygonMode::eFill,
-                                                                                      vk::CullModeFlagBits::eBack,
-                                                                                      frontFace,
-                                                                                      false,
-                                                                                      0.0f,
-                                                                                      0.0f,
-                                                                                      0.0f,
-                                                                                      1.0f);
+        vk::PipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo(
+            vk::PipelineRasterizationStateCreateFlags(),
+            false,
+            false,
+            vk::PolygonMode::eFill,
+            vk::CullModeFlagBits::eBack,
+            frontFace,
+            false,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f);
 
         vk::PipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo({}, vk::SampleCountFlagBits::e1);
 
@@ -387,33 +391,35 @@ namespace spock
 
         vk::ColorComponentFlags colorComponentFlags(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB |
                                                     vk::ColorComponentFlagBits::eA);
-        vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachmentState(false,
-                                                                                vk::BlendFactor::eZero,
-                                                                                vk::BlendFactor::eZero,
-                                                                                vk::BlendOp::eAdd,
-                                                                                vk::BlendFactor::eZero,
-                                                                                vk::BlendFactor::eZero,
-                                                                                vk::BlendOp::eAdd,
-                                                                                colorComponentFlags);
+        vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachmentState(
+            false,
+            vk::BlendFactor::eZero,
+            vk::BlendFactor::eZero,
+            vk::BlendOp::eAdd,
+            vk::BlendFactor::eZero,
+            vk::BlendFactor::eZero,
+            vk::BlendOp::eAdd,
+            colorComponentFlags);
         vk::PipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo(
             vk::PipelineColorBlendStateCreateFlags(), false, vk::LogicOp::eNoOp, pipelineColorBlendAttachmentState, {{1.0f, 1.0f, 1.0f, 1.0f}});
 
         std::array<vk::DynamicState, 2> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
         vk::PipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo(vk::PipelineDynamicStateCreateFlags(), dynamicStates);
 
-        vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo(vk::PipelineCreateFlags(),
-                                                                  pipelineShaderStageCreateInfos,
-                                                                  &pipelineVertexInputStateCreateInfo,
-                                                                  &pipelineInputAssemblyStateCreateInfo,
-                                                                  nullptr,
-                                                                  &pipelineViewportStateCreateInfo,
-                                                                  &pipelineRasterizationStateCreateInfo,
-                                                                  &pipelineMultisampleStateCreateInfo,
-                                                                  &pipelineDepthStencilStateCreateInfo,
-                                                                  &pipelineColorBlendStateCreateInfo,
-                                                                  &pipelineDynamicStateCreateInfo,
-                                                                  pipelineLayout,
-                                                                  renderPass);
+        vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo(
+            vk::PipelineCreateFlags(),
+            pipelineShaderStageCreateInfos,
+            &pipelineVertexInputStateCreateInfo,
+            &pipelineInputAssemblyStateCreateInfo,
+            nullptr,
+            &pipelineViewportStateCreateInfo,
+            &pipelineRasterizationStateCreateInfo,
+            &pipelineMultisampleStateCreateInfo,
+            &pipelineDepthStencilStateCreateInfo,
+            &pipelineColorBlendStateCreateInfo,
+            &pipelineDynamicStateCreateInfo,
+            pipelineLayout,
+            renderPass);
 
         return vk::raii::Pipeline(device, pipelineCache, graphicsPipelineCreateInfo);
     }
@@ -442,7 +448,14 @@ namespace spock
                 bufferView = *std::get<3>(bd);
             }
             writeDescriptorSets.emplace_back(
-                descriptorSet, dstBinding++, 0, 1, std::get<0>(bd), nullptr, &bufferInfos.back(), std::get<3>(bd) ? &bufferView : nullptr);
+                descriptorSet, 
+                dstBinding++,
+                0,
+                1,
+                std::get<0>(bd),
+                nullptr,
+                &bufferInfos.back(),
+                std::get<3>(bd) ? &bufferView : nullptr);
         }
 
         std::vector<vk::DescriptorImageInfo> imageInfos;
@@ -451,16 +464,20 @@ namespace spock
             imageInfos.reserve(textureData.size());
             for (auto const &thd : textureData)
             {
-                imageInfos.emplace_back(thd.sampler, thd.image.imageView, vk::ImageLayout::eShaderReadOnlyOptimal);
+                imageInfos.emplace_back(
+                    thd.sampler(),
+                    thd.image().imageView(),
+                    vk::ImageLayout::eShaderReadOnlyOptimal);
             }
-            writeDescriptorSets.emplace_back(descriptorSet,
-                                             dstBinding,
-                                             0,
-                                             checked_cast<uint32_t>(imageInfos.size()),
-                                             vk::DescriptorType::eCombinedImageSampler,
-                                             imageInfos.data(),
-                                             nullptr,
-                                             nullptr);
+            writeDescriptorSets.emplace_back(
+                descriptorSet,
+                dstBinding,
+                0,
+                checked_cast<uint32_t>(imageInfos.size()),
+                vk::DescriptorType::eCombinedImageSampler,
+                imageInfos.data(),
+                nullptr,
+                nullptr);
         }
 
         device.updateDescriptorSets(writeDescriptorSets, nullptr);

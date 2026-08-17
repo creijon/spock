@@ -121,7 +121,7 @@ class CubeApp : public spock::Framework
 public:
     CubeApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::Framework(
-            "Cybe",
+            "Cube",
             windowWidth,
             windowHeight, 
             {0.2f, 0.2f, 0.3f, 1.0f}, 
@@ -137,7 +137,7 @@ public:
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, {}, pushConstantRange }));
 
         m_vertexBuffer = spock::BufferWrapper(m_physicalDevice, m_device, CUBE_VERTEX_BUFFER_SIZE, vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_vertexBuffer.deviceMemory, CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
+        spock::copyToDevice(m_vertexBuffer.deviceMemory(), CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
 
         // Create the shaders.
         glslang::InitializeProcess();
@@ -188,7 +188,7 @@ public:
             dataSpan);
         
         // Draw all the scene, but for this example it's just a single cube.
-        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer}, {0});
+        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, {0});
         commandBuffer.draw(CUBE_VERTEX_COUNT, 1, 0, 0);
     }
 

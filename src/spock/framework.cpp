@@ -79,12 +79,12 @@ namespace spock
         if (m_useDepthBuffer)
         {
             m_depthBuffer = DepthBufferWrapper(m_physicalDevice, m_device, vk::Format::eD16Unorm, m_extents);
-            m_renderPass = createRenderPass(m_device, colorFormat, m_depthBuffer.format);
+            m_renderPass = createRenderPass(m_device, colorFormat, m_depthBuffer.format());
             m_frameBuffers = createFramebuffers(
                 m_device,
                 m_renderPass,
                 m_presenter->imageViews(),
-                &m_depthBuffer.imageView,
+                &m_depthBuffer.imageView(),
                 m_extents);
         }
         else

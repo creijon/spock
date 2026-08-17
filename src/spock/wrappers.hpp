@@ -11,8 +11,9 @@
 
 namespace spock
 {
-    struct BufferWrapper
+    class BufferWrapper
     {
+    public:
         BufferWrapper(
             vk::raii::PhysicalDevice const &physicalDevice,
             vk::raii::Device const &device,
@@ -24,16 +25,27 @@ namespace spock
         BufferWrapper(BufferWrapper &&other) noexcept;
         BufferWrapper const& operator=(BufferWrapper&& other);
 
+        vk::raii::DeviceMemory const& deviceMemory() const
+        {
+            return m_deviceMemory;
+        }
+
+        vk::raii::Buffer const& buffer() const
+        {
+            return m_buffer;
+        }
+
         template <typename DataType>
         void upload(
             DataType const &data) const
         {
-            assert((m_propertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) && (m_propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible));
+            assert((m_propertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) &&
+                   (m_propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible));
             assert(sizeof(DataType) <= m_size);
 
-            void *dataPtr = deviceMemory.mapMemory(0, sizeof(DataType));
+            void *dataPtr = m_deviceMemory.mapMemory(0, sizeof(DataType));
             memcpy(dataPtr, &data, sizeof(DataType));
-            deviceMemory.unmapMemory();
+            m_deviceMemory.unmapMemory();
         }
 
         template <typename DataType>
@@ -46,7 +58,7 @@ namespace spock
             size_t elementSize = stride ? stride : sizeof(DataType);
             assert(sizeof(DataType) <= elementSize);
 
-            copyToDevice(deviceMemory, data.data(), data.size(), elementSize);
+            copyToDevice(m_deviceMemory, data.data(), data.size(), elementSize);
         }
 
         template <typename DataType>
@@ -67,22 +79,27 @@ namespace spock
             size_t dataSize = data.size() * elementSize;
             assert(dataSize <= m_size);
 
-            BufferWrapper stagingBuffer(physicalDevice, device, dataSize, vk::BufferUsageFlagBits::eTransferSrc);
-            copyToDevice(stagingBuffer.deviceMemory, data.data(), data.size(), elementSize);
+            BufferWrapper stagingBuffer(
+                physicalDevice,
+                device,
+                dataSize,
+                vk::BufferUsageFlagBits::eTransferSrc);
+            copyToDevice(stagingBuffer.m_deviceMemory, data.data(), data.size(), elementSize);
 
             oneTimeSubmit(device,
                           commandPool,
                           queue,
                           [&](vk::raii::CommandBuffer const &commandBuffer)
-                          { commandBuffer.copyBuffer(*stagingBuffer.buffer, *this->buffer, vk::BufferCopy(0, 0, dataSize)); });
+                          { commandBuffer.copyBuffer(*stagingBuffer.m_buffer, *m_buffer, vk::BufferCopy(0, 0, dataSize)); });
         }
 
+    protected:
         // Declare the memory FIRST
         // It must live longer than the buffer that binds to it.
-        vk::raii::DeviceMemory deviceMemory{nullptr};
+        vk::raii::DeviceMemory m_deviceMemory{nullptr};
 
         // Declare the buffer SECOND so that it is destroyed first.
-        vk::raii::Buffer buffer{nullptr};
+        vk::raii::Buffer m_buffer{nullptr};
 #if !defined(NDEBUG)
     private:
         vk::DeviceSize m_size{0};
@@ -91,13 +108,18 @@ namespace spock
 #endif
     };
 
-    struct ImageWrapper
+    // VertexBuffer
+
+    // IndexBuffer
+
+    class ImageWrapper
     {
+    public:
         ImageWrapper(
             vk::raii::PhysicalDevice const &physicalDevice,
             vk::raii::Device const &device,
-            vk::Format format_,
-            vk::Extent2D const &extent,
+            vk::Format format,
+            vk::Extent2D extent,
             vk::ImageTiling tiling,
             vk::ImageUsageFlags usage,
             vk::ImageLayout initialLayout,
@@ -108,16 +130,29 @@ namespace spock
         ImageWrapper(ImageWrapper&& other) noexcept;
         ImageWrapper const& operator=(ImageWrapper&& other);
 
-        // the DeviceMemory should be destroyed before the Image it is bound to; to get that order with the standard destructor
-        // of the ImageWrapper, the order of DeviceMemory and Image here matters
-        vk::Format format;
-        vk::raii::DeviceMemory deviceMemory{nullptr};
-        vk::raii::Image image{nullptr};
-        vk::raii::ImageView imageView{nullptr};
+        vk::Format format() const
+        {
+            return m_format;
+        }
+    
+        vk::raii::ImageView const& imageView() const
+        {
+            return m_imageView;
+        }
+
+    protected:
+        // the DeviceMemory should be destroyed before the Image it is bound to;
+        // to get that order with the standard destructor of the ImageWrapper,
+        // the order of DeviceMemory and Image here matters.
+        vk::Format m_format;
+        vk::raii::DeviceMemory m_deviceMemory{nullptr};
+        vk::raii::Image m_image{nullptr};
+        vk::raii::ImageView m_imageView{nullptr};
     };
 
-    struct DepthBufferWrapper : public ImageWrapper
+    class DepthBufferWrapper : public ImageWrapper
     {
+    public:
         DepthBufferWrapper(
             vk::raii::PhysicalDevice const &physicalDevice,
             vk::raii::Device const &device,
@@ -129,12 +164,13 @@ namespace spock
         DepthBufferWrapper const& operator=(DepthBufferWrapper&& other);
     };
 
-    struct TextureWrapper
+    class TextureWrapper
     {
+    public:
         TextureWrapper(
             vk::raii::PhysicalDevice const &physicalDevice,
             vk::raii::Device const &device,
-            vk::Extent2D const &extent_ = {256, 256},
+            vk::Extent2D extent,
             vk::ImageUsageFlags usageFlags = {},
             vk::FormatFeatureFlags formatFeatureFlags = {},
             bool anisotropyEnable = false,
@@ -149,40 +185,73 @@ namespace spock
             vk::raii::CommandBuffer const &commandBuffer,
             ImageGenerator const &imageGenerator)
         {
-            void *data = needsStaging ? stagingBuffer.deviceMemory.mapMemory(0, stagingBuffer.buffer.getMemoryRequirements().size)
-                                      : image.deviceMemory.mapMemory(0, image.image.getMemoryRequirements().size);
-            imageGenerator(data, extent);
-            needsStaging ? stagingBuffer.deviceMemory.unmapMemory() : image.deviceMemory.unmapMemory();
-
-            if (needsStaging)
+            if (m_needsStaging)
             {
+                void *data = m_stagingBuffer.m_deviceMemory.mapMemory(0, m_stagingBuffer.m_buffer.getMemoryRequirements().size);
+                imageGenerator(data, m_extent);
+                m_stagingBuffer.m_deviceMemory.unmapMemory();
+
                 // Since we're going to blit to the texture image, set its layout to eTransferDstOptimal
                 setImageLayout(
-                    commandBuffer, image.image, image.format, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-                vk::BufferImageCopy copyRegion(0,
-                                               extent.width,
-                                               extent.height,
-                                               vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
-                                               vk::Offset3D(0, 0, 0),
-                                               vk::Extent3D(extent, 1));
-                commandBuffer.copyBufferToImage(stagingBuffer.buffer, image.image, vk::ImageLayout::eTransferDstOptimal, copyRegion);
+                    commandBuffer,
+                    m_image.m_image,
+                    m_image.m_format,
+                    vk::ImageLayout::eUndefined,
+                    vk::ImageLayout::eTransferDstOptimal);
+                vk::BufferImageCopy copyRegion(
+                    0,
+                    m_extent.width,
+                    m_extent.height,
+                    vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+                    vk::Offset3D(0, 0, 0),
+                    vk::Extent3D(m_extent, 1));
+                commandBuffer.copyBufferToImage(
+                    m_stagingBuffer.m_buffer,
+                    m_image.m_image,
+                    vk::ImageLayout::eTransferDstOptimal,
+                    copyRegion);
+
                 // Set the layout for the texture image from eTransferDstOptimal to eShaderReadOnlyOptimal
                 setImageLayout(
-                    commandBuffer, image.image, image.format, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    commandBuffer,
+                    m_image.m_image,
+                    m_image.m_format,
+                    vk::ImageLayout::eTransferDstOptimal,
+                    vk::ImageLayout::eShaderReadOnlyOptimal);
             }
             else
             {
-                // If we can use the linear tiled image as a texture, just do it
+                void *data = m_image.m_deviceMemory.mapMemory(0, m_image.m_image.getMemoryRequirements().size);
+                imageGenerator(data, m_extent);
+                m_image.m_deviceMemory.unmapMemory();
+
+                // If we can use the linear tiled image as a texture directly.
                 setImageLayout(
-                    commandBuffer, image.image, image.format, vk::ImageLayout::ePreinitialized, vk::ImageLayout::eShaderReadOnlyOptimal);
+                    commandBuffer,
+                    m_image.m_image,
+                    m_image.m_format,
+                    vk::ImageLayout::ePreinitialized,
+                    vk::ImageLayout::eShaderReadOnlyOptimal);
             }
         }
 
-        vk::Format format;
-        vk::Extent2D extent;
-        bool needsStaging;
-        BufferWrapper stagingBuffer;
-        ImageWrapper image;
-        vk::raii::Sampler sampler{nullptr};
+        ImageWrapper const& image() const
+        {
+            return m_image;
+        }
+    
+        vk::raii::Sampler const& sampler() const
+        {
+            return m_sampler;
+        }
+
+    private:
+        vk::Format m_format;
+        vk::Extent2D m_extent;
+        bool m_needsStaging;
+        BufferWrapper m_stagingBuffer;
+        ImageWrapper m_image;
+        vk::raii::Sampler m_sampler{nullptr};
     };
+
 } // namespace spock

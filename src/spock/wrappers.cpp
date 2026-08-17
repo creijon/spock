@@ -15,20 +15,24 @@ namespace spock
         vk::DeviceSize size,
         vk::BufferUsageFlags usage,
         vk::MemoryPropertyFlags propertyFlags)
-        : buffer(device, vk::BufferCreateInfo({}, size, usage))
+        : m_buffer(device, vk::BufferCreateInfo({}, size, usage))
 #if !defined(NDEBUG)
         , m_size(size)
         , m_usage(usage)
         , m_propertyFlags(propertyFlags)
 #endif
     {
-        deviceMemory = allocateDeviceMemory(device, physicalDevice.getMemoryProperties(), buffer.getMemoryRequirements(), propertyFlags);
-        buffer.bindMemory(deviceMemory, 0);
+        m_deviceMemory = allocateDeviceMemory(
+            device,
+            physicalDevice.getMemoryProperties(),
+            m_buffer.getMemoryRequirements(),
+            propertyFlags);
+        m_buffer.bindMemory(m_deviceMemory, 0);
     }
 
     BufferWrapper::BufferWrapper(BufferWrapper &&other) noexcept
-        : deviceMemory(std::move(other.deviceMemory))
-        , buffer(std::move(other.buffer))
+        : m_deviceMemory(std::move(other.m_deviceMemory))
+        , m_buffer(std::move(other.m_buffer))
 #if !defined(NDEBUG)
         , m_size(other.m_size)
         , m_usage(other.m_usage)
@@ -41,8 +45,8 @@ namespace spock
     {
         if (this != &other)
         {
-            deviceMemory = std::move(other.deviceMemory);
-            buffer = std::move(other.buffer);
+            m_deviceMemory = std::move(other.m_deviceMemory);
+            m_buffer = std::move(other.m_buffer);
 #if !defined(NDEBUG)
             m_size = other.m_size;
             m_usage = other.m_usage;
@@ -56,15 +60,15 @@ namespace spock
     ImageWrapper::ImageWrapper(
         vk::raii::PhysicalDevice const &physicalDevice,
         vk::raii::Device const &device,
-        vk::Format format_,
-        vk::Extent2D const &extent,
+        vk::Format format,
+        vk::Extent2D extent,
         vk::ImageTiling tiling,
         vk::ImageUsageFlags usage,
         vk::ImageLayout initialLayout,
         vk::MemoryPropertyFlags memoryProperties,
         vk::ImageAspectFlags aspectMask)
-        : format(format_)
-        , image(device,
+        : m_format(format)
+        , m_image(device,
                 {vk::ImageCreateFlags(),
                 vk::ImageType::e2D,
                 format,
@@ -78,16 +82,22 @@ namespace spock
                 {},
                 initialLayout})
     {
-        deviceMemory = allocateDeviceMemory(device, physicalDevice.getMemoryProperties(), image.getMemoryRequirements(), memoryProperties);
-        image.bindMemory(deviceMemory, 0);
-        imageView = vk::raii::ImageView(device, vk::ImageViewCreateInfo({}, image, vk::ImageViewType::e2D, format, {}, {aspectMask, 0, 1, 0, 1}));
+        m_deviceMemory = allocateDeviceMemory(
+            device,
+            physicalDevice.getMemoryProperties(),
+            m_image.getMemoryRequirements(),
+            memoryProperties);
+        m_image.bindMemory(m_deviceMemory, 0);
+        m_imageView = vk::raii::ImageView(
+            device,
+            vk::ImageViewCreateInfo({}, m_image, vk::ImageViewType::e2D, format, {}, {aspectMask, 0, 1, 0, 1}));
     }
 
     ImageWrapper::ImageWrapper(ImageWrapper &&other) noexcept
-        : format(other.format)
-        , deviceMemory(std::move(other.deviceMemory))
-        , image(std::move(other.image))
-        , imageView(std::move(other.imageView))
+        : m_format(other.m_format)
+        , m_deviceMemory(std::move(other.m_deviceMemory))
+        , m_image(std::move(other.m_image))
+        , m_imageView(std::move(other.m_imageView))
     {
     }
 
@@ -95,10 +105,10 @@ namespace spock
     {
         if (this != &other)
         {
-            format = other.format;
-            deviceMemory = std::move(other.deviceMemory);
-            image = std::move(other.image);
-            imageView = std::move(other.imageView);
+            m_format = other.m_format;
+            m_deviceMemory = std::move(other.m_deviceMemory);
+            m_image = std::move(other.m_image);
+            m_imageView = std::move(other.m_imageView);
         }
 
         return *this;
@@ -129,10 +139,10 @@ namespace spock
     {
         if (this != &other)
         {
-            format = other.format;
-            deviceMemory = std::move(other.deviceMemory);
-            image = std::move(other.image);
-            imageView = std::move(other.imageView);
+            m_format = other.m_format;
+            m_deviceMemory = std::move(other.m_deviceMemory);
+            m_image = std::move(other.m_image);
+            m_imageView = std::move(other.m_imageView);
         }
 
         return *this;
@@ -141,41 +151,42 @@ namespace spock
     TextureWrapper::TextureWrapper(
         vk::raii::PhysicalDevice const &physicalDevice,
         vk::raii::Device const &device,
-        vk::Extent2D const &extent_,
+        vk::Extent2D extent,
         vk::ImageUsageFlags usageFlags,
         vk::FormatFeatureFlags formatFeatureFlags,
         bool anisotropyEnable,
         bool forceStaging)
-        : format(vk::Format::eR8G8B8A8Unorm)
-        , extent(extent_)
-        , sampler(device,
-                  {{},
-                  vk::Filter::eLinear,
-                  vk::Filter::eLinear,
-                  vk::SamplerMipmapMode::eLinear,
-                  vk::SamplerAddressMode::eRepeat,
-                  vk::SamplerAddressMode::eRepeat,
-                  vk::SamplerAddressMode::eRepeat,
-                  0.0f,
-                  anisotropyEnable,
-                  16.0f,
-                  false,
-                  vk::CompareOp::eNever,
-                  0.0f,
-                  0.0f,
-                  vk::BorderColor::eFloatOpaqueBlack})
+        : m_format(vk::Format::eR8G8B8A8Unorm)
+        , m_extent(extent)
+        , m_sampler(
+            device,
+            {{},
+            vk::Filter::eLinear,
+            vk::Filter::eLinear,
+            vk::SamplerMipmapMode::eLinear,
+            vk::SamplerAddressMode::eRepeat,
+            vk::SamplerAddressMode::eRepeat,
+            vk::SamplerAddressMode::eRepeat,
+            0.0f,
+            anisotropyEnable,
+            16.0f,
+            false,
+            vk::CompareOp::eNever,
+            0.0f,
+            0.0f,
+            vk::BorderColor::eFloatOpaqueBlack})
     {
-        vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(format);
+        vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(m_format);
 
         formatFeatureFlags |= vk::FormatFeatureFlagBits::eSampledImage;
-        needsStaging = forceStaging || ((formatProperties.linearTilingFeatures & formatFeatureFlags) != formatFeatureFlags);
+        m_needsStaging = forceStaging || ((formatProperties.linearTilingFeatures & formatFeatureFlags) != formatFeatureFlags);
         vk::ImageTiling imageTiling;
         vk::ImageLayout initialLayout;
         vk::MemoryPropertyFlags requirements;
-        if (needsStaging)
+        if (m_needsStaging)
         {
             assert((formatProperties.optimalTilingFeatures & formatFeatureFlags) == formatFeatureFlags);
-            stagingBuffer = std::move(BufferWrapper(physicalDevice, device, extent.width * extent.height * 4, vk::BufferUsageFlagBits::eTransferSrc));
+            m_stagingBuffer = std::move(BufferWrapper(physicalDevice, device, m_extent.width * m_extent.height * 4, vk::BufferUsageFlagBits::eTransferSrc));
             imageTiling = vk::ImageTiling::eOptimal;
             usageFlags |= vk::ImageUsageFlagBits::eTransferDst;
             initialLayout = vk::ImageLayout::eUndefined;
@@ -186,24 +197,25 @@ namespace spock
             initialLayout = vk::ImageLayout::ePreinitialized;
             requirements = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
         }
-        image = std::move(ImageWrapper(physicalDevice,
-                                       device,
-                                       format,
-                                       extent,
-                                       imageTiling,
-                                       usageFlags | vk::ImageUsageFlagBits::eSampled,
-                                       initialLayout,
-                                       requirements,
-                                       vk::ImageAspectFlagBits::eColor));
+        m_image = std::move(ImageWrapper(
+            physicalDevice,
+            device,
+            m_format,
+            m_extent,
+            imageTiling,
+            usageFlags | vk::ImageUsageFlagBits::eSampled,
+            initialLayout,
+            requirements,
+            vk::ImageAspectFlagBits::eColor));
     }
 
     TextureWrapper::TextureWrapper(TextureWrapper &&other) noexcept
-        : format(other.format)
-        , extent(other.extent)
-        , needsStaging(other.needsStaging)
-        , stagingBuffer(std::move(other.stagingBuffer))
-        , image(std::move(other.image))
-        , sampler(std::move(other.sampler))
+        : m_format(other.m_format)
+        , m_extent(other.m_extent)
+        , m_needsStaging(other.m_needsStaging)
+        , m_stagingBuffer(std::move(other.m_stagingBuffer))
+        , m_image(std::move(other.m_image))
+        , m_sampler(std::move(other.m_sampler))
     {
     }
 
@@ -211,12 +223,12 @@ namespace spock
     {
         if (this != &other)
         {
-            format = other.format;
-            extent = other.extent;
-            needsStaging = other.needsStaging;
-            stagingBuffer = std::move(other.stagingBuffer);
-            image = std::move(other.image);
-            sampler = std::move(other.sampler);
+            m_format = other.m_format;
+            m_extent = other.m_extent;
+            m_needsStaging = other.m_needsStaging;
+            m_stagingBuffer = std::move(other.m_stagingBuffer);
+            m_image = std::move(other.m_image);
+            m_sampler = std::move(other.m_sampler);
         }
 
         return *this;

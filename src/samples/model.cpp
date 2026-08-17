@@ -42,7 +42,7 @@ public:
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, {}, pushConstantRange }));
 
         m_vertexBuffer = spock::BufferWrapper(m_physicalDevice, m_device, MODEL_VERTEX_BUFFER_SIZE, vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_vertexBuffer.deviceMemory, MODEL_VERTEX_DATA, MODEL_VERTEX_COUNT);
+        spock::copyToDevice(m_vertexBuffer.deviceMemory(), MODEL_VERTEX_DATA, MODEL_VERTEX_COUNT);
 
         createGraphicsPipeline();
 
@@ -137,7 +137,7 @@ public:
             dataSpan);
         
         // Draw all the scene, but for this example it's just a single cube.
-        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer}, {0});
+        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, {0});
         commandBuffer.draw(MODEL_VERTEX_COUNT, 1, 0, 0);
     }
 
