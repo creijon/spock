@@ -214,5 +214,5 @@ vec3 intersect( in vec3 ro, in vec3 rd )
     col=col*0.6+0.4*col*col*(3.0-2.0*col);  // contrast
     col=mix(col, vec3(dot(col, vec3(0.33))), -0.5);  // satuation
     col*=0.5+0.5*pow(16.0*q.x*q.y*(1.0-q.x)*(1.0-q.y),0.7);  // vigneting
- 	fragColor = vec4(col.xyz, smoothstep(0.55, .76, 1.-res.x/5.)); 
+ 	fragColor = vec4(col.xyz, 1.0f); //smoothstep(0.55, .76, 1.-res.x/5.));
  }

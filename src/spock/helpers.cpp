@@ -44,9 +44,9 @@ namespace spock
 
     // Clamp the requested swapchain image count to the supported min/max range.
     uint32_t clampSurfaceImageCount(
-        const uint32_t desiredImageCount,
-        const uint32_t minImageCount,
-        const uint32_t maxImageCount)
+        uint32_t desiredImageCount,
+        uint32_t minImageCount,
+        uint32_t maxImageCount)
     {
         uint32_t imageCount = std::max(desiredImageCount, minImageCount);
         // Some drivers report maxImageCount as 0, so only clamp to max if it is valid.
@@ -288,7 +288,7 @@ namespace spock
 
     // Find queue family indices for graphics and presentation. If a single queue
     // family supports both, return the same index for both graphics and present.
-    std::pair<uint32_t, uint32_t> findGraphicsAndPresentQueueFamilyIndex(
+    QueueIndices findGraphicsAndPresentQueueFamilyIndex(
         vk::raii::PhysicalDevice const &physicalDevice,
         vk::raii::SurfaceKHR const &surface)
     {
@@ -298,28 +298,27 @@ namespace spock
         uint32_t graphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex(queueFamilyProperties);
         if (physicalDevice.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface))
         {
-            return std::make_pair(graphicsQueueFamilyIndex,
-                                  graphicsQueueFamilyIndex); // the first graphicsQueueFamilyIndex does also support presents
+            return {graphicsQueueFamilyIndex, graphicsQueueFamilyIndex}; // the first graphicsQueueFamilyIndex does also support presents
         }
 
         // the graphicsQueueFamilyIndex doesn't support present -> look for an other family index that supports both
         // graphics and present
-        for (size_t i = 0; i < queueFamilyProperties.size(); i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
         {
             if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
-                physicalDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), surface))
+                physicalDevice.getSurfaceSupportKHR(i, surface))
             {
-                return std::make_pair(static_cast<uint32_t>(i), static_cast<uint32_t>(i));
+                return {i,i};
             }
         }
 
         // there's nothing like a single family index that supports both graphics and present -> look for an other
         // family index that supports present
-        for (size_t i = 0; i < queueFamilyProperties.size(); i++)
+        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
         {
-            if (physicalDevice.getSurfaceSupportKHR(static_cast<uint32_t>(i), surface))
+            if (physicalDevice.getSurfaceSupportKHR(i, surface))
             {
-                return std::make_pair(graphicsQueueFamilyIndex, static_cast<uint32_t>(i));
+                return {graphicsQueueFamilyIndex, i};
             }
         }
 

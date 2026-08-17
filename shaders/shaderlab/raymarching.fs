@@ -54,5 +54,5 @@ void main() {
 	col = vec3(t * 0.1);
 	col = sqrt(col);
 	fragColor = vec4(0.05*t+abs(dir) * col + max(0.0, map(ip - 0.1) - tt), 1.0); //Thanks! Shane!
-    fragColor.a = 1.0 / (t * t * t * t);
+    fragColor.a = 1.0; // / (t * t * t * t);
 }

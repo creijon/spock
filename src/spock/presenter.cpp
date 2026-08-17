@@ -15,8 +15,7 @@ namespace spock
         vk::raii::SurfaceKHR const &surface,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
-        uint32_t graphicsQueueFamilyIndex,
-        uint32_t presentQueueFamilyIndex,
+        QueueIndices queueIndices,
         uint32_t framesInFlight)
     {
         initialise(
@@ -25,8 +24,7 @@ namespace spock
             surface,
             extent,
             usage,
-            graphicsQueueFamilyIndex,
-            presentQueueFamilyIndex,
+            queueIndices,
             framesInFlight);
     }
 
@@ -41,7 +39,6 @@ namespace spock
         , m_imageSemaphores(std::move(other.m_imageSemaphores))
         , m_renderSemaphores(std::move(other.m_renderSemaphores))
         , m_frameFences(std::move(other.m_frameFences))
-        , m_inFlightIndex(other.m_inFlightIndex)
         , m_valid(other.m_valid)
     {
     }
@@ -60,7 +57,6 @@ namespace spock
             m_imageSemaphores = std::move(other.m_imageSemaphores);
             m_renderSemaphores = std::move(other.m_renderSemaphores);
             m_frameFences = std::move(other.m_frameFences);
-            m_inFlightIndex = other.m_inFlightIndex;
             m_valid = other.m_valid;
         }
 
@@ -73,8 +69,7 @@ namespace spock
         vk::raii::SurfaceKHR const &surface,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
-        uint32_t graphicsQueueFamilyIndex,
-        uint32_t presentQueueFamilyIndex,
+        QueueIndices queueIndices,
         uint32_t framesInFlight)
     {
         vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
@@ -93,14 +88,19 @@ namespace spock
             // If the surface size is defined, the swap chain size must match
             swapchainExtent = surfaceCapabilities.currentExtent;
         }
-        vk::SurfaceTransformFlagBitsKHR preTransform = (surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity)
-                                                           ? vk::SurfaceTransformFlagBitsKHR::eIdentity
-                                                           : surfaceCapabilities.currentTransform;
-        vk::CompositeAlphaFlagBitsKHR compositeAlpha =
-            (surfaceCapabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::ePreMultiplied)    ? vk::CompositeAlphaFlagBitsKHR::ePreMultiplied
-            : (surfaceCapabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::ePostMultiplied) ? vk::CompositeAlphaFlagBitsKHR::ePostMultiplied
-            : (surfaceCapabilities.supportedCompositeAlpha & vk::CompositeAlphaFlagBitsKHR::eInherit)        ? vk::CompositeAlphaFlagBitsKHR::eInherit
-                                                                                                             : vk::CompositeAlphaFlagBitsKHR::eOpaque;
+
+        auto preTransform = 
+            (surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity) ?
+            vk::SurfaceTransformFlagBitsKHR::eIdentity :
+            surfaceCapabilities.currentTransform;
+
+        using Alpha = vk::CompositeAlphaFlagBitsKHR;
+        auto compositeAlpha =
+            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePreMultiplied)  ? Alpha::ePreMultiplied :
+            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePostMultiplied) ? Alpha::ePostMultiplied :
+            (surfaceCapabilities.supportedCompositeAlpha & Alpha::eInherit)        ? Alpha::eInherit :
+            Alpha::eOpaque;
+
         vk::PresentModeKHR presentMode = pickPresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
         vk::SwapchainKHR prevSwapchain = *m_swapchain;
         uint32_t imageCount = clampSurfaceImageCount(framesInFlight, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
@@ -119,12 +119,12 @@ namespace spock
                                                        presentMode,
                                                        true,
                                                        prevSwapchain);
-        if (graphicsQueueFamilyIndex != presentQueueFamilyIndex)
+        if (queueIndices.graphics != queueIndices.present)
         {
-            uint32_t queueFamilyIndices[]{graphicsQueueFamilyIndex, presentQueueFamilyIndex};
             // If the graphics and present queues are from different queue families, we either have to explicitly
             // transfer ownership of images between the queues, or we have to create the swapchain with imageSharingMode
             // as vk::SharingMode::eConcurrent
+            uint32_t queueFamilyIndices[]{queueIndices.graphics, queueIndices.present};
             swapChainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
             swapChainCreateInfo.queueFamilyIndexCount = 2;
             swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -150,13 +150,13 @@ namespace spock
             m_imageViews.emplace_back(device, imageViewCreateInfo);
         }
 
-        m_graphicsQueue = vk::raii::Queue(device, graphicsQueueFamilyIndex, 0);
-        m_presentQueue = vk::raii::Queue(device, presentQueueFamilyIndex, 0);
+        m_graphicsQueue = vk::raii::Queue(device, queueIndices.graphics, 0);
+        m_presentQueue = vk::raii::Queue(device, queueIndices.present, 0);
 
         // Synchronisation primitives.
-        m_imageSemaphores.reserve(m_images.size());
-        m_renderSemaphores.reserve(m_images.size());
-        m_frameFences.reserve(m_images.size());
+        m_imageSemaphores.reserve(framesInFlight);
+        m_renderSemaphores.reserve(framesInFlight);
+        m_frameFences.reserve(framesInFlight);
         m_imageSemaphores.clear();
         m_renderSemaphores.clear();
         m_frameFences.clear();
@@ -164,7 +164,7 @@ namespace spock
         vk::FenceCreateInfo fenceInfo{vk::FenceCreateFlagBits::eSignaled};
         vk::SemaphoreCreateInfo semaphoreInfo{};
 
-        for (size_t i = 0; i < m_images.size(); i++)
+        for (size_t i = 0; i < framesInFlight; i++)
         {
             m_imageSemaphores.push_back(device.createSemaphore(semaphoreInfo));
             m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
@@ -174,44 +174,54 @@ namespace spock
         m_valid = true;
     }
 
-    void Presenter::acquireFrame(vk::raii::Device const &device)
+    void Presenter::acquireFrame(vk::raii::Device const &device, uint32_t frameIndex)
     {
         static const uint64_t fenceTimeout = 100000000ull;
 
-        vk::Result result = device.waitForFences({ m_frameFences[m_inFlightIndex] }, VK_TRUE, fenceTimeout);
-        std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[m_inFlightIndex]);
-        m_valid = (result == vk::Result::eSuccess);
+        (void)device.waitForFences({ m_frameFences[frameIndex] }, VK_TRUE, fenceTimeout);
 
-        device.resetFences({ m_frameFences[m_inFlightIndex] });
+        try
+        {
+            vk::Result result;
+            std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[frameIndex]);
+            m_valid = (result == vk::Result::eSuccess);
+        }
+        catch (std::exception const& e)
+        {
+            // Most commonly vk::OutOfDateKHRError right after a resize. The
+            // caller will see isValid() == false and rebuild the swapchain.
+            m_valid = false;
+        }
+
+        // Always reset: submitCommands() below is called unconditionally by
+        // the caller even on an invalid/stale frame, and vkQueueSubmit
+        // requires the fence it's given to be unsignaled.
+        device.resetFences({ m_frameFences[frameIndex] });
     }
 
-    void Presenter::submitCommands(vk::raii::CommandBuffer const& commandBuffer)
+    void Presenter::submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex)
     {
         vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         vk::SubmitInfo submitInfo(
-            *m_imageSemaphores[m_inFlightIndex],
+            *m_imageSemaphores[frameIndex],
             waitStages,
             *commandBuffer,
-            *m_renderSemaphores[m_inFlightIndex]);
+            *m_renderSemaphores[frameIndex]);
 
-        m_graphicsQueue.submit(submitInfo, m_frameFences[m_inFlightIndex]);
+        m_graphicsQueue.submit(submitInfo, m_frameFences[frameIndex]);
     }
 
-    vk::Result Presenter::presentFrame()
+    vk::Result Presenter::presentFrame(uint32_t frameIndex)
     {
         try
         {
             // Present the rendered image to the swapchain.
             vk::PresentInfoKHR presentInfo;
-            presentInfo.setWaitSemaphores(*m_renderSemaphores[m_inFlightIndex]);
+            presentInfo.setWaitSemaphores(*m_renderSemaphores[frameIndex]);
             presentInfo.setSwapchains(*m_swapchain);
             presentInfo.setPImageIndices(&m_imageIndex);
 
-            vk::Result result = m_presentQueue.presentKHR(presentInfo);
-
-            m_inFlightIndex = (m_inFlightIndex + 1) % m_images.size();
-
-            return result;
+            return m_presentQueue.presentKHR(presentInfo);
         }
         catch (std::exception const& e)
         {

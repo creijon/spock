@@ -41,13 +41,13 @@ namespace spock
             throw std::runtime_error("Failed to create window!");
         m_surface = vk::raii::SurfaceKHR(m_instance, surface);
 
-        m_familyIndex = findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
-        m_device = createDevice(m_physicalDevice, m_familyIndex.first, getDeviceExtensions());
+        m_queueIndices = findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
+        m_device = createDevice(m_physicalDevice, m_queueIndices.graphics, getDeviceExtensions());
 
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
             vk::CommandPoolCreateFlagBits::eTransient,
-            m_familyIndex.first};
+            m_queueIndices.graphics};
         m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
 
         resizeWindow(windowWidth, windowHeight);
@@ -68,8 +68,7 @@ namespace spock
             m_surface,
             m_extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-            m_familyIndex.first,
-            m_familyIndex.second,
+            m_queueIndices,
             m_framesInFlight);
 
         vk::Format colorFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface)).format;
@@ -79,12 +78,22 @@ namespace spock
         {
             m_depthBuffer = DepthBufferWrapper(m_physicalDevice, m_device, vk::Format::eD16Unorm, m_extents);
             m_renderPass = createRenderPass(m_device, colorFormat, m_depthBuffer.format);
-            m_frameBuffers = createFramebuffers(m_device, m_renderPass, m_presenter->imageViews(), &m_depthBuffer.imageView, m_extents);
+            m_frameBuffers = createFramebuffers(
+                m_device,
+                m_renderPass,
+                m_presenter->imageViews(),
+                &m_depthBuffer.imageView,
+                m_extents);
         }
         else
         {
             m_renderPass = createRenderPass(m_device, colorFormat, vk::Format::eUndefined);
-            m_frameBuffers = createFramebuffers(m_device, m_renderPass, m_presenter->imageViews(), nullptr, m_extents);
+            m_frameBuffers = createFramebuffers(
+                m_device,
+                m_renderPass,
+                m_presenter->imageViews(),
+                nullptr,
+                m_extents);
         }
 
         m_commandBuffers.reserve(m_framesInFlight);
@@ -109,7 +118,7 @@ namespace spock
 
             // Aquire the next frame in the swapchain and wait for the fence
             // to ensure that the previous frame has finished rendering.
-            m_presenter->acquireFrame(m_device);
+            m_presenter->acquireFrame(m_device, inFlightIndex);
 
             // Begin the render pass.
             auto& commandBuffer = m_commandBuffers[inFlightIndex];
@@ -142,21 +151,32 @@ namespace spock
             commandBuffer.endRenderPass();
             commandBuffer.end();
 
-            m_presenter->submitCommands(commandBuffer);
+            m_presenter->submitCommands(commandBuffer, inFlightIndex);
 
-            vk::Result result = m_presenter->presentFrame();
+            vk::Result result = m_presenter->presentFrame(inFlightIndex);
 
-            // Handle window resizing.
-            if (result == vk::Result::eSuboptimalKHR ||
+            // Handle window resizing. On Wayland GLFW may not surface a
+            // present error when the window is resized, so also explicitly
+            // detect framebuffer size changes and recreate the swapchain.
+            int fbWidth, fbHeight;
+            glfwGetFramebufferSize(m_handle, &fbWidth, &fbHeight);
+
+            const bool sizeChanged = (fbWidth != int(m_extents.width) || fbHeight != int(m_extents.height));
+
+            if (sizeChanged ||
+                result == vk::Result::eSuboptimalKHR ||
                 result == vk::Result::eErrorOutOfDateKHR ||
                 !m_presenter->isValid())
             {
-                int width, height;
-                glfwGetFramebufferSize(m_handle, &width, &height);
-                
+                // Ignore zero-sized framebuffers (minimized / hidden on some platforms).
+                if (fbWidth == 0 || fbHeight == 0)
+                {
+                    continue;
+                }
+
                 m_device.waitIdle();
 
-                resizeWindow(width, height);
+                resizeWindow(fbWidth, fbHeight);
             }
 
             m_time += m_frameDuration;

@@ -8,6 +8,13 @@
 
 namespace spock
 {
+    // A simple structure to hold the graphics and present queue family indices.
+    struct QueueIndices
+    {
+        uint32_t graphics;
+        uint32_t present;
+    };
+
     // The timeout used for waiting on frame fences during rendering.
     const uint64_t FenceTimeout = 100000000ull;
 
@@ -27,9 +34,9 @@ namespace spock
 
     // Clamp the requested swapchain image count between the supported min and max.
     uint32_t clampSurfaceImageCount(
-        const uint32_t desiredImageCount,
-        const uint32_t minImageCount,
-        const uint32_t maxImageCount);
+        uint32_t desiredImageCount,
+        uint32_t minImageCount,
+        uint32_t maxImageCount);
 
     // Record an image layout transition barrier for a single image.
     void setImageLayout(
@@ -64,7 +71,7 @@ namespace spock
 
     // Find queue family indices for graphics and present queues.
     // The returned pair is {graphicsQueueFamilyIndex, presentQueueFamilyIndex}.
-    std::pair<uint32_t, uint32_t> findGraphicsAndPresentQueueFamilyIndex(
+    QueueIndices findGraphicsAndPresentQueueFamilyIndex(
         vk::raii::PhysicalDevice const &physicalDevice,
         vk::raii::SurfaceKHR const &surface);
 

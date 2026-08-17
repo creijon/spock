@@ -20,8 +20,7 @@ namespace spock
             vk::raii::SurfaceKHR const &surface,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
-            uint32_t graphicsQueueFamilyIndex,
-            uint32_t presentQueueFamilyIndex,
+            QueueIndices queueIndices,
             uint32_t framesInFlight);
         Presenter() = default;
         Presenter(const Presenter &) = delete;
@@ -34,8 +33,7 @@ namespace spock
             vk::raii::SurfaceKHR const &surface,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
-            uint32_t graphicsQueueFamilyIndex,
-            uint32_t presentQueueFamilyIndex,
+            QueueIndices queueIndices,
             uint32_t framesInFlight);
 
         std::vector<vk::raii::ImageView> const& imageViews() const
@@ -53,9 +51,9 @@ namespace spock
             return m_valid;
         }
 
-        void acquireFrame(vk::raii::Device const &device);
-        void submitCommands(vk::raii::CommandBuffer const& commandBuffer);
-        vk::Result presentFrame();
+        void acquireFrame(vk::raii::Device const &device, uint32_t frameIndex);
+        void submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex);
+        vk::Result presentFrame(uint32_t frameIndex);
 
     private:
         vk::Format m_colorFormat;
@@ -68,10 +66,13 @@ namespace spock
         std::vector<vk::raii::ImageView> m_imageViews;
         uint32_t m_imageIndex{0};
 
+        // Sized to framesInFlight, and indexed by the frame index the caller
+        // passes to acquireFrame/submitCommands/presentFrame -- NOT by the
+        // swapchain image index, since the two can differ and must not be
+        // conflated.
         std::vector<vk::raii::Semaphore> m_imageSemaphores;
         std::vector<vk::raii::Semaphore> m_renderSemaphores;
         std::vector<vk::raii::Fence> m_frameFences;
-        uint32_t m_inFlightIndex{0};
 
         bool m_valid{false};
     };

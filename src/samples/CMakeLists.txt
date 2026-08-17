@@ -6,7 +6,11 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
 ENDIF ()
 
 function(add_sample_target target_name source_file)
-    add_executable(${target_name} WIN32 ${source_file})
+    if (WIN32)
+        add_executable(${target_name} WIN32 ${source_file})
+    else()
+        add_executable(${target_name} ${source_file})
+    endif()
     target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} efsw)
 
     target_compile_definitions(${target_name} PRIVATE
@@ -38,6 +42,13 @@ function(add_sample_target target_name source_file)
     if (NOT MSVC)
         target_compile_options(${target_name} PRIVATE -fno-strict-aliasing)
     endif()
+
+    # Place sample executables in the top-level build/binaries folder for easy discovery
+    set(sample_output_dir ${CMAKE_BINARY_DIR}/binaries)
+    set_target_properties(${target_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${sample_output_dir}
+        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${sample_output_dir}
+        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${sample_output_dir})
 endfunction()
 
 add_sample_target(cube ${CMAKE_CURRENT_SOURCE_DIR}/cube.cpp)

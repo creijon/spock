@@ -37,6 +37,7 @@ static const std::string VERTEX_SHADER = "default.vs";
 static const std::string FRAGMENT_SHADER = "default.fs";
 
 // PushConstants have been defined to be mostly compatible with the ShaderToy interface.
+// The full set is too big for the 42 byte push constant limit, so it'll have to be a uniform buffer.
 struct PushConstants
 {
     glm::vec4 iMouse;       // image/buffer xy = current pixel coords (if LMB is down). zw = click pixel
