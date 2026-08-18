@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "spock/creators.hpp"
 #include "spock/framework.hpp"
 #include "spock/math.hpp"

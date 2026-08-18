@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #pragma once
 
 #include "shaders.hpp"

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #version 400
 
 #extension GL_ARB_separate_shader_objects : enable

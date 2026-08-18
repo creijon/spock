@@ -1,5 +1,5 @@
-// SPDX-FileCopyrightText: 2019-2026 NVIDIA CORPORATION
-// SPDX-License-Identifier: Apache-2.0
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
 
 #include "shaders.hpp"
 

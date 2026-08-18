@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "presenter.hpp"
 
 #include "helpers.hpp"
@@ -104,21 +107,22 @@ namespace spock
         vk::PresentModeKHR presentMode = pickPresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
         vk::SwapchainKHR prevSwapchain = *m_swapchain;
         uint32_t imageCount = clampSurfaceImageCount(framesInFlight, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
-        vk::SwapchainCreateInfoKHR swapChainCreateInfo({},
-                                                       surface,
-                                                       imageCount,
-                                                       m_colorFormat,
-                                                       surfaceFormat.colorSpace,
-                                                       swapchainExtent,
-                                                       1,
-                                                       usage,
-                                                       vk::SharingMode::eExclusive,
-                                                       {},
-                                                       preTransform,
-                                                       compositeAlpha,
-                                                       presentMode,
-                                                       true,
-                                                       prevSwapchain);
+        vk::SwapchainCreateInfoKHR swapChainCreateInfo(
+            {},
+            surface,
+            imageCount,
+            m_colorFormat,
+            surfaceFormat.colorSpace,
+            swapchainExtent,
+            1,
+            usage,
+            vk::SharingMode::eExclusive,
+            {},
+            preTransform,
+            compositeAlpha,
+            presentMode,
+            true,
+            prevSwapchain);
         if (queueIndices.graphics != queueIndices.present)
         {
             // If the graphics and present queues are from different queue families, we either have to explicitly

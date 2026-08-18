@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "helpers.hpp"
 
 #include <iostream>
@@ -298,22 +301,23 @@ namespace spock
         uint32_t graphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex(queueFamilyProperties);
         if (physicalDevice.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface))
         {
-            return {graphicsQueueFamilyIndex, graphicsQueueFamilyIndex}; // the first graphicsQueueFamilyIndex does also support presents
+            // The first graphicsQueueFamilyIndex also supports present.
+            return {graphicsQueueFamilyIndex, graphicsQueueFamilyIndex};
         }
 
-        // the graphicsQueueFamilyIndex doesn't support present -> look for an other family index that supports both
-        // graphics and present
+        // The graphicsQueueFamilyIndex doesn't support present, so look for
+        // another family index that supports both graphics and present.
         for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
         {
             if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
                 physicalDevice.getSurfaceSupportKHR(i, surface))
             {
-                return {i,i};
+                return {i,i,};
             }
         }
 
-        // there's nothing like a single family index that supports both graphics and present -> look for an other
-        // family index that supports present
+        // There's nothing like a single family index that supports both graphics
+        // and present, so look for another family index that supports present.
         for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
         {
             if (physicalDevice.getSurfaceSupportKHR(i, surface))
@@ -391,8 +395,7 @@ namespace spock
     {
         return {{},
                 vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-                vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-                    vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
+                vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation,
                 &debugUtilsMessengerCallback};
     }
 } // namespace spock
