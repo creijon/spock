@@ -29,12 +29,4 @@
 
 namespace spock
 {
-    glm::mat4x4 createModelViewProjectionClipMatrix(
-        vk::Extent2D const &extent,
-        glm::vec3 const &eye,
-        glm::vec3 const &center,
-        glm::vec3 const &up,
-        float fov = 45.0f,
-        float zNear = 0.1f,
-        float zFar = 1000.0f);
 } // namespace spock

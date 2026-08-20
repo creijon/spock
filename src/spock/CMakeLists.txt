@@ -7,6 +7,7 @@ ENDIF ()
 
 set(SOURCE
     ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/creators.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/framework.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp
@@ -19,6 +20,7 @@ set(SOURCE
 
 set(HEADERS
     ${HEADERS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/camera.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/creators.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/framework.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.hpp

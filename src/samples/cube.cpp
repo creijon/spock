@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+#include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/framework.hpp"
 #include "spock/math.hpp"
@@ -159,6 +160,7 @@ public:
                                           m_renderPass);
     }
 
+protected:
     void update() override
     {
         using Seconds = std::chrono::duration<double>;
@@ -174,8 +176,7 @@ public:
         // Update the push constants.
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
         static const glm::vec3 up(0.0f, -1.0f, 0.0f);
-        PushConstants pushConstants{
-            spock::createModelViewProjectionClipMatrix(m_extents, m_view, target, up)};
+        PushConstants pushConstants{spock::viewProjClipMatrix(m_extents, m_view, target, up)};
 
         vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
             sizeof(PushConstants),

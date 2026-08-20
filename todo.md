@@ -1,22 +1,39 @@
-## High Priority Features
+## Vulkan Features to Explore
 
 - Compute Shaders
+- Raytracing
+- Multidraw indirect
+- Mesh shaders
+- Secondary command buffers
+
+## High Priority Features
+
 - Mesh Loading and Rendering (GLTF)
-- imGUI
 - Scene Representation
+- imGUI
+- Asset repository (I haven't seen this before on small engines)
+  - All assets are registered there and linked to their source file.
+  - Each asset type can have a mechanism to rebuild after the source file changes.
 
 ## Lower Priority Features
 
-- Raytracing
 - Display Lists, high priority as soon as you have a scene representation.
 - Debug Line Rendering
+- VMA integration
+
+## Larger Scope, Specific Features
+
+- Contree (64tree) structure for voxels of volumetric textures
 - Gaussian Splatting
-- VMA integration.
-- Support for secondary command buffers.
+- Lighting
 
 ## Fixes/Refactoring
 
 - Split the renderer out and have it separate from the framework.
+  - Framework is responsible: window, update loop, asset loading
+  - Then calls the renderer::render
+  - Renderer has all the frame buffers
+  - Presenter belongs to the renderer and manages the swapchain and synchronisation
 
 - Clean up the code in the Framework that handles window resizing. DONE
 - Fences and semaphores aren't stable.  Move all the synchronisation primitives into Presenter. DONE
@@ -25,4 +42,5 @@
 
 ## Links
 
-- A lot of good information here: https://docs.vulkan.org/tutorial/latest/00_Introduction.html
+- Excellent: https://docs.vulkan.org/tutorial/latest/00_Introduction.html
+- Android: https://developer.android.com/ndk/guides/graphics/getting-started

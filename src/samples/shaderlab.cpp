@@ -92,45 +92,7 @@ public:
         m_fileWatcher->removeWatch(m_watchID);
     }
 
-    void shaderModified(std::string const& filename)
-    {
-        if (filename == VERTEX_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
-        if (filename == FRAGMENT_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
-    }
-
-    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
-    {
-        glslang::InitializeProcess();
-
-        if (shaderStages & vk::ShaderStageFlagBits::eVertex)
-        {
-            m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
-        }
-
-        if (shaderStages & vk::ShaderStageFlagBits::eFragment)
-        {
-            m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
-        }
-
-        glslang::FinalizeProcess();
-
-        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
-        {
-            m_graphicsPipeline =
-                spock::createGraphicsPipeline(
-                    m_device,
-                    {m_device, vk::PipelineCacheCreateInfo()},
-                    m_vertexShader, nullptr,
-                    m_fragmentShader, nullptr,
-                    SHADERLAB_VERTEX_STRIDE, SHADERLAB_VERTEX_FORMAT,
-                    vk::FrontFace::eClockwise,
-                    false,
-                    m_pipelineLayout,
-                    m_renderPass);
-            spock::writeLog("Shaders compiled successfully.\n");
-        }
-    }
-
+protected:
     void update() override
     {
         // Store the mouse position and click position for use in the next frame.
@@ -181,6 +143,46 @@ public:
     }
 
 private:
+
+    void shaderModified(std::string const& filename)
+    {
+        if (filename == VERTEX_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+        if (filename == FRAGMENT_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
+    }
+
+    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    {
+        glslang::InitializeProcess();
+
+        if (shaderStages & vk::ShaderStageFlagBits::eVertex)
+        {
+            m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+        }
+
+        if (shaderStages & vk::ShaderStageFlagBits::eFragment)
+        {
+            m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+        }
+
+        glslang::FinalizeProcess();
+
+        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
+        {
+            m_graphicsPipeline =
+                spock::createGraphicsPipeline(
+                    m_device,
+                    {m_device, vk::PipelineCacheCreateInfo()},
+                    m_vertexShader, nullptr,
+                    m_fragmentShader, nullptr,
+                    SHADERLAB_VERTEX_STRIDE, SHADERLAB_VERTEX_FORMAT,
+                    vk::FrontFace::eClockwise,
+                    false,
+                    m_pipelineLayout,
+                    m_renderPass);
+            spock::writeLog("Shaders compiled successfully.\n");
+        }
+    }
+
     class UpdateListener : public efsw::FileWatchListener
     {
     public:
