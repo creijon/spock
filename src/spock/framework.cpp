@@ -25,7 +25,7 @@ namespace spock
         uint32_t framesInFlight,
         std::chrono::microseconds frameDuration)
         : m_context()
-        , m_instance(createInstance(m_context, name, {}, getInstanceExtensions()))
+        , m_instance(createInstance(m_context, name, {}, getDefaultInstanceExtensions()))
         , m_physicalDevice(vk::raii::PhysicalDevices(m_instance).front())
         , m_name(name)
         , m_extents(windowWidth, windowHeight)
@@ -44,7 +44,7 @@ namespace spock
         m_surface = vk::raii::SurfaceKHR(m_instance, surface);
 
         m_queueIndices = findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_surface);
-        m_device = createDevice(m_physicalDevice, m_queueIndices.graphics, getDeviceExtensions());
+        m_device = createDevice(m_physicalDevice, m_queueIndices.graphics, getDefaultDeviceExtensions());
 
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |

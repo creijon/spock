@@ -10,3 +10,6 @@
 [submodule "deps/efsw"]
 	path = deps/efsw
 	url = git@github.com:SpartanJ/efsw.git
+[submodule "deps/tinygltf"]
+	path = deps/tinygltf
+	url = git@github.com:syoyo/tinygltf.git

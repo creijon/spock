@@ -279,8 +279,8 @@ namespace spock
     uint32_t findGraphicsQueueFamilyIndex(
         std::vector<vk::QueueFamilyProperties> const &queueFamilyProperties)
     {
-        // get the first index into queueFamiliyProperties which supports graphics
-        std::vector<vk::QueueFamilyProperties>::const_iterator graphicsQueueFamilyProperty =
+        // Get the first index that supports graphics.
+        auto graphicsQueueFamilyProperty =
             std::find_if(queueFamilyProperties.begin(),
                          queueFamilyProperties.end(),
                          [](vk::QueueFamilyProperties const &qfp)
@@ -295,7 +295,7 @@ namespace spock
         vk::raii::PhysicalDevice const &physicalDevice,
         vk::raii::SurfaceKHR const &surface)
     {
-        std::vector<vk::QueueFamilyProperties> queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
+        auto queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
         assert(queueFamilyProperties.size() < (std::numeric_limits<uint32_t>::max)());
 
         uint32_t graphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex(queueFamilyProperties);

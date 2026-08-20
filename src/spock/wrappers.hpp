@@ -144,7 +144,7 @@ namespace spock
         // the DeviceMemory should be destroyed before the Image it is bound to;
         // to get that order with the standard destructor of the ImageWrapper,
         // the order of DeviceMemory and Image here matters.
-        vk::Format m_format;
+        vk::Format m_format{vk::Format::eUndefined};
         vk::raii::DeviceMemory m_deviceMemory{nullptr};
         vk::raii::Image m_image{nullptr};
         vk::raii::ImageView m_imageView{nullptr};

@@ -17,11 +17,8 @@
 
 namespace spock
 {
-    // Returns the required Vulkan device extensions for this sample.
-    std::vector<std::string> getDeviceExtensions();
-
-    // Returns the required Vulkan instance extensions for the current platform.
-    std::vector<std::string> getInstanceExtensions();
+    std::vector<std::string> getDefaultDeviceExtensions();
+    std::vector<std::string> getDefaultInstanceExtensions();
 
     GLFWwindow* createWindow(
         std::string const& windowName,

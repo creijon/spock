@@ -6,9 +6,13 @@
 #include <iostream>
 #include <numeric>
 
+#if defined(__APPLE__)
+#include <vulkan/vulkan_beta.h>
+#endif
+
 namespace spock
 {
-    std::vector<std::string> getInstanceExtensions()
+    std::vector<std::string> getDefaultInstanceExtensions()
     {
         std::vector<std::string> extensions;
         extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
@@ -16,6 +20,8 @@ namespace spock
         extensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
         extensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_VI_NN)
         extensions.push_back(VK_NN_VI_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
@@ -32,10 +38,14 @@ namespace spock
         return extensions;
     }
 
-    // Return the device extensions required by this sample, currently only swapchain support.
-    std::vector<std::string> getDeviceExtensions()
+    std::vector<std::string> getDefaultDeviceExtensions()
     {
-        return {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+        return {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+#if defined(__APPLE__)
+            VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
+#endif
+        };
     }
 
     // Convert requested extension names into raw const char* pointers while
@@ -160,6 +170,12 @@ namespace spock
         std::vector<char const *> enabledExtensions = gatherExtensions(
             extensions, context.enumerateInstanceExtensionProperties());
 
+        vk::InstanceCreateFlags createFlags{};
+
+#if defined(__APPLE__)
+        createFlags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+#endif
+
         // in debug mode, addionally use the debugUtilsMessengerCallback in instance
         // creation!
         vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
@@ -172,7 +188,7 @@ namespace spock
         vk::StructureChain<vk::InstanceCreateInfo,
                            vk::DebugUtilsMessengerCreateInfoEXT>
             instanceCreateInfoChain(
-                {{}, &applicationInfo, enabledLayers, enabledExtensions},
+                {createFlags, &applicationInfo, enabledLayers, enabledExtensions},
                 {{},
                  severityFlags,
                  messageTypeFlags,
