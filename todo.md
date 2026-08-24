@@ -14,6 +14,7 @@
 - Asset repository (I haven't seen this before on small engines)
   - All assets are registered there and linked to their source file.
   - Each asset type can have a mechanism to rebuild after the source file changes.
+  - Doing this in a general way could be hard - if the vertex attributes of a model changes, does the shader have to as well?
 
 ## Lower Priority Features
 
