@@ -8,14 +8,16 @@ The root CMake project defines a static library target named `spock` and then cr
 
 Current targets:
 - `spock` — shared core library
-- `cube` — standalone cube sample
-- `shaderlab` — standalone shaderlab sample
+- `cube` — a completely self-contained renderer: the geometry and shaders are defined inline
+- `splat` — will become a gaussian splatting example
+- `shaderlab` — an interactive fragment shader playground, similar to the shadertoy.com site
 
 Example:
 
 ```bash
 cmake -S . -B build
 cmake --build build --target cube
+cmake --build build --target splat
 cmake --build build --target shaderlab
 ```
 
@@ -25,28 +27,35 @@ The sample targets link against the shared `spock` library so the reusable rende
 
 The reusable engine code lives under `src/spock` and includes:
 
-- `app.*` — base application loop
-- `renderer.*` — Vulkan renderer to use a base for custom implementation
+- `app.*` — base application class: owns the Vulkan context/instance, a `Window`, and the renderer, and runs the main loop
+- `window.*` — owns the GLFW window handle and creates its rendering surface from an app-provided Vulkan instance
+- `renderer.*` — base renderer class: owns the device, command pool, and render pass; subclass it to add your own pipeline and draw calls
+- `presenter.*` — swapchain and per-frame synchronization primitives, owned by a `Renderer`
 - `creators.*` — helper functions for creating Vulkan resources and pipeline objects
-- `helpers.*` — utility routines for shader and buffer management
-- `math.*` — matrix/vector helpers used by the samples
-- `presenter.*` — presentation-layer support and render state helpers
+- `wrappers.*` — RAII wrappers around Vulkan objects such as buffers, images and textures
 - `shaders.*` — shader compilation support
-- `wrappers.*` — RAII wrappers around Vulkan objects such as buffers and descriptors
+- `helpers.*` — Vulkan-specific helper routines (queue selection, image layout transitions, memory allocation, surface/present-mode selection, the debug messenger)
+- `utils.*` — small non-Vulkan utilities (logging, checked casts)
+- `camera.*` — view/projection matrix helper
+- `math.*` — shared GLM include and compiler warning setup
 
 ## Samples
 
 The current demos are in `src/samples`:
 
-- `cube.cpp` — a simple colored cube example using the framework
-- `shaderlab.cpp` — demonstrating live shader recompilation
+- `cube.cpp` — a colored cube, using push constants for the model-view-projection matrix
+- `splat.cpp` — the same cube, using a uniform buffer and descriptor set for the MVP matrix instead
+- `shaderlab.cpp` — a full-screen shader sandbox with live shader recompilation on save (ShaderToy-style)
 
 ## Requirements
 
+Installed on your system:
 - CMake 3.15+
 - C++17 compiler
 - Vulkan SDK
 - OpenGL development libraries
+
+Bundled as git submodules under `deps/` and built as part of the project — no separate installation needed:
 - GLFW
 - GLM
 - glslang
@@ -67,13 +76,13 @@ cmake -S . -B build
 cmake --build build
 ```
 
-After configuration, the sample binaries are available under the generated build tree, typically in directories such as:
+After configuration, the sample binaries are placed under:
 
 ```text
-build/src/samples/Debug/
+build/binaries/
 ```
 
-or the corresponding build output location for your generator and configuration.
+regardless of generator or build configuration.
 
 
 ## Building for Release
@@ -89,14 +98,14 @@ cmake --build . --config Release
 
 ### Adding New Samples
 
-1. Create a new class derived from `spock::Framework`
-2. Override `update()` and `render()` methods
-3. Add your graphics code in `src/main.cpp` or create a new entry point
-4. Update `CMakeLists.txt` if creating a separate executable
+1. Create a class derived from `spock::Renderer` that overrides `render()` and does whatever pipeline/buffer setup it needs in its constructor.
+2. Create a class derived from `spock::App` that overrides `createRenderer()` (to construct your renderer) and `update()` (called once per frame before rendering).
+3. Give it a `main()` that calls `spock::runApp<YourApp>(...)` with your app's constructor arguments — it constructs the app, runs it, and reports any exception that escapes.
+4. Add a new executable target in `src/samples/CMakeLists.txt` via `add_sample_target(your_sample your_sample.cpp)`.
 
 ## Performance Considerations
 
-- **Double Buffering**: Two frames in flight optimize GPU/CPU synchronization
+- **Frames in Flight**: Three frames in flight by default, to overlap GPU and CPU work
 - **RAII Overhead**: Minimal—modern compilers optimize away the abstraction
 - **Shader Compilation**: Occurs at startup; consider pre-compiling shaders for production
 - **Validation Layers**: Disable in release builds for maximum performance

@@ -3,15 +3,16 @@
 
 #pragma once
 
+#include "window.hpp"
+
 #include <vulkan/vulkan_raii.hpp>
 
 #include <chrono>
+#include <iostream>
 #include <memory>
-#include <string>
+#include <utility>
 
 using namespace std::chrono_literals;
-
-typedef struct GLFWwindow GLFWwindow;
 
 namespace spock
 {
@@ -26,7 +27,7 @@ namespace spock
             uint32_t windowHeight,
             std::chrono::microseconds frameDuration = 16666us);
 
-        virtual ~App();
+        virtual ~App() = default;
 
         void run();
 
@@ -39,13 +40,10 @@ namespace spock
         // Called once per frame before rendering.
         virtual void update() = 0;
 
-        std::string m_name;
-        vk::Extent2D m_extents;
-
         vk::raii::Context m_context{};
         vk::raii::Instance m_instance{nullptr};
 
-        GLFWwindow *m_windowHandle{nullptr};
+        Window m_window;
 
         std::unique_ptr<Renderer> m_renderer;
 
@@ -53,4 +51,32 @@ namespace spock
 
         const std::chrono::microseconds m_frameDuration;
     };
+
+    // Constructs an AppT with the given arguments, runs it, and reports any
+    // exception that escapes the main loop. Returns the process exit code.
+    template <typename AppT, typename... Args>
+    int runApp(Args&&... args)
+    {
+        try
+        {
+            AppT app(std::forward<Args>(args)...);
+            app.run();
+        }
+        catch (vk::SystemError &err)
+        {
+            std::cout << "vk::SystemError: " << err.what() << std::endl;
+            return -1;
+        }
+        catch (std::exception &err)
+        {
+            std::cout << "std::exception: " << err.what() << std::endl;
+            return -1;
+        }
+        catch (...)
+        {
+            std::cout << "unknown error\n";
+            return -1;
+        }
+        return 0;
+    }
 } // namespace spock

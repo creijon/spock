@@ -6,12 +6,12 @@
 #include "spock/renderer.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
+#include "spock/utils.hpp"
 
 #include "vulkan/vulkan.hpp"
 
 #include <efsw/efsw.hpp>
 
-#include <iostream>
 #include <iterator>
 #include <vector>
 
@@ -88,14 +88,21 @@ public:
     {
         glslang::InitializeProcess();
 
-        if (shaderStages & vk::ShaderStageFlagBits::eVertex)
+        try
         {
-            m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
-        }
+            if (shaderStages & vk::ShaderStageFlagBits::eVertex)
+            {
+                m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+            }
 
-        if (shaderStages & vk::ShaderStageFlagBits::eFragment)
+            if (shaderStages & vk::ShaderStageFlagBits::eFragment)
+            {
+                m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+            }
+        }
+        catch (std::exception const& e)
         {
-            m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+            spock::writeLog("Error compiling shaders: %s\n" + std::string(e.what()));
         }
 
         glslang::FinalizeProcess();
@@ -209,11 +216,11 @@ protected:
         glm::dvec2 mousePos{0.0, 0.0};
         glm::dvec2 mouseClickPos{0.0, 0.0};
 
-        glfwGetCursorPos(m_windowHandle, &mousePos.x, &mousePos.y);
+        glfwGetCursorPos(m_window.handle(), &mousePos.x, &mousePos.y);
         renderer->setMousePos(mousePos);
-        if (glfwGetMouseButton(m_windowHandle, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        if (glfwGetMouseButton(m_window.handle(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
         {
-            glfwGetCursorPos(m_windowHandle, &mouseClickPos.x, &mouseClickPos.y);
+            glfwGetCursorPos(m_window.handle(), &mouseClickPos.x, &mouseClickPos.y);
             renderer->setMouseClickPos(mouseClickPos);
         }
 
@@ -265,25 +272,5 @@ private:
 
 int main()
 {
-    try
-    {
-        auto app = ShaderLabApp(500, 500);
-        app.run();
-    }
-    catch (vk::SystemError &err)
-    {
-        std::cout << "vk::SystemError: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (std::exception &err)
-    {
-        std::cout << "std::exception: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (...)
-    {
-        std::cout << "unknown error\n";
-        exit(-1);
-    }
-    return 0;
+    return spock::runApp<ShaderLabApp>(500, 500);
 }

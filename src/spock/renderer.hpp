@@ -28,7 +28,7 @@ namespace spock
             bool useDepthBuffer = true,
             uint32_t framesInFlight = 3);
 
-        virtual ~Renderer() = default;
+        virtual ~Renderer();
 
         vk::Result renderFrame(std::chrono::microseconds time);
         void resizeWindow(vk::Extent2D const &extents);

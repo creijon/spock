@@ -38,6 +38,11 @@ namespace spock
         resizeWindow(extents);
     }
 
+    Renderer::~Renderer()
+    {
+        m_device.waitIdle();
+    }
+
     void Renderer::resizeWindow(vk::Extent2D const &extents)
     {
         m_extents = extents;

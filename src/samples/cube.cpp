@@ -1,6 +1,9 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+// This sample is a completely self-contained renderer: the cube geometry and both
+// shaders are defined inline below, with no external asset or shader files to load.
+
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
@@ -10,7 +13,6 @@
 
 #include "vulkan/vulkan.hpp"
 
-#include <iostream>
 #include <iterator>
 #include <vector>
 
@@ -156,8 +158,18 @@ protected:
     {
         // Create the shaders.
         glslang::InitializeProcess();
-        auto vertexShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-        auto fragmentShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+        vk::raii::ShaderModule vertexShaderModule{nullptr};
+        vk::raii::ShaderModule fragmentShaderModule{nullptr};
+        try
+        {
+            vertexShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
+            fragmentShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+        }
+        catch (...)
+        {
+            glslang::FinalizeProcess();
+            throw;
+        }
         glslang::FinalizeProcess();
 
         // Finally create the graphics pipeline.
@@ -241,25 +253,5 @@ protected:
 
 int main()
 {
-    try
-    {
-        auto app = CubeApp(500, 500);
-        app.run();
-    }
-    catch (vk::SystemError &err)
-    {
-        std::cout << "vk::SystemError: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (std::exception &err)
-    {
-        std::cout << "std::exception: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (...)
-    {
-        std::cout << "unknown error\n";
-        exit(-1);
-    }
-    return 0;
+    return spock::runApp<CubeApp>(500, 500);
 }

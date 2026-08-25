@@ -4,7 +4,6 @@
 #include "shaders.hpp"
 
 #include "creators.hpp"
-#include "helpers.hpp"
 
 #include "glslang/SPIRV/GlslangToSpv.h"
 #include "glslang/Public/ResourceLimits.h"
@@ -127,29 +126,23 @@ namespace spock
         vk::ShaderStageFlagBits shaderStage,
         std::string const &path)
     {
+        std::ifstream t(path);
+
+        if (!t.is_open())
+        {
+            throw std::runtime_error("ERROR: Failed to open shader source: " + path);
+        }
+
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+
         try
         {
-            std::ifstream t(path);
-
-            if (!t.is_open())
-            {
-                return nullptr;
-            }
-
-            std::stringstream buffer;
-            buffer << t.rdbuf();
-
             return compileShader(device, shaderStage, buffer.str());
         }
         catch (std::exception const& e)
         {
-            std::string error = translateShaderStage(shaderStage).string;
-            std::transform(error.begin(), error.end(), error.begin(), ::toupper);
-            error += " SHADER ERROR IN: " + path + "\n";
-            error += e.what();
-            writeLog(error.c_str());
+            throw std::runtime_error("ERROR: Shader compilation failed: " + path + "\n" + e.what());
         }
-
-        return nullptr;
     }
 } // namespace spock

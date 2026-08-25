@@ -14,7 +14,7 @@ function(add_sample_target target_name source_file)
     target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} efsw)
 
     target_compile_definitions(${target_name} PRIVATE
-        SPOCK_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+        SPOCK_SOURCE_DIR="${PROJECT_SOURCE_DIR}/src"
     )
 
     target_include_directories(${target_name} PRIVATE
@@ -25,23 +25,6 @@ function(add_sample_target target_name source_file)
         ${Vulkan_INCLUDE_DIRS}
         ${GLFW_GAD_INCLUDE_DIRS})
 
-    if (WIN32)
-        target_compile_definitions(${target_name} PRIVATE VK_USE_PLATFORM_WIN32_KHR)
-    elseif (APPLE)
-        target_compile_definitions(${target_name} PRIVATE VK_USE_PLATFORM_METAL_EXT)
-    elseif (UNIX)
-        if (VULKAN_HPP_USE_WAYLAND)
-            target_compile_definitions(${target_name} PRIVATE VK_USE_PLATFORM_WAYLAND_KHR)
-        else()
-            target_compile_definitions(${target_name} PRIVATE VK_USE_PLATFORM_XCB_KHR)
-        endif()
-    else()
-        message(FATAL_ERROR "Vulkan-Hpp: unhandled platform!")
-    endif()
-
-    if (NOT MSVC)
-        target_compile_options(${target_name} PRIVATE -fno-strict-aliasing)
-    endif()
 
     # Place sample executables in the top-level build/binaries folder for easy discovery
     set(sample_output_dir ${CMAKE_BINARY_DIR}/binaries)

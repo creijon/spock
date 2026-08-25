@@ -10,7 +10,6 @@
 
 #include "vulkan/vulkan.hpp"
 
-#include <iostream>
 #include <iterator>
 #include <vector>
 
@@ -133,32 +132,36 @@ protected:
     {
         // Create the shaders.
         glslang::InitializeProcess();
-        auto vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
-        auto fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+        vk::raii::ShaderModule vertexShader{nullptr};
+        vk::raii::ShaderModule fragmentShader{nullptr};
+        try
+        {
+            vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+            fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+        }
+        catch (...)
+        {
+            glslang::FinalizeProcess();
+            throw;
+        }
         glslang::FinalizeProcess();
 
-        if (vertexShader != nullptr && fragmentShader != nullptr)
-        {
-            // Finally create the graphics pipeline.
-            vk::raii::PipelineCache pipelineCache(m_device, vk::PipelineCacheCreateInfo());
-            m_graphicsPipeline = spock::createGraphicsPipeline(
-                m_device,
-                pipelineCache,
-                vertexShader, nullptr,
-                fragmentShader, nullptr,
-                SPLAT_VERTEX_STRIDE, SPLAT_VERTEX_FORMAT,
-                vk::FrontFace::eClockwise,
-                true,
-                m_pipelineLayout,
-                m_renderPass);
-        }
+        // Finally create the graphics pipeline.
+        vk::raii::PipelineCache pipelineCache(m_device, vk::PipelineCacheCreateInfo());
+        m_graphicsPipeline = spock::createGraphicsPipeline(
+            m_device,
+            pipelineCache,
+            vertexShader, nullptr,
+            fragmentShader, nullptr,
+            SPLAT_VERTEX_STRIDE, SPLAT_VERTEX_FORMAT,
+            vk::FrontFace::eClockwise,
+            true,
+            m_pipelineLayout,
+            m_renderPass);
     }
 
     void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
     {
-        // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
-        if (m_graphicsPipeline == nullptr) return;
-
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
@@ -220,25 +223,5 @@ protected:
 
 int main()
 {
-    try
-    {
-        auto app = SplatApp(500, 500);
-        app.run();
-    }
-    catch (vk::SystemError &err)
-    {
-        std::cout << "vk::SystemError: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (std::exception &err)
-    {
-        std::cout << "std::exception: " << err.what() << std::endl;
-        exit(-1);
-    }
-    catch (...)
-    {
-        std::cout << "unknown error\n";
-        exit(-1);
-    }
-    return 0;
+    return spock::runApp<SplatApp>(500, 500);
 }

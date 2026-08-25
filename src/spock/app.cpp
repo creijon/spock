@@ -4,7 +4,6 @@
 #include "renderer.hpp"
 
 #include <thread>
-#include <stdexcept>
 
 namespace spock
 {
@@ -14,34 +13,23 @@ App::App(
     uint32_t windowWidth,
     uint32_t windowHeight,
     std::chrono::microseconds frameDuration)
-    : m_name(name)
-    , m_extents(windowWidth, windowHeight)
-    , m_context()
-    , m_instance(createInstance(m_context, m_name, {}, getDefaultInstanceExtensions()))
+    : m_context()
+    , m_instance(createInstance(m_context, name, {}, getDefaultInstanceExtensions()))
+    , m_window(name, vk::Extent2D(windowWidth, windowHeight))
     , m_frameDuration(frameDuration)
 {
-    m_windowHandle = createWindow(m_name, m_extents);
-}
-
-App::~App()
-{
-    if (m_renderer)
-    {
-        m_renderer->waitIdle();
-    }
 }
 
 void App::run()
 {
-    VkSurfaceKHR windowSurface;
-    VkResult err = glfwCreateWindowSurface(*m_instance, m_windowHandle, nullptr, &windowSurface);
+    vk::SurfaceKHR windowSurface = m_window.createSurface(m_instance);
 
-    m_renderer = createRenderer(m_instance, windowSurface, m_extents);
+    m_renderer = createRenderer(m_instance, windowSurface, m_window.extents());
 
     auto startTime{std::chrono::steady_clock::now()};
     m_time = std::chrono::microseconds(0);
 
-    while (!glfwWindowShouldClose(m_windowHandle))
+    while (!m_window.shouldClose())
     {
         glfwPollEvents();
 
@@ -50,24 +38,23 @@ void App::run()
         vk::Result result = m_renderer->renderFrame(m_time);
 
         // Check for window resize.
-        int fbWidth, fbHeight;
-        glfwGetFramebufferSize(m_windowHandle, &fbWidth, &fbHeight);
-        
-        const bool sizeChanged = (fbWidth != int(m_extents.width) || fbHeight != int(m_extents.height));
+        vk::Extent2D fbExtents = m_window.framebufferSize();
+
+        const bool sizeChanged = (fbExtents != m_window.extents());
 
         if (sizeChanged ||
             result == vk::Result::eSuboptimalKHR ||
             result == vk::Result::eErrorOutOfDateKHR)
         {
             // Ignore zero-sized framebuffers (minimized / hidden on some platforms).
-            if (fbWidth == 0 || fbHeight == 0)
+            if (fbExtents.width == 0 || fbExtents.height == 0)
             {
                 continue;
             }
 
-            m_extents = vk::Extent2D(fbWidth, fbHeight);
+            m_window.setExtents(fbExtents);
             m_renderer->waitIdle();
-            m_renderer->resizeWindow(m_extents);
+            m_renderer->resizeWindow(fbExtents);
         }
 
         m_time += m_frameDuration;
