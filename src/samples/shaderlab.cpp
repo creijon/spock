@@ -36,7 +36,7 @@ static const std::vector<std::pair<vk::Format, uint32_t>> SHADERLAB_VERTEX_FORMA
     {vk::Format::eR32G32Sfloat, uint32_t(offsetof(ShaderLabVertex, uv))}
 };
 
-static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/shaders/shaderlab/";
+static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/shaderlab/";
 static const std::string VERTEX_SHADER = "default.vs";
 static const std::string FRAGMENT_SHADER = "default.fs";
 

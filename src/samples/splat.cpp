@@ -74,45 +74,9 @@ static const std::vector<std::pair<vk::Format, uint32_t>> SPLAT_VERTEX_FORMAT{
     {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(SplatVertex, rgba))}
 };
 
-
-static const std::string VERTEX_SHADER_SOURCE = R"(
-#version 400
-
-#extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shading_language_420pack : enable
-
-layout (std140, binding = 0) uniform buffer
-{
-  mat4 mvp;
-} ubo;
-
-layout (location = 0) in vec4 pos;
-layout (location = 1) in vec4 inColor;
-
-layout (location = 0) out vec4 outColor;
-
-void main()
-{
-  outColor = inColor;
-  gl_Position = ubo.mvp * pos;
-}
-)";
-
-static const std::string FRAGMENT_SHADER_SOURCE = R"(
-#version 400
-
-#extension GL_ARB_separate_shader_objects : enable
-#extension GL_ARB_shading_language_420pack : enable
-
-layout (location = 0) in vec4 color;
-
-layout (location = 0) out vec4 outColor;
-
-void main()
-{
-  outColor = color;
-}
-)";
+static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/";
+static const std::string VERTEX_SHADER = "splat.vs";
+static const std::string FRAGMENT_SHADER = "splat.fs";
 
 class SplatRenderer : public spock::Renderer
 {
@@ -169,26 +133,32 @@ protected:
     {
         // Create the shaders.
         glslang::InitializeProcess();
-        auto vertexShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-        auto fragmentShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+        auto vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+        auto fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
         glslang::FinalizeProcess();
 
-        // Finally create the graphics pipeline.
-        vk::raii::PipelineCache pipelineCache(m_device, vk::PipelineCacheCreateInfo());
-        m_graphicsPipeline = spock::createGraphicsPipeline(
-            m_device,
-            pipelineCache,
-            vertexShaderModule, nullptr,
-            fragmentShaderModule, nullptr,
-            SPLAT_VERTEX_STRIDE, SPLAT_VERTEX_FORMAT,
-            vk::FrontFace::eClockwise,
-            true,
-            m_pipelineLayout,
-            m_renderPass);
+        if (vertexShader != nullptr && fragmentShader != nullptr)
+        {
+            // Finally create the graphics pipeline.
+            vk::raii::PipelineCache pipelineCache(m_device, vk::PipelineCacheCreateInfo());
+            m_graphicsPipeline = spock::createGraphicsPipeline(
+                m_device,
+                pipelineCache,
+                vertexShader, nullptr,
+                fragmentShader, nullptr,
+                SPLAT_VERTEX_STRIDE, SPLAT_VERTEX_FORMAT,
+                vk::FrontFace::eClockwise,
+                true,
+                m_pipelineLayout,
+                m_renderPass);
+        }
     }
 
     void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
     {
+        // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
+        if (m_graphicsPipeline == nullptr) return;
+
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
