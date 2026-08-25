@@ -240,10 +240,11 @@ namespace spock
             for (size_t i = 0; i < sizeof(requestedFormats) / sizeof(requestedFormats[0]); i++)
             {
                 vk::Format requestedFormat = requestedFormats[i];
-                auto it = std::find_if(formats.begin(),
-                                       formats.end(),
-                                       [requestedFormat, requestedColorSpace](vk::SurfaceFormatKHR const &f)
-                                       { return (f.format == requestedFormat) && (f.colorSpace == requestedColorSpace); });
+                auto it = std::find_if(
+                    formats.begin(),
+                    formats.end(),
+                    [requestedFormat, requestedColorSpace](vk::SurfaceFormatKHR const &f)
+                    { return (f.format == requestedFormat) && (f.colorSpace == requestedColorSpace); });
                 if (it != formats.end())
                 {
                     pickedFormat = *it;
@@ -281,10 +282,11 @@ namespace spock
     {
         // Get the first index that supports graphics.
         auto graphicsQueueFamilyProperty =
-            std::find_if(queueFamilyProperties.begin(),
-                         queueFamilyProperties.end(),
-                         [](vk::QueueFamilyProperties const &qfp)
-                         { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
+            std::find_if(
+                queueFamilyProperties.begin(),
+                queueFamilyProperties.end(),
+                [](vk::QueueFamilyProperties const &qfp)
+                { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
         assert(graphicsQueueFamilyProperty != queueFamilyProperties.end());
         return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
     }
@@ -312,7 +314,7 @@ namespace spock
             if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
                 physicalDevice.getSurfaceSupportKHR(i, surface))
             {
-                return {i,i,};
+                return {i,i};
             }
         }
 

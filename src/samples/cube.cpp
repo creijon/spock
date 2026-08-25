@@ -1,10 +1,11 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+#include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
-#include "spock/framework.hpp"
 #include "spock/math.hpp"
+#include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 
 #include "vulkan/vulkan.hpp"
@@ -117,17 +118,19 @@ struct PushConstants
     glm::mat4x4 mvp;
 };
 
-class CubeApp : public spock::Framework
+class CubeRenderer : public spock::Renderer
 {
 public:
-    CubeApp(uint32_t windowWidth, uint32_t windowHeight)
-        : spock::Framework(
-            "Cube",
-            windowWidth,
-            windowHeight, 
-            {0.2f, 0.2f, 0.3f, 1.0f}, 
-            {1.0f, 0},
-            true)
+    CubeRenderer(
+        vk::raii::Instance const& instance,
+        vk::SurfaceKHR const& windowSurface,
+        vk::Extent2D const& extents)
+        : spock::Renderer(
+            instance,
+            windowSurface,
+            extents,
+            {0.2f, 0.2f, 0.3f, 1.0},
+            {1.0f, 0})
     {
         // Create the sample cube geometry and the push constants for the model-view-projection matrix.
         vk::PushConstantRange pushConstantRange{
@@ -140,6 +143,17 @@ public:
         m_vertexBuffer = spock::BufferWrapper(m_physicalDevice, m_device, CUBE_VERTEX_BUFFER_SIZE, vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
 
+        createGraphicsPipeline();
+    }
+
+    void setView(glm::vec3 const& view)
+    {
+        m_view = view;
+    }
+
+protected:
+    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    {
         // Create the shaders.
         glslang::InitializeProcess();
         auto vertexShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
@@ -160,15 +174,7 @@ public:
                                           m_renderPass);
     }
 
-protected:
-    void update() override
-    {
-        using Seconds = std::chrono::duration<double>;
-        double angle = std::chrono::duration_cast<Seconds>(m_time).count();
-        m_view = glm::vec3(sinf(angle) * 5.0f, -3.0f, cosf(angle) * 5.0f);
-    }
-
-    void render(vk::raii::CommandBuffer const &commandBuffer) override
+    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
     {
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
@@ -202,12 +208,42 @@ private:
     glm::vec3 m_view{};
 };
 
+class CubeApp : public spock::App
+{
+public:
+    CubeApp(uint32_t windowWidth, uint32_t windowHeight)
+        : spock::App(
+            "Cube",
+            windowWidth,
+            windowHeight)
+    {
+    }
+
+protected:
+    std::unique_ptr<spock::Renderer> createRenderer(
+        vk::raii::Instance const& instance,
+        vk::SurfaceKHR const& windowSurface,
+        vk::Extent2D const& extents) override
+    {
+        return std::make_unique<CubeRenderer>(instance, windowSurface, extents);
+    }
+
+    void update() override
+    {
+        using Seconds = std::chrono::duration<double>;
+        double angle = std::chrono::duration_cast<Seconds>(m_time).count();
+        
+        CubeRenderer* renderer = static_cast<CubeRenderer*>(m_renderer.get());
+
+        renderer->setView(glm::vec3(sinf(angle) * 5.0f, -3.0f, cosf(angle) * 5.0f));
+    }
+};
+
 int main()
 {
     try
     {
         auto app = CubeApp(500, 500);
-
         app.run();
     }
     catch (vk::SystemError &err)

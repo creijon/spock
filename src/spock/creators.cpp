@@ -158,26 +158,24 @@ namespace spock
     {
         vk::ApplicationInfo applicationInfo(appName.c_str(), 1, "Spock", 1, apiVersion);
 
-#if defined(NDEBUG)
-        std::vector<char const *> enabledLayers = gatherLayers(layers, {});
-        std::vector<char const *> enabledExtensions =
-            gatherExtensions(extensions, {});
-        vk::StructureChain<vk::InstanceCreateInfo> instanceCreateInfoChain(
-            {{}, &applicationInfo, enabledLayers, enabledExtensions});
-#else
-        std::vector<char const *> enabledLayers =
-            gatherLayers(layers, context.enumerateInstanceLayerProperties());
-        std::vector<char const *> enabledExtensions = gatherExtensions(
-            extensions, context.enumerateInstanceExtensionProperties());
-
         vk::InstanceCreateFlags createFlags{};
 
 #if defined(__APPLE__)
         createFlags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
 #endif
 
-        // in debug mode, addionally use the debugUtilsMessengerCallback in instance
-        // creation!
+#if defined(NDEBUG)
+        std::vector<char const *> enabledLayers = gatherLayers(layers, {});
+        std::vector<char const *> enabledExtensions =
+            gatherExtensions(extensions, {});
+        vk::StructureChain<vk::InstanceCreateInfo> instanceCreateInfoChain(
+            {createFlags, &applicationInfo, enabledLayers, enabledExtensions});
+#else
+        std::vector<char const *> enabledLayers =
+            gatherLayers(layers, context.enumerateInstanceLayerProperties());
+        std::vector<char const *> enabledExtensions = gatherExtensions(
+            extensions, context.enumerateInstanceExtensionProperties());
+
         vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
             vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);

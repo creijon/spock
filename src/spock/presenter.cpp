@@ -42,7 +42,6 @@ namespace spock
         , m_imageSemaphores(std::move(other.m_imageSemaphores))
         , m_renderSemaphores(std::move(other.m_renderSemaphores))
         , m_frameFences(std::move(other.m_frameFences))
-        , m_valid(other.m_valid)
     {
     }
 
@@ -60,7 +59,6 @@ namespace spock
             m_imageSemaphores = std::move(other.m_imageSemaphores);
             m_renderSemaphores = std::move(other.m_renderSemaphores);
             m_frameFences = std::move(other.m_frameFences);
-            m_valid = other.m_valid;
         }
 
         return *this;
@@ -174,36 +172,35 @@ namespace spock
             m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
             m_frameFences.push_back(device.createFence(fenceInfo));
         }
-
-        m_valid = true;
     }
 
-    void Presenter::acquireFrame(vk::raii::Device const &device, uint32_t frameIndex)
+    vk::Result Presenter::acquireFrame(vk::raii::Device const &device, uint32_t frameIndex)
     {
+        vk::Result result = vk::Result::eSuccess;
+
         static const uint64_t fenceTimeout = 100000000ull;
 
         (void)device.waitForFences({ m_frameFences[frameIndex] }, VK_TRUE, fenceTimeout);
 
         try
-        {
-            vk::Result result;
+        {    
             std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[frameIndex]);
-            m_valid = (result == vk::Result::eSuccess);
         }
         catch (std::exception const& e)
         {
-            // Most commonly vk::OutOfDateKHRError right after a resize. The
-            // caller will see isValid() == false and rebuild the swapchain.
-            m_valid = false;
+            // Most commonly vk::OutOfDateKHRError right after a resize.
+            result = vk::Result::eErrorOutOfDateKHR;
         }
 
         // Always reset: submitCommands() below is called unconditionally by
         // the caller even on an invalid/stale frame, and vkQueueSubmit
         // requires the fence it's given to be unsignaled.
         device.resetFences({ m_frameFences[frameIndex] });
+
+        return result;
     }
 
-    void Presenter::submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex)
+    vk::Result Presenter::submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex)
     {
         vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         vk::SubmitInfo submitInfo(
@@ -213,6 +210,8 @@ namespace spock
             *m_renderSemaphores[frameIndex]);
 
         m_graphicsQueue.submit(submitInfo, m_frameFences[frameIndex]);
+
+        return vk::Result::eSuccess;
     }
 
     vk::Result Presenter::presentFrame(uint32_t frameIndex)

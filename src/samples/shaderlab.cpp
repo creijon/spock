@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+#include "spock/app.hpp"
 #include "spock/creators.hpp"
-#include "spock/framework.hpp"
+#include "spock/renderer.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
 
@@ -49,17 +50,19 @@ struct PushConstants
     int iFrame;             // image/buffer Current frame
 };
 
-class ShaderLabApp : public spock::Framework
+class ShaderLabRenderer : public spock::Renderer
 {
 public:
-    ShaderLabApp(uint32_t windowWidth, uint32_t windowHeight)
-        : spock::Framework(
-            "ShaderLab",
-            windowWidth,
-            windowHeight,
-            {0.2f, 0.2f, 0.3f, 1.0f},
-            {1.0f, 0},
-            false)
+    ShaderLabRenderer(
+        vk::raii::Instance const &instance,
+        vk::SurfaceKHR const &windowSurface,
+        vk::Extent2D const &extents)
+        : spock::Renderer(
+            instance, 
+            windowSurface,
+            extents,
+            {0.2f, 0.2f, 0.3f, 1.0},
+            {1.0f, 0})
     {
         vk::PushConstantRange pushConstantRange{
             vk::ShaderStageFlagBits::eAllGraphics,
@@ -79,75 +82,6 @@ public:
             SHADERLAB_VERTEX_COUNT);
 
         createGraphicsPipeline();
-
-        m_fileWatcher = std::make_unique<efsw::FileWatcher>();
-        m_listener = std::make_unique<UpdateListener>(*this);
-
-        m_watchID = m_fileWatcher->addWatch(SHADER_PATH, m_listener.get());
-        m_fileWatcher->watch();
-    }
-
-    ~ShaderLabApp()
-    {
-        m_fileWatcher->removeWatch(m_watchID);
-    }
-
-protected:
-    void update() override
-    {
-        // Store the mouse position and click position for use in the next frame.
-        glfwGetCursorPos(m_handle, &m_mousePos.x, &m_mousePos.y);
-        if (glfwGetMouseButton(m_handle, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
-        {
-            glfwGetCursorPos(m_handle, &m_mouseClickPos.x, &m_mouseClickPos.y);
-        }
-
-        if (m_modifiedShaders)
-        {
-            // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-            m_device.waitIdle();
-            createGraphicsPipeline(m_modifiedShaders);
-            m_modifiedShaders = vk::ShaderStageFlags(0);
-        }
-    }
-
-    void render(vk::raii::CommandBuffer const &commandBuffer) override
-    {
-        // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
-        if (m_graphicsPipeline == nullptr) return;
-
-        // Bind the pipeline.
-        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
-
-        // Update the push constants.
-        using Seconds = std::chrono::duration<float>;
-        PushConstants pushConstants{
-            glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y),
-            glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
-            std::chrono::duration_cast<Seconds>(m_time).count(),
-            (int)m_frameCount};
-
-        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
-            sizeof(PushConstants),
-            reinterpret_cast<const uint8_t*>(&pushConstants)};
-
-        commandBuffer.pushConstants<uint8_t>(
-            m_pipelineLayout,
-            vk::ShaderStageFlagBits::eAllGraphics,
-            0,
-            dataSpan);
-
-        // Draw the single triangle.
-        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, { 0 });
-        commandBuffer.draw(SHADERLAB_VERTEX_COUNT, 1, 0, 0);
-    }
-
-private:
-
-    void shaderModified(std::string const& filename)
-    {
-        if (filename == VERTEX_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
-        if (filename == FRAGMENT_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
     }
 
     void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
@@ -183,6 +117,122 @@ private:
         }
     }
 
+    void setMousePos(glm::dvec2 const &mousePos)
+    {
+        m_mousePos = mousePos;
+    }
+
+    void setMouseClickPos(glm::dvec2 const& mouseClickPos)
+    {
+        m_mouseClickPos = mouseClickPos;
+    }
+
+protected:
+    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
+    {
+        // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
+        if (m_graphicsPipeline == nullptr) return;
+
+        // Bind the pipeline.
+        commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
+
+        // Update the push constants.
+        using Seconds = std::chrono::duration<float>;
+        PushConstants pushConstants{
+            glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y),
+            glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
+            std::chrono::duration_cast<Seconds>(time).count(),
+            (int)m_frameCount};
+
+        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
+            sizeof(PushConstants),
+            reinterpret_cast<const uint8_t*>(&pushConstants)};
+
+        commandBuffer.pushConstants<uint8_t>(
+            m_pipelineLayout,
+            vk::ShaderStageFlagBits::eAllGraphics,
+            0,
+            dataSpan);
+
+        // Draw the single triangle.
+        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, { 0 });
+        commandBuffer.draw(SHADERLAB_VERTEX_COUNT, 1, 0, 0);
+    }
+
+private:
+    vk::raii::PipelineLayout m_pipelineLayout{nullptr};
+    vk::raii::Pipeline m_graphicsPipeline{nullptr};
+    vk::raii::ShaderModule m_vertexShader{nullptr};
+    vk::raii::ShaderModule m_fragmentShader{nullptr};
+
+    spock::BufferWrapper m_vertexBuffer;
+
+    glm::dvec2 m_mousePos{0.0, 0.0};
+    glm::dvec2 m_mouseClickPos{0.0, 0.0};
+};
+
+class ShaderLabApp : public spock::App
+{
+public:
+    ShaderLabApp(uint32_t windowWidth, uint32_t windowHeight)
+        : spock::App(
+            "ShaderLab",
+            windowWidth,
+            windowHeight)
+    {
+        m_fileWatcher = std::make_unique<efsw::FileWatcher>();
+        m_listener = std::make_unique<UpdateListener>(*this);
+
+        m_watchID = m_fileWatcher->addWatch(SHADER_PATH, m_listener.get());
+        m_fileWatcher->watch();
+    }
+
+    ~ShaderLabApp()
+    {
+        m_fileWatcher->removeWatch(m_watchID);
+    }
+
+protected:
+    std::unique_ptr<spock::Renderer> createRenderer(
+        vk::raii::Instance const& instance,
+        vk::SurfaceKHR const& windowSurface,
+        vk::Extent2D const& extents) override
+    {
+        return std::make_unique<ShaderLabRenderer>(instance, windowSurface, extents);
+    }
+
+    void update() override
+    {
+        ShaderLabRenderer* renderer = static_cast<ShaderLabRenderer*>(m_renderer.get());
+
+        // Store the mouse position and click position for use in the next frame.
+        glm::dvec2 mousePos{0.0, 0.0};
+        glm::dvec2 mouseClickPos{0.0, 0.0};
+
+        glfwGetCursorPos(m_windowHandle, &mousePos.x, &mousePos.y);
+        renderer->setMousePos(mousePos);
+        if (glfwGetMouseButton(m_windowHandle, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        {
+            glfwGetCursorPos(m_windowHandle, &mouseClickPos.x, &mouseClickPos.y);
+            renderer->setMouseClickPos(mouseClickPos);
+        }
+
+        if (m_modifiedShaders)
+        {
+            // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
+            renderer->waitIdle();
+            renderer->createGraphicsPipeline(m_modifiedShaders);
+            m_modifiedShaders = vk::ShaderStageFlags(0);
+        }
+    }
+
+private:
+    void shaderModified(std::string const& filename)
+    {
+        if (filename == VERTEX_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+        if (filename == FRAGMENT_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
+    }
+
     class UpdateListener : public efsw::FileWatchListener
     {
     public:
@@ -207,20 +257,10 @@ private:
         ShaderLabApp& m_app;
     };
 
-    vk::raii::PipelineLayout m_pipelineLayout{nullptr};
-    vk::raii::Pipeline m_graphicsPipeline{nullptr};
-    vk::raii::ShaderModule m_vertexShader{nullptr};
-    vk::raii::ShaderModule m_fragmentShader{nullptr};
-
-    spock::BufferWrapper m_vertexBuffer;
-
     std::unique_ptr<efsw::FileWatcher> m_fileWatcher;
     std::unique_ptr<UpdateListener> m_listener;
     efsw::WatchID m_watchID;
     vk::ShaderStageFlags m_modifiedShaders{0};
-
-    glm::dvec2 m_mousePos{0.0, 0.0};
-    glm::dvec2 m_mouseClickPos{0.0, 0.0};
 };
 
 int main()
@@ -228,7 +268,6 @@ int main()
     try
     {
         auto app = ShaderLabApp(500, 500);
-
         app.run();
     }
     catch (vk::SystemError &err)

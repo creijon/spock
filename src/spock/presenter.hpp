@@ -48,13 +48,8 @@ namespace spock
             return m_imageIndex;
         }
 
-        bool isValid() const
-        {
-            return m_valid;
-        }
-
-        void acquireFrame(vk::raii::Device const &device, uint32_t frameIndex);
-        void submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex);
+        vk::Result acquireFrame(vk::raii::Device const &device, uint32_t frameIndex);
+        vk::Result submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex);
         vk::Result presentFrame(uint32_t frameIndex);
 
     private:
@@ -75,7 +70,5 @@ namespace spock
         std::vector<vk::raii::Semaphore> m_imageSemaphores;
         std::vector<vk::raii::Semaphore> m_renderSemaphores;
         std::vector<vk::raii::Fence> m_frameFences;
-
-        bool m_valid{false};
     };
 } // namespace spock

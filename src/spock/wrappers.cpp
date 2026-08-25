@@ -68,19 +68,20 @@ namespace spock
         vk::MemoryPropertyFlags memoryProperties,
         vk::ImageAspectFlags aspectMask)
         : m_format(format)
-        , m_image(device,
-                {vk::ImageCreateFlags(),
-                vk::ImageType::e2D,
-                format,
-                vk::Extent3D(extent, 1),
-                1,
-                1,
-                vk::SampleCountFlagBits::e1,
-                tiling,
-                usage | vk::ImageUsageFlagBits::eSampled,
-                vk::SharingMode::eExclusive,
-                {},
-                initialLayout})
+        , m_image(
+            device,
+            {vk::ImageCreateFlags(),
+            vk::ImageType::e2D,
+            format,
+            vk::Extent3D(extent, 1),
+            1,
+            1,
+            vk::SampleCountFlagBits::e1,
+            tiling,
+            usage | vk::ImageUsageFlagBits::eSampled,
+            vk::SharingMode::eExclusive,
+            {},
+            initialLayout})
     {
         m_deviceMemory = allocateDeviceMemory(
             device,
@@ -118,15 +119,16 @@ namespace spock
                                            vk::raii::Device const &device,
                                            vk::Format format,
                                            vk::Extent2D const &extent)
-        : ImageWrapper(physicalDevice,
-                       device,
-                       format,
-                       extent,
-                       vk::ImageTiling::eOptimal,
-                       vk::ImageUsageFlagBits::eDepthStencilAttachment,
-                       vk::ImageLayout::eUndefined,
-                       vk::MemoryPropertyFlagBits::eDeviceLocal,
-                       vk::ImageAspectFlagBits::eDepth)
+        : ImageWrapper(
+            physicalDevice,
+            device,
+            format,
+            extent,
+            vk::ImageTiling::eOptimal,
+            vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            vk::ImageLayout::eUndefined,
+            vk::MemoryPropertyFlagBits::eDeviceLocal,
+            vk::ImageAspectFlagBits::eDepth)
     {
     }
     

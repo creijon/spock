@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "spock/creators.hpp"
-#include "spock/framework.hpp"
+#include "spock/renderer.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
 
@@ -21,11 +21,11 @@ struct PushConstants
     glm::mat4x4 mvp;
 };
 
-class ModelApp : public spock::Framework
+class ModelApp : public spock::Renderer
 {
 public:
     ModelApp(uint32_t windowWidth, uint32_t windowHeight)
-        : spock::Framework(
+        : spock::Renderer(
             "Model",
             windowWidth,
             windowHeight, 

@@ -19,13 +19,14 @@ cmake --build build --target cube
 cmake --build build --target shaderlab
 ```
 
-The sample targets link against the shared `spock` library so the reusable framework code is compiled once and reused across demos.
+The sample targets link against the shared `spock` library so the reusable renderer code is compiled once and reused across demos.
 
 ## Core library
 
 The reusable engine code lives under `src/spock` and includes:
 
-- `framework.*` — base application loop and Vulkan framework setup
+- `app.*` — base application loop
+- `renderer.*` — Vulkan renderer to use a base for custom implementation
 - `creators.*` — helper functions for creating Vulkan resources and pipeline objects
 - `helpers.*` — utility routines for shader and buffer management
 - `math.*` — matrix/vector helpers used by the samples
@@ -93,16 +94,6 @@ cmake --build . --config Release
 3. Add your graphics code in `src/main.cpp` or create a new entry point
 4. Update `CMakeLists.txt` if creating a separate executable
 
-### Customizing the Framework Base
-
-The `Framework` class provides hooks for customization:
-- Clear colors and depth values
-- Window dimensions
-- Frame timing
-- Render pass configuration
-
-See `src/spock/framework.hpp` for all configurable parameters.
-
 ## Performance Considerations
 
 - **Double Buffering**: Two frames in flight optimize GPU/CPU synchronization
@@ -124,22 +115,6 @@ sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
 
 ### "Validation layer not found"
 Validation layers are optional. If not installed, they're automatically skipped. Install the Vulkan SDK with validation layers for debugging.
-
-### Application crashes on macOS
-Ensure you're using the `Metal` rendering backend (automatically selected on macOS).
-
-## Contributing
-
-Contributions are welcome! Please follow these guidelines:
-- Use C++17 standard features
-- Follow the existing code style (4-space indentation)
-- Add comments to non-obvious code
-- Test on at least one platform (Windows, macOS, or Linux)
-- Ensure no validation layer errors
-
-## License
-
-This project is licensed under the Apache License 2.0. See `LICENSE` file for details.
 
 ## References
 

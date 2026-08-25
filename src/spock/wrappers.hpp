@@ -108,10 +108,6 @@ namespace spock
 #endif
     };
 
-    // VertexBuffer
-
-    // IndexBuffer
-
     class ImageWrapper
     {
     public:
@@ -133,6 +129,16 @@ namespace spock
         vk::Format format() const
         {
             return m_format;
+        }
+
+        vk::raii::DeviceMemory const& deviceMemory() const
+        {
+            return m_deviceMemory;
+        }
+    
+        vk::raii::Image const& image() const
+        {
+            return m_image;
         }
     
         vk::raii::ImageView const& imageView() const
@@ -187,15 +193,15 @@ namespace spock
         {
             if (m_needsStaging)
             {
-                void *data = m_stagingBuffer.m_deviceMemory.mapMemory(0, m_stagingBuffer.m_buffer.getMemoryRequirements().size);
+                void *data = m_stagingBuffer.deviceMemory().mapMemory(0, m_stagingBuffer.buffer().getMemoryRequirements().size);
                 imageGenerator(data, m_extent);
-                m_stagingBuffer.m_deviceMemory.unmapMemory();
+                m_stagingBuffer.deviceMemory().unmapMemory();
 
                 // Since we're going to blit to the texture image, set its layout to eTransferDstOptimal
                 setImageLayout(
                     commandBuffer,
-                    m_image.m_image,
-                    m_image.m_format,
+                    m_image.image(),
+                    m_image.format(),
                     vk::ImageLayout::eUndefined,
                     vk::ImageLayout::eTransferDstOptimal);
                 vk::BufferImageCopy copyRegion(
@@ -206,30 +212,30 @@ namespace spock
                     vk::Offset3D(0, 0, 0),
                     vk::Extent3D(m_extent, 1));
                 commandBuffer.copyBufferToImage(
-                    m_stagingBuffer.m_buffer,
-                    m_image.m_image,
+                    m_stagingBuffer.buffer(),
+                    m_image.image(),
                     vk::ImageLayout::eTransferDstOptimal,
                     copyRegion);
 
                 // Set the layout for the texture image from eTransferDstOptimal to eShaderReadOnlyOptimal
                 setImageLayout(
                     commandBuffer,
-                    m_image.m_image,
-                    m_image.m_format,
+                    m_image.image(),
+                    m_image.format(),
                     vk::ImageLayout::eTransferDstOptimal,
                     vk::ImageLayout::eShaderReadOnlyOptimal);
             }
             else
             {
-                void *data = m_image.m_deviceMemory.mapMemory(0, m_image.m_image.getMemoryRequirements().size);
+                void *data = m_image.deviceMemory().mapMemory(0, m_image.image().getMemoryRequirements().size);
                 imageGenerator(data, m_extent);
-                m_image.m_deviceMemory.unmapMemory();
+                m_image.deviceMemory().unmapMemory();
 
                 // If we can use the linear tiled image as a texture directly.
                 setImageLayout(
                     commandBuffer,
-                    m_image.m_image,
-                    m_image.m_format,
+                    m_image.image(),
+                    m_image.format(),
                     vk::ImageLayout::ePreinitialized,
                     vk::ImageLayout::eShaderReadOnlyOptimal);
             }
