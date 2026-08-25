@@ -14,13 +14,13 @@
 #include <iterator>
 #include <vector>
 
-struct CubeVertex
+struct SplatVertex
 {
     glm::vec4 pos;
     glm::vec4 rgba;
 };
 
-static const CubeVertex CUBE_VERTEX_DATA[] =
+static const SplatVertex SPLAT_VERTEX_DATA[] =
 {
     // red face
     {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
@@ -66,12 +66,12 @@ static const CubeVertex CUBE_VERTEX_DATA[] =
     {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}}
 };
 
-static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
-static constexpr uint32_t CUBE_VERTEX_COUNT{std::size(CUBE_VERTEX_DATA)};
-static constexpr uint32_t CUBE_VERTEX_STRIDE{sizeof(CUBE_VERTEX_DATA[0])};
-static const std::vector<std::pair<vk::Format, uint32_t>> CUBE_VERTEX_FORMAT{
+static constexpr uint32_t SPLAT_VERTEX_BUFFER_SIZE{sizeof(SPLAT_VERTEX_DATA)};
+static constexpr uint32_t SPLAT_VERTEX_COUNT{std::size(SPLAT_VERTEX_DATA)};
+static constexpr uint32_t SPLAT_VERTEX_STRIDE{sizeof(SPLAT_VERTEX_DATA[0])};
+static const std::vector<std::pair<vk::Format, uint32_t>> SPLAT_VERTEX_FORMAT{
     {vk::Format::eR32G32B32A32Sfloat, 0},
-    {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, rgba))}
+    {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(SplatVertex, rgba))}
 };
 
 
@@ -81,9 +81,10 @@ static const std::string VERTEX_SHADER_SOURCE = R"(
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout(push_constant) uniform PushConstants {
-    mat4 mvp;
-} pc;
+layout (std140, binding = 0) uniform buffer
+{
+  mat4 mvp;
+} ubo;
 
 layout (location = 0) in vec4 pos;
 layout (location = 1) in vec4 inColor;
@@ -93,7 +94,7 @@ layout (location = 0) out vec4 outColor;
 void main()
 {
   outColor = inColor;
-  gl_Position = pc.mvp * pos;
+  gl_Position = ubo.mvp * pos;
 }
 )";
 
@@ -113,15 +114,10 @@ void main()
 }
 )";
 
-struct PushConstants
-{
-    glm::mat4x4 mvp;
-};
-
-class CubeRenderer : public spock::Renderer
+class SplatRenderer : public spock::Renderer
 {
 public:
-    CubeRenderer(
+    SplatRenderer(
         vk::raii::Instance const& instance,
         vk::SurfaceKHR const& windowSurface,
         vk::Extent2D const& extents)
@@ -132,16 +128,33 @@ public:
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0})
     {
-        // Create the sample cube geometry and the push constants for the model-view-projection matrix.
-        vk::PushConstantRange pushConstantRange{
-            vk::ShaderStageFlagBits::eVertex,
-            0,
-            sizeof(PushConstants)};
+        // Create the sample cube geometry and the uniform buffer for the model-view-projection matrix.
+        m_descriptorSetLayout = spock::createDescriptorSetLayout(
+            m_device,
+            {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, *m_descriptorSetLayout}));
 
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, {}, pushConstantRange }));
+        m_vertexBuffer = spock::BufferWrapper(
+            m_physicalDevice,
+            m_device,
+            SPLAT_VERTEX_BUFFER_SIZE,
+            vk::BufferUsageFlagBits::eVertexBuffer);
+        spock::copyToDevice(m_vertexBuffer.deviceMemory(), SPLAT_VERTEX_DATA, SPLAT_VERTEX_COUNT);
 
-        m_vertexBuffer = spock::BufferWrapper(m_physicalDevice, m_device, CUBE_VERTEX_BUFFER_SIZE, vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_vertexBuffer.deviceMemory(), CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
+        // Camera matrix.
+        m_uniformBuffer = spock::BufferWrapper(
+            m_physicalDevice,
+            m_device,
+            sizeof(glm::mat4x4),
+            vk::BufferUsageFlagBits::eUniformBuffer);
+
+        m_descriptorPool = spock::createDescriptorPool(m_device, {{vk::DescriptorType::eUniformBuffer, 1}});
+        m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, {m_descriptorPool, *m_descriptorSetLayout}).front());
+        spock::updateDescriptorSets(
+            m_device,
+            m_descriptorSet,
+            {{vk::DescriptorType::eUniformBuffer,m_uniformBuffer.buffer(), VK_WHOLE_SIZE, nullptr}},
+            {});
 
         createGraphicsPipeline();
     }
@@ -167,7 +180,7 @@ protected:
             pipelineCache,
             vertexShaderModule, nullptr,
             fragmentShaderModule, nullptr,
-            CUBE_VERTEX_STRIDE, CUBE_VERTEX_FORMAT,
+            SPLAT_VERTEX_STRIDE, SPLAT_VERTEX_FORMAT,
             vk::FrontFace::eClockwise,
             true,
             m_pipelineLayout,
@@ -178,42 +191,38 @@ protected:
     {
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
 
         // Update the push constants.
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
         static const glm::vec3 up(0.0f, -1.0f, 0.0f);
-        PushConstants pushConstants{spock::viewProjClipMatrix(m_extents, m_view, target, up)};
-
-        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
-            sizeof(PushConstants),
-            reinterpret_cast<const uint8_t*>(&pushConstants)};
-
-        commandBuffer.pushConstants<uint8_t>(
-            m_pipelineLayout,
-            vk::ShaderStageFlagBits::eVertex,
-            0,
-            dataSpan);
+        glm::mat4x4 mvpcMatrix = spock::viewProjClipMatrix(m_extents, m_view, target, up);
+        spock::copyToDevice(m_uniformBuffer.deviceMemory(), mvpcMatrix);
         
         // Draw all the scene, but for this example it's just a single cube.
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, {0});
-        commandBuffer.draw(CUBE_VERTEX_COUNT, 1, 0, 0);
+        commandBuffer.draw(SPLAT_VERTEX_COUNT, 1, 0, 0);
     }
 
 private:
+    vk::raii::DescriptorPool m_descriptorPool{nullptr};
+    vk::raii::DescriptorSet m_descriptorSet{nullptr};
+    vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
 
     spock::BufferWrapper m_vertexBuffer;
+    spock::BufferWrapper m_uniformBuffer;
 
     glm::vec3 m_view{};
 };
 
-class CubeApp : public spock::App
+class SplatApp : public spock::App
 {
 public:
-    CubeApp(uint32_t windowWidth, uint32_t windowHeight)
+    SplatApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::App(
-            "Cube",
+            "Splat",
             windowWidth,
             windowHeight)
     {
@@ -225,7 +234,7 @@ protected:
         vk::SurfaceKHR const& windowSurface,
         vk::Extent2D const& extents) override
     {
-        return std::make_unique<CubeRenderer>(instance, windowSurface, extents);
+        return std::make_unique<SplatRenderer>(instance, windowSurface, extents);
     }
 
     void update() override
@@ -233,7 +242,7 @@ protected:
         using Seconds = std::chrono::duration<double>;
         double angle = std::chrono::duration_cast<Seconds>(m_time).count();
         
-        CubeRenderer* renderer = static_cast<CubeRenderer*>(m_renderer.get());
+        SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
 
         renderer->setView(glm::vec3(sinf(angle) * 5.0f, -3.0f, cosf(angle) * 5.0f));
     }
@@ -243,7 +252,7 @@ int main()
 {
     try
     {
-        auto app = CubeApp(500, 500);
+        auto app = SplatApp(500, 500);
         app.run();
     }
     catch (vk::SystemError &err)

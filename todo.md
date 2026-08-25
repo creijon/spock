@@ -30,12 +30,14 @@
 
 ## Fixes/Refactoring
 
-- Split the renderer out and have it separate from the framework.
-  - Framework is responsible: window, update loop, asset loading
-  - Then calls the renderer::render
-  - Renderer has all the frame buffers
+- Split the framework into an app and separate renderer. DONE
+  - App is responsible for: window, update loop, asset loading (TBD)
+  - Pure virtual function to create the subclassed renderer.
+  - It also needs the vk::Context and vk::Instance because of the way that windows are handled
+  - Detects window resizes and forces renderer to rebuild swapchain
+  - Renderer has all the GPU resources
   - Presenter belongs to the renderer and manages the swapchain and synchronisation
-
+  - Try to keep the Renderers stateless
 - Clean up the code in the Framework that handles window resizing. DONE
 - Fences and semaphores aren't stable.  Move all the synchronisation primitives into Presenter. DONE
 
