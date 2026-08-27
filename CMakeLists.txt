@@ -14,6 +14,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(VULKAN_HPP_USE_WAYLAND "Use Wayland on Linux for the samples instead of XCB" ON)
+option(SPOCK_BUILD_TESTS "Build the spock unit/integration test suite" ON)
+
+if (SPOCK_BUILD_TESTS)
+    enable_testing()
+endif ()
 
 if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-D_USE_MATH_DEFINES)

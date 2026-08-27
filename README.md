@@ -47,6 +47,40 @@ The current demos are in `src/samples`:
 - `splat.cpp` — the same cube, using a uniform buffer and descriptor set for the MVP matrix instead
 - `shaderlab.cpp` — a full-screen shader sandbox with live shader recompilation on save (ShaderToy-style)
 
+## Tests
+
+The test suite lives under `src/tests` and uses [Catch2](https://github.com/catchorg/Catch2) (v3, found via `find_package`). It builds as a `spock_tests` executable, controlled by the `SPOCK_BUILD_TESTS` CMake option (`ON` by default).
+
+Tests fall into two groups:
+- Plain unit tests (`camera_tests.cpp`, `utils_tests.cpp`, `helpers_tests.cpp`, `shaders_tests.cpp` error paths) — pure logic, no GPU required.
+- GPU-backed integration tests, tagged `[gpu]` (`gpu_tests.cpp`, `renderer_tests.cpp`) — these create a real, headless Vulkan instance/device (via `VK_EXT_headless_surface`, so no window or display is needed) and exercise `creators.*`, `wrappers.*`, and a full `Renderer` render/present loop. If no usable Vulkan driver is found, these skip themselves instead of failing.
+
+Build and run:
+
+```bash
+cmake -S . -B build
+cmake --build build --target spock_tests
+./build/binaries/spock_tests
+```
+
+Or via CTest, which discovers each `TEST_CASE` individually:
+
+```bash
+cd build
+ctest --output-on-failure
+```
+
+Useful Catch2 command-line options (pass directly to `spock_tests`):
+- `./build/binaries/spock_tests "[camera]"` — run only tests tagged `[camera]` (or `[utils]`, `[helpers]`, `[shaders]`, `[gpu]`)
+- `./build/binaries/spock_tests "~[gpu]"` — skip the GPU-backed tests
+- `./build/binaries/spock_tests --list-tests` — list all available test cases
+
+To skip building the test suite entirely (e.g. for a minimal release build), configure with:
+
+```bash
+cmake -S . -B build -DSPOCK_BUILD_TESTS=OFF
+```
+
 ## Requirements
 
 Installed on your system:
@@ -54,6 +88,7 @@ Installed on your system:
 - C++17 compiler
 - Vulkan SDK
 - OpenGL development libraries
+- Catch2 3 (only needed if `SPOCK_BUILD_TESTS` is `ON`; e.g. `apt install libcatch2-dev` on Debian/Ubuntu)
 
 Bundled as git submodules under `deps/` and built as part of the project — no separate installation needed:
 - GLFW

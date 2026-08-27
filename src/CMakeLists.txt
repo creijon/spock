@@ -8,6 +8,10 @@ ENDIF ()
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/spock)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples)
 
+if (SPOCK_BUILD_TESTS)
+    add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
+endif ()
+
 set(SOURCE
     ${SOURCE}
     PARENT_SCOPE
