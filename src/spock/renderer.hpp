@@ -21,7 +21,7 @@ namespace spock
     public:
         Renderer(
             vk::raii::Instance const &instance,
-            vk::SurfaceKHR const &windowSurface,
+            vk::raii::SurfaceKHR windowSurface,
             vk::Extent2D const &extents,
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,

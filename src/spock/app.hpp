@@ -34,7 +34,7 @@ namespace spock
     protected:
         virtual std::unique_ptr<spock::Renderer> createRenderer(
             vk::raii::Instance const& instance,
-            vk::SurfaceKHR const& windowSurface,
+            vk::raii::SurfaceKHR windowSurface,
             vk::Extent2D const& extents) = 0;
 
         // Called once per frame before rendering.

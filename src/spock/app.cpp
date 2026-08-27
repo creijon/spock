@@ -1,9 +1,13 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "app.hpp"
 
 #include "creators.hpp"
 #include "renderer.hpp"
 
 #include <thread>
+#include <utility>
 
 namespace spock
 {
@@ -22,16 +26,16 @@ App::App(
 
 void App::run()
 {
-    vk::SurfaceKHR windowSurface = m_window.createSurface(m_instance);
+    vk::raii::SurfaceKHR windowSurface = m_window.createSurface(m_instance);
 
-    m_renderer = createRenderer(m_instance, windowSurface, m_window.extents());
+    m_renderer = createRenderer(m_instance, std::move(windowSurface), m_window.extents());
 
     auto startTime{std::chrono::steady_clock::now()};
     m_time = std::chrono::microseconds(0);
 
     while (!m_window.shouldClose())
     {
-        glfwPollEvents();
+        Window::pollEvents();
 
         // Update and render frame.
         update();
@@ -61,6 +65,8 @@ void App::run()
 
         std::this_thread::sleep_until(startTime + m_time);
     }
+
+    m_renderer->waitIdle();
 }
 
 } // namespace spock

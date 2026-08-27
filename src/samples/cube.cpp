@@ -14,6 +14,7 @@
 #include "vulkan/vulkan.hpp"
 
 #include <iterator>
+#include <utility>
 #include <vector>
 
 struct CubeVertex
@@ -125,11 +126,11 @@ class CubeRenderer : public spock::Renderer
 public:
     CubeRenderer(
         vk::raii::Instance const& instance,
-        vk::SurfaceKHR const& windowSurface,
+        vk::raii::SurfaceKHR windowSurface,
         vk::Extent2D const& extents)
         : spock::Renderer(
             instance,
-            windowSurface,
+            std::move(windowSurface),
             extents,
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0})
@@ -234,10 +235,10 @@ public:
 protected:
     std::unique_ptr<spock::Renderer> createRenderer(
         vk::raii::Instance const& instance,
-        vk::SurfaceKHR const& windowSurface,
+        vk::raii::SurfaceKHR windowSurface,
         vk::Extent2D const& extents) override
     {
-        return std::make_unique<CubeRenderer>(instance, windowSurface, extents);
+        return std::make_unique<CubeRenderer>(instance, std::move(windowSurface), extents);
     }
 
     void update() override

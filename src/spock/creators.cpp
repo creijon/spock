@@ -122,32 +122,6 @@ namespace spock
         return enabledLayers;
     }
 
-    GLFWwindow* createWindow(
-        std::string const& windowName,
-        vk::Extent2D const& extent)
-    {
-        struct glfwContext
-        {
-            glfwContext()
-            {
-                glfwInit();
-                glfwSetErrorCallback([](int error, const char* msg)
-                    { std::cerr << "glfw: " << "(" << error << ") " << msg << std::endl; });
-            }
-
-            ~glfwContext()
-            {
-                glfwTerminate();
-            }
-        };
-
-        static auto glfwCtx = glfwContext();
-        (void)glfwCtx;
-
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        return glfwCreateWindow(extent.width, extent.height, windowName.c_str(), nullptr, nullptr);
-    }
-
     // Create a Vulkan instance with the requested application name, layers,
     // extensions, and API version. In debug mode, also enable debug utils.
     vk::raii::Instance createInstance(

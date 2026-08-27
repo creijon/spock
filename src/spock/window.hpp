@@ -11,7 +11,15 @@ typedef struct GLFWwindow GLFWwindow;
 
 namespace spock
 {
-    // Owns the GLFW window handle.
+    enum class MouseButton
+    {
+        Left,
+        Right,
+        Middle,
+    };
+
+    // Owns the platform window and its input state. The underlying windowing
+    // library (currently GLFW) is an implementation detail confined to window.cpp.
     class Window
     {
     public:
@@ -23,17 +31,21 @@ namespace spock
 
         ~Window();
 
-        vk::SurfaceKHR createSurface(vk::raii::Instance const &instance) const;
+        vk::raii::SurfaceKHR createSurface(vk::raii::Instance const &instance) const;
 
         bool shouldClose() const;
         vk::Extent2D framebufferSize() const;
+
+        vk::Offset2D cursorPosition() const;
+        bool isMouseButtonPressed(MouseButton button) const;
 
         std::string const& name() const { return m_name; }
 
         vk::Extent2D const& extents() const { return m_extents; }
         void setExtents(vk::Extent2D const &extents) { m_extents = extents; }
 
-        GLFWwindow* handle() const { return m_handle; }
+        // Polls and dispatches pending events for all windows.
+        static void pollEvents();
 
     private:
         std::string m_name;

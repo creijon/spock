@@ -10,8 +10,6 @@
 
 #include <glslang/Public/ShaderLang.h>
 
-#include <GLFW/glfw3.h>
-
 #include <string>
 #include <vector>
 
@@ -19,10 +17,6 @@ namespace spock
 {
     std::vector<std::string> getDefaultDeviceExtensions();
     std::vector<std::string> getDefaultInstanceExtensions();
-
-    GLFWwindow* createWindow(
-        std::string const& windowName,
-        vk::Extent2D const& extent);
 
     // Create a Vulkan instance with optional validation layers and requested
     // extensions.

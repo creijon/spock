@@ -1,16 +1,60 @@
 #include "window.hpp"
 
-#include "creators.hpp"
+#include <GLFW/glfw3.h>
+
+#include <iostream>
 
 namespace spock
 {
+namespace
+{
+    int toGlfwButton(MouseButton button)
+    {
+        switch (button)
+        {
+        case MouseButton::Left:
+            return GLFW_MOUSE_BUTTON_LEFT;
+        case MouseButton::Right:
+            return GLFW_MOUSE_BUTTON_RIGHT;
+        case MouseButton::Middle:
+            return GLFW_MOUSE_BUTTON_MIDDLE;
+        }
+        return GLFW_MOUSE_BUTTON_LEFT;
+    }
+
+    GLFWwindow* createGlfwWindow(
+        std::string const &windowName,
+        vk::Extent2D const &extent)
+    {
+        struct glfwContext
+        {
+            glfwContext()
+            {
+                glfwInit();
+                glfwSetErrorCallback([](int error, const char* msg)
+                    { std::cerr << "glfw: " << "(" << error << ") " << msg << std::endl; });
+            }
+
+            ~glfwContext()
+            {
+                glfwTerminate();
+            }
+        };
+
+        static auto glfwCtx = glfwContext();
+        (void)glfwCtx;
+
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        return glfwCreateWindow(extent.width, extent.height, windowName.c_str(), nullptr, nullptr);
+    }
+} // namespace
 
 Window::Window(
     std::string const &name,
     vk::Extent2D const &extents)
     : m_name(name)
     , m_extents(extents)
-    , m_handle(createWindow(m_name, m_extents))
+    , m_handle(createGlfwWindow(m_name, m_extents))
 {
 }
 
@@ -19,11 +63,11 @@ Window::~Window()
     glfwDestroyWindow(m_handle);
 }
 
-vk::SurfaceKHR Window::createSurface(vk::raii::Instance const &instance) const
+vk::raii::SurfaceKHR Window::createSurface(vk::raii::Instance const &instance) const
 {
     VkSurfaceKHR surface;
     glfwCreateWindowSurface(*instance, m_handle, nullptr, &surface);
-    return surface;
+    return vk::raii::SurfaceKHR(instance, surface);
 }
 
 bool Window::shouldClose() const
@@ -36,6 +80,24 @@ vk::Extent2D Window::framebufferSize() const
     int width, height;
     glfwGetFramebufferSize(m_handle, &width, &height);
     return vk::Extent2D(width, height);
+}
+
+vk::Offset2D Window::cursorPosition() const
+{
+    double x, y;
+    glfwGetCursorPos(m_handle, &x, &y);
+
+    return vk::Offset2D(int32_t(x), int32_t(y));
+}
+
+bool Window::isMouseButtonPressed(MouseButton button) const
+{
+    return glfwGetMouseButton(m_handle, toGlfwButton(button)) == GLFW_PRESS;
+}
+
+void Window::pollEvents()
+{
+    glfwPollEvents();
 }
 
 } // namespace spock

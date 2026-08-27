@@ -13,6 +13,7 @@
 #include <efsw/efsw.hpp>
 
 #include <iterator>
+#include <utility>
 #include <vector>
 
 struct ShaderLabVertex
@@ -55,11 +56,11 @@ class ShaderLabRenderer : public spock::Renderer
 public:
     ShaderLabRenderer(
         vk::raii::Instance const &instance,
-        vk::SurfaceKHR const &windowSurface,
+        vk::raii::SurfaceKHR windowSurface,
         vk::Extent2D const &extents)
         : spock::Renderer(
-            instance, 
-            windowSurface,
+            instance,
+            std::move(windowSurface),
             extents,
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0})
@@ -124,12 +125,12 @@ public:
         }
     }
 
-    void setMousePos(glm::dvec2 const &mousePos)
+    void setMousePos(vk::Offset2D const &mousePos)
     {
         m_mousePos = mousePos;
     }
 
-    void setMouseClickPos(glm::dvec2 const& mouseClickPos)
+    void setMouseClickPos(vk::Offset2D const& mouseClickPos)
     {
         m_mouseClickPos = mouseClickPos;
     }
@@ -174,8 +175,8 @@ private:
 
     spock::BufferWrapper m_vertexBuffer;
 
-    glm::dvec2 m_mousePos{0.0, 0.0};
-    glm::dvec2 m_mouseClickPos{0.0, 0.0};
+    vk::Offset2D m_mousePos{0, 0};
+    vk::Offset2D m_mouseClickPos{0, 0};
 };
 
 class ShaderLabApp : public spock::App
@@ -202,10 +203,10 @@ public:
 protected:
     std::unique_ptr<spock::Renderer> createRenderer(
         vk::raii::Instance const& instance,
-        vk::SurfaceKHR const& windowSurface,
+        vk::raii::SurfaceKHR windowSurface,
         vk::Extent2D const& extents) override
     {
-        return std::make_unique<ShaderLabRenderer>(instance, windowSurface, extents);
+        return std::make_unique<ShaderLabRenderer>(instance, std::move(windowSurface), extents);
     }
 
     void update() override
@@ -213,15 +214,13 @@ protected:
         ShaderLabRenderer* renderer = static_cast<ShaderLabRenderer*>(m_renderer.get());
 
         // Store the mouse position and click position for use in the next frame.
-        glm::dvec2 mousePos{0.0, 0.0};
-        glm::dvec2 mouseClickPos{0.0, 0.0};
+        vk::Offset2D mousePos{0, 0};
 
-        glfwGetCursorPos(m_window.handle(), &mousePos.x, &mousePos.y);
+        mousePos = m_window.cursorPosition();
         renderer->setMousePos(mousePos);
-        if (glfwGetMouseButton(m_window.handle(), GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+        if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
         {
-            glfwGetCursorPos(m_window.handle(), &mouseClickPos.x, &mouseClickPos.y);
-            renderer->setMouseClickPos(mouseClickPos);
+            renderer->setMouseClickPos(mousePos);
         }
 
         if (m_modifiedShaders)

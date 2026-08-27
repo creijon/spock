@@ -8,19 +8,20 @@
 
 #include <chrono>
 #include <iostream>
+#include <utility>
 
 namespace spock
 {
     Renderer::Renderer(
         vk::raii::Instance const &instance,
-        vk::SurfaceKHR const& windowSurface,
+        vk::raii::SurfaceKHR windowSurface,
         vk::Extent2D const &extents,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
         bool useDepthBuffer,
         uint32_t framesInFlight)
         : m_physicalDevice(vk::raii::PhysicalDevices(instance).front())
-        , m_windowSurface(instance, windowSurface)
+        , m_windowSurface(std::move(windowSurface))
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
