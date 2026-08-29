@@ -110,13 +110,18 @@ public:
 
         if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
         {
+            std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
+                {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
+                {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
+            };
+
             m_graphicsPipeline =
                 spock::createGraphicsPipeline(
                     m_device,
                     {m_device, vk::PipelineCacheCreateInfo()},
-                    m_vertexShader, nullptr,
-                    m_fragmentShader, nullptr,
+                    shaderStagesInfo,
                     SHADERLAB_VERTEX_STRIDE, SHADERLAB_VERTEX_FORMAT,
+                    vk::PrimitiveTopology::eTriangleList,
                     vk::FrontFace::eClockwise,
                     false,
                     m_pipelineLayout,

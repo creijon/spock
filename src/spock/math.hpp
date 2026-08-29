@@ -22,6 +22,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #if defined(_MSC_VER)
 #pragma warning(pop)
@@ -29,4 +30,62 @@
 
 namespace spock
 {
+    class Transform
+    {
+    public:
+        Transform() = default;
+        Transform(glm::quat const &orientation, glm::vec3 const &translation, float scale = 1.0f)
+            : orientation(orientation), translation(translation), scale(scale)
+        {
+        }
+
+        // Concatenates transforms: (lhs *= rhs) makes lhs apply rhs first, then lhs.
+        Transform &operator*=(Transform const &rhs)
+        {
+            translation = translation + orientation * (scale * rhs.translation);
+            orientation = orientation * rhs.orientation;
+            scale = scale * rhs.scale;
+            return *this;
+        }
+
+        // Concatenates transforms: (lhs * rhs) applies rhs first, then lhs.
+        Transform operator*(Transform const &rhs) const
+        {
+            Transform result = *this;
+            result *= rhs;
+            return result;
+        }
+
+        Transform inverse() const
+        {
+            glm::quat invOrientation = glm::conjugate(orientation);
+            float invScale = 1.0f / scale;
+            return Transform(
+                invOrientation,
+                -invScale * (invOrientation * translation),
+                invScale);
+        }
+
+        glm::mat4x4 toMatrix() const
+        {
+            glm::mat4x4 matrix = glm::mat4_cast(orientation);
+            matrix[0] *= scale;
+            matrix[1] *= scale;
+            matrix[2] *= scale;
+            matrix[3] = glm::vec4(translation, 1.0f);
+            return matrix;
+        }
+
+        static Transform interpolate(Transform const &a, Transform const &b, float t)
+        {
+            return Transform(
+                glm::slerp(a.orientation, b.orientation, t),
+                glm::mix(a.translation, b.translation, t),
+                glm::mix(a.scale, b.scale, t));
+        }
+
+        glm::quat orientation{1.0f, 0.0f, 0.0f, 0.0f};
+        glm::vec3 translation{0.0f};
+        float scale = 1.0f;
+    };
 } // namespace spock

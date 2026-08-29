@@ -71,9 +71,9 @@ static const CubeVertex CUBE_VERTEX_DATA[] =
 
 static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
 static constexpr uint32_t CUBE_VERTEX_COUNT{std::size(CUBE_VERTEX_DATA)};
-static constexpr uint32_t CUBE_VERTEX_STRIDE{sizeof(CUBE_VERTEX_DATA[0])};
+static constexpr uint32_t CUBE_VERTEX_STRIDE{sizeof(CubeVertex)};
 static const std::vector<std::pair<vk::Format, uint32_t>> CUBE_VERTEX_FORMAT{
-    {vk::Format::eR32G32B32A32Sfloat, 0},
+    {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, pos))},
     {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, rgba))}
 };
 
@@ -155,16 +155,16 @@ public:
     }
 
 protected:
-    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    void createGraphicsPipeline()
     {
         // Create the shaders.
         glslang::InitializeProcess();
-        vk::raii::ShaderModule vertexShaderModule{nullptr};
-        vk::raii::ShaderModule fragmentShaderModule{nullptr};
+        vk::raii::ShaderModule vertexShader{nullptr};
+        vk::raii::ShaderModule fragmentShader{nullptr};
         try
         {
-            vertexShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-            fragmentShaderModule = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+            vertexShader = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
+            fragmentShader = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
         }
         catch (...)
         {
@@ -173,14 +173,18 @@ protected:
         }
         glslang::FinalizeProcess();
 
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
+            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
+            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+        };
+
         // Finally create the graphics pipeline.
-        vk::raii::PipelineCache pipelineCache(m_device, vk::PipelineCacheCreateInfo());
         m_graphicsPipeline = spock::createGraphicsPipeline(
             m_device,
-            pipelineCache,
-            vertexShaderModule, nullptr,
-            fragmentShaderModule, nullptr,
+            { m_device, vk::PipelineCacheCreateInfo() },
+            shaderStagesInfo,
             CUBE_VERTEX_STRIDE, CUBE_VERTEX_FORMAT,
+            vk::PrimitiveTopology::eTriangleList,
             vk::FrontFace::eClockwise,
             true,
             m_pipelineLayout,

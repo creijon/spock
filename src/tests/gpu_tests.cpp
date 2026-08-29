@@ -317,13 +317,17 @@ void main() { outColor = vec4(1.0); }
     vk::raii::PipelineLayout pipelineLayout(fixture->device, vk::PipelineLayoutCreateInfo({}, {}, pushConstantRange));
     vk::raii::PipelineCache pipelineCache(fixture->device, vk::PipelineCacheCreateInfo());
 
+    std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo = {
+            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexModule, "main"},
+            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *fragmentModule, "main"}};
+
     vk::raii::Pipeline pipeline = spock::createGraphicsPipeline(
         fixture->device,
         pipelineCache,
-        vertexModule, nullptr,
-        fragmentModule, nullptr,
+        shaderStagesInfo,
         sizeof(float) * 4,
         {{vk::Format::eR32G32B32A32Sfloat, 0}},
+        vk::PrimitiveTopology::eTriangleList,
         vk::FrontFace::eClockwise,
         false,
         pipelineLayout,

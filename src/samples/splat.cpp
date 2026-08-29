@@ -14,64 +14,13 @@
 #include <utility>
 #include <vector>
 
-struct SplatVertex
-{
-    glm::vec4 pos;
-    glm::vec4 rgba;
-};
-
-static const SplatVertex SPLAT_VERTEX_DATA[] =
-{
-    // red face
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    // green face
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    // blue face
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    // yellow face
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    // magenta face
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    // cyan face
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}}
-};
-
-static constexpr uint32_t SPLAT_VERTEX_BUFFER_SIZE{sizeof(SPLAT_VERTEX_DATA)};
-static constexpr uint32_t SPLAT_VERTEX_COUNT{std::size(SPLAT_VERTEX_DATA)};
-static constexpr uint32_t SPLAT_VERTEX_STRIDE{sizeof(SPLAT_VERTEX_DATA[0])};
-static const std::vector<std::pair<vk::Format, uint32_t>> SPLAT_VERTEX_FORMAT{
-    {vk::Format::eR32G32B32A32Sfloat, 0},
-    {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(SplatVertex, rgba))}
+constexpr int SH_COUNT = 16;
+struct GaussianSplat {
+    glm::vec3 centroid{ 0.0f };
+    glm::vec3 scale{ 0.0f };
+    glm::quat orientation{ 1.0f, 0.0f, 0.0f, 0.0f };
+    float opacity{ 0.0f };
+    std::array<glm::vec3, SH_COUNT> sphericalHarmonics{};
 };
 
 static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/";
@@ -97,6 +46,8 @@ public:
             m_device,
             {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, *m_descriptorSetLayout}));
+
+        const uint32_t SPLAT_VERTEX_COUNT = 1;
 
         m_vertexBuffer = spock::BufferWrapper(
             m_physicalDevice,
@@ -129,7 +80,7 @@ public:
     }
 
 protected:
-    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    void createGraphicsPipeline()
     {
         // Create the shaders.
         glslang::InitializeProcess();
@@ -147,14 +98,34 @@ protected:
         }
         glslang::FinalizeProcess();
 
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
+            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
+            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+        };
+
+        std::vector<std::pair<vk::Format, uint32_t>> SPLAT_VERTEX_FORMAT{
+            {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, centroid))},
+            {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, scale))},
+            {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(GaussianSplat, orientation))},
+            {vk::Format::eR32Sfloat, uint32_t(offsetof(GaussianSplat, opacity))},
+        };
+
+        uint32_t offset = uint32_t(offsetof(GaussianSplat, sphericalHarmonics));
+
+        for (uint32_t i = 0; i < SH_COUNT; ++i)
+        {
+            SPLAT_VERTEX_FORMAT.push_back({ vk::Format::eR32G32B32Sfloat, offset });
+            offset += sizeof(glm::vec3);
+        }
+
         // Finally create the graphics pipeline.
-        vk::raii::PipelineCache pipelineCache(m_device, vk::PipelineCacheCreateInfo());
         m_graphicsPipeline = spock::createGraphicsPipeline(
             m_device,
-            pipelineCache,
-            vertexShader, nullptr,
-            fragmentShader, nullptr,
-            SPLAT_VERTEX_STRIDE, SPLAT_VERTEX_FORMAT,
+            { m_device, vk::PipelineCacheCreateInfo() },
+            shaderStagesInfo,
+            sizeof(GaussianSplat),
+            SPLAT_VERTEX_FORMAT,
+            vk::PrimitiveTopology::ePointList,
             vk::FrontFace::eClockwise,
             true,
             m_pipelineLayout,

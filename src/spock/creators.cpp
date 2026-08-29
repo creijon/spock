@@ -324,42 +324,38 @@ namespace spock
     vk::raii::Pipeline createGraphicsPipeline(
         vk::raii::Device const &device,
         vk::raii::PipelineCache const &pipelineCache,
-        vk::raii::ShaderModule const &vertexShaderModule,
-        vk::SpecializationInfo const *vertexShaderSpecializationInfo,
-        vk::raii::ShaderModule const &fragmentShaderModule,
-        vk::SpecializationInfo const *fragmentShaderSpecializationInfo,
+        std::vector<vk::PipelineShaderStageCreateInfo> const &shaderStagesInfo,
         uint32_t vertexStride,
-        std::vector<std::pair<vk::Format, uint32_t>> const &vertexInputAttributeFormatOffset,
+        std::vector<std::pair<vk::Format, uint32_t>> const &vertexAttributes,
+        vk::PrimitiveTopology primitiveTopology,
         vk::FrontFace frontFace,
         bool depthBuffered,
         vk::raii::PipelineLayout const &pipelineLayout,
         vk::raii::RenderPass const &renderPass)
     {
-        std::array<vk::PipelineShaderStageCreateInfo, 2> pipelineShaderStageCreateInfos{
-            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eVertex, vertexShaderModule, "main", vertexShaderSpecializationInfo),
-            vk::PipelineShaderStageCreateInfo({}, vk::ShaderStageFlagBits::eFragment, fragmentShaderModule, "main", fragmentShaderSpecializationInfo)};
-
-        std::vector<vk::VertexInputAttributeDescription> vertexInputAttributeDescriptions;
-        vk::PipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo;
-        vk::VertexInputBindingDescription vertexInputBindingDescription(0, vertexStride);
+        std::vector<vk::VertexInputAttributeDescription> vertexAttributeDescriptions;
+        vk::PipelineVertexInputStateCreateInfo vertexInfo;
+        vk::VertexInputBindingDescription vertexBindingDescription(0, vertexStride);
 
         if (0 < vertexStride)
         {
-            vertexInputAttributeDescriptions.reserve(vertexInputAttributeFormatOffset.size());
-            for (uint32_t i = 0; i < vertexInputAttributeFormatOffset.size(); i++)
+            vertexAttributeDescriptions.reserve(vertexAttributes.size());
+            for (uint32_t i = 0; i < vertexAttributes.size(); i++)
             {
-                vertexInputAttributeDescriptions.emplace_back(i, 0, vertexInputAttributeFormatOffset[i].first, vertexInputAttributeFormatOffset[i].second);
+                vertexAttributeDescriptions.emplace_back(i, 0, vertexAttributes[i].first, vertexAttributes[i].second);
             }
-            pipelineVertexInputStateCreateInfo.setVertexBindingDescriptions(vertexInputBindingDescription);
-            pipelineVertexInputStateCreateInfo.setVertexAttributeDescriptions(vertexInputAttributeDescriptions);
+            vertexInfo.setVertexBindingDescriptions(vertexBindingDescription);
+            vertexInfo.setVertexAttributeDescriptions(vertexAttributeDescriptions);
         }
 
-        vk::PipelineInputAssemblyStateCreateInfo pipelineInputAssemblyStateCreateInfo(vk::PipelineInputAssemblyStateCreateFlags(),
-                                                                                      vk::PrimitiveTopology::eTriangleList);
+        vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo(
+            vk::PipelineInputAssemblyStateCreateFlags(),
+            primitiveTopology);
 
-        vk::PipelineViewportStateCreateInfo pipelineViewportStateCreateInfo(vk::PipelineViewportStateCreateFlags(), 1, nullptr, 1, nullptr);
+        vk::PipelineViewportStateCreateInfo viewportInfo(
+            vk::PipelineViewportStateCreateFlags(), 1, nullptr, 1, nullptr);
 
-        vk::PipelineRasterizationStateCreateInfo pipelineRasterizationStateCreateInfo(
+        vk::PipelineRasterizationStateCreateInfo rasterizationInfo(
             vk::PipelineRasterizationStateCreateFlags(),
             false,
             false,
@@ -372,15 +368,23 @@ namespace spock
             0.0f,
             1.0f);
 
-        vk::PipelineMultisampleStateCreateInfo pipelineMultisampleStateCreateInfo({}, vk::SampleCountFlagBits::e1);
+        vk::PipelineMultisampleStateCreateInfo multisampleInfo({}, vk::SampleCountFlagBits::e1);
 
-        vk::StencilOpState stencilOpState(vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::CompareOp::eAlways);
-        vk::PipelineDepthStencilStateCreateInfo pipelineDepthStencilStateCreateInfo(
-            vk::PipelineDepthStencilStateCreateFlags(), depthBuffered, depthBuffered, vk::CompareOp::eLessOrEqual, false, false, stencilOpState, stencilOpState);
+        vk::StencilOpState stencilOpState(
+            vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::CompareOp::eAlways);
+        vk::PipelineDepthStencilStateCreateInfo depthStencilInfo(
+            vk::PipelineDepthStencilStateCreateFlags(),
+            depthBuffered,
+            depthBuffered,
+            vk::CompareOp::eLessOrEqual,
+            false,
+            false,
+            stencilOpState,
+            stencilOpState);
 
-        vk::ColorComponentFlags colorComponentFlags(vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB |
-                                                    vk::ColorComponentFlagBits::eA);
-        vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachmentState(
+        vk::ColorComponentFlags colorComponentFlags(
+            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+        vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachment(
             false,
             vk::BlendFactor::eZero,
             vk::BlendFactor::eZero,
@@ -389,28 +393,32 @@ namespace spock
             vk::BlendFactor::eZero,
             vk::BlendOp::eAdd,
             colorComponentFlags);
-        vk::PipelineColorBlendStateCreateInfo pipelineColorBlendStateCreateInfo(
-            vk::PipelineColorBlendStateCreateFlags(), false, vk::LogicOp::eNoOp, pipelineColorBlendAttachmentState, {{1.0f, 1.0f, 1.0f, 1.0f}});
+        vk::PipelineColorBlendStateCreateInfo colorBlendInfo(
+            vk::PipelineColorBlendStateCreateFlags(),
+            false,
+            vk::LogicOp::eNoOp,
+            pipelineColorBlendAttachment,
+            {{1.0f, 1.0f, 1.0f, 1.0f}});
 
         std::array<vk::DynamicState, 2> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-        vk::PipelineDynamicStateCreateInfo pipelineDynamicStateCreateInfo(vk::PipelineDynamicStateCreateFlags(), dynamicStates);
+        vk::PipelineDynamicStateCreateInfo dynamicStateInfo(vk::PipelineDynamicStateCreateFlags(), dynamicStates);
 
-        vk::GraphicsPipelineCreateInfo graphicsPipelineCreateInfo(
+        vk::GraphicsPipelineCreateInfo graphicsPipelineInfo(
             vk::PipelineCreateFlags(),
-            pipelineShaderStageCreateInfos,
-            &pipelineVertexInputStateCreateInfo,
-            &pipelineInputAssemblyStateCreateInfo,
+            shaderStagesInfo,
+            &vertexInfo,
+            &inputAssemblyInfo,
             nullptr,
-            &pipelineViewportStateCreateInfo,
-            &pipelineRasterizationStateCreateInfo,
-            &pipelineMultisampleStateCreateInfo,
-            &pipelineDepthStencilStateCreateInfo,
-            &pipelineColorBlendStateCreateInfo,
-            &pipelineDynamicStateCreateInfo,
+            &viewportInfo,
+            &rasterizationInfo,
+            &multisampleInfo,
+            &depthStencilInfo,
+            &colorBlendInfo,
+            &dynamicStateInfo,
             pipelineLayout,
             renderPass);
 
-        return vk::raii::Pipeline(device, pipelineCache, graphicsPipelineCreateInfo);
+        return vk::raii::Pipeline(device, pipelineCache, graphicsPipelineInfo);
     }
 
     // Upload buffer and texture bindings into the descriptor set. Buffer data is

@@ -14,6 +14,7 @@ list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 add_executable(spock_tests
     test_setup.cpp
     camera_tests.cpp
+    math_tests.cpp
     utils_tests.cpp
     helpers_tests.cpp
     shaders_tests.cpp
