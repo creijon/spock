@@ -123,9 +123,9 @@ public:
         createGraphicsPipeline();
     }
 
-    void setView(glm::vec3 const& view)
+    void update(glm::mat4x4 const &viewProjClipMatrix)
     {
-        m_view = view;
+        spock::copyToDevice(m_uniformBuffer.deviceMemory(), viewProjClipMatrix);
     }
 
 protected:
@@ -167,12 +167,6 @@ protected:
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
 
-        // Update the push constants.
-        static const glm::vec3 target(0.0f, 0.0f, 0.0f);
-        static const glm::vec3 up(0.0f, -1.0f, 0.0f);
-        glm::mat4x4 mvpcMatrix = spock::viewProjClipMatrix(m_extents, m_view, target, up);
-        spock::copyToDevice(m_uniformBuffer.deviceMemory(), mvpcMatrix);
-        
         // Draw all the scene, but for this example it's just a single cube.
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, {0});
         commandBuffer.draw(SPLAT_VERTEX_COUNT, 1, 0, 0);
@@ -188,7 +182,6 @@ private:
     spock::BufferWrapper m_vertexBuffer;
     spock::BufferWrapper m_uniformBuffer;
 
-    glm::vec3 m_view{};
 };
 
 class SplatApp : public spock::App
@@ -213,13 +206,24 @@ protected:
 
     void update() override
     {
-        using Seconds = std::chrono::duration<double>;
-        double angle = std::chrono::duration_cast<Seconds>(m_time).count();
-        
         SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
 
-        renderer->setView(glm::vec3(sinf(angle) * 5.0f, -3.0f, cosf(angle) * 5.0f));
+        vk::Offset2D cursor = m_window.cursorPosition();
+        if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
+        {
+            static const float sensitivity = 0.005f;
+            m_camera.update(glm::vec2(
+                static_cast<float>(m_previousCursor.x - cursor.x) * sensitivity,
+                static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
+        }
+        m_previousCursor = cursor;
+
+        renderer->update(m_camera.viewProjClipMatrix(m_window.extents()));
     }
+
+private:
+    vk::Offset2D m_previousCursor{};
+    spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f};
 };
 
 int main()

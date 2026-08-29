@@ -107,3 +107,39 @@ TEST_CASE("viewProjClipMatrix flips the projected Y axis for Vulkan clip space",
 
     CHECK(pointAboveCenter.y < 0.0f);
 }
+
+TEST_CASE("OrbitCamera starts behind its focus point", "[camera]")
+{
+    spock::OrbitCamera camera(glm::vec3(1.0f, 2.0f, 3.0f), 5.0f, 60.0f);
+    vk::Extent2D extent(100, 100);
+
+    glm::mat4x4 actual = camera.viewProjClipMatrix(extent);
+    glm::mat4x4 expected = expectedViewProjClip(
+        extent,
+        glm::vec3(1.0f, 2.0f, 8.0f),
+        glm::vec3(1.0f, 2.0f, 3.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f),
+        60.0f,
+        0.1f,
+        1000.0f);
+
+    CHECK(matAlmostEqual(actual, expected));
+}
+
+TEST_CASE("OrbitCamera mouse delta orbits around its focus point", "[camera]")
+{
+    spock::OrbitCamera camera(glm::vec3(0.0f), 5.0f);
+    camera.update(glm::vec2(glm::half_pi<float>(), 0.0f));
+
+    glm::mat4x4 actual = camera.viewProjClipMatrix(vk::Extent2D(100, 100));
+    glm::mat4x4 expected = expectedViewProjClip(
+        vk::Extent2D(100, 100),
+        glm::vec3(5.0f, 0.0f, 0.0f),
+        glm::vec3(0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f),
+        45.0f,
+        0.1f,
+        1000.0f);
+
+    CHECK(matAlmostEqual(actual, expected));
+}
