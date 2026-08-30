@@ -110,9 +110,10 @@ public:
 
         if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
         {
+            const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
             std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-                {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
-                {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
             };
 
             m_graphicsPipeline =

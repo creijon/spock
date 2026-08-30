@@ -173,9 +173,10 @@ protected:
         }
         glslang::FinalizeProcess();
 
+        const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
-            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
         };
 
         // Finally create the graphics pipeline.

@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+#include "splat_loader.h"
+
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
@@ -13,15 +15,6 @@
 #include <iterator>
 #include <utility>
 #include <vector>
-
-constexpr int SH_COUNT = 16;
-struct GaussianSplat {
-    glm::vec3 centroid{ 0.0f };
-    glm::vec3 scale{ 0.0f };
-    glm::quat orientation{ 1.0f, 0.0f, 0.0f, 0.0f };
-    float opacity{ 0.0f };
-    std::array<glm::vec3, SH_COUNT> sphericalHarmonics{};
-};
 
 static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/";
 static const std::string VERTEX_SHADER = "splat.vs";
@@ -47,15 +40,6 @@ public:
             {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, *m_descriptorSetLayout}));
 
-        const uint32_t SPLAT_VERTEX_COUNT = 1;
-
-        m_vertexBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
-            SPLAT_VERTEX_BUFFER_SIZE,
-            vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_vertexBuffer.deviceMemory(), SPLAT_VERTEX_DATA, SPLAT_VERTEX_COUNT);
-
         // Camera matrix.
         m_uniformBuffer = spock::BufferWrapper(
             m_physicalDevice,
@@ -79,6 +63,29 @@ public:
         spock::copyToDevice(m_uniformBuffer.deviceMemory(), viewProjClipMatrix);
     }
 
+    void loadSplat(const std::string& filename)
+    {
+        std::vector<GaussianSplat> splats;
+
+        try
+        {
+            splats = loadPly(filename);
+        }
+        catch (const std::exception& e)
+        {
+            throw std::runtime_error("Failed to load splat PLY file: " + std::string(e.what()));
+        }
+
+        m_splatCount = uint32_t(splats.size());
+
+        m_vertexBuffer = spock::BufferWrapper(
+            m_physicalDevice,
+            m_device,
+            m_splatCount * sizeof(GaussianSplat),
+            vk::BufferUsageFlagBits::eVertexBuffer);
+        spock::copyToDevice(m_vertexBuffer.deviceMemory(), splats.data(), m_splatCount);
+    }
+
 protected:
     void createGraphicsPipeline()
     {
@@ -98,23 +105,24 @@ protected:
         }
         glslang::FinalizeProcess();
 
+        const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
-            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
         };
 
-        std::vector<std::pair<vk::Format, uint32_t>> SPLAT_VERTEX_FORMAT{
+        std::vector<std::pair<vk::Format, uint32_t>> vertexFormat{
             {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, centroid))},
+            {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(GaussianSplat, rotation))},
             {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, scale))},
-            {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(GaussianSplat, orientation))},
             {vk::Format::eR32Sfloat, uint32_t(offsetof(GaussianSplat, opacity))},
         };
 
-        uint32_t offset = uint32_t(offsetof(GaussianSplat, sphericalHarmonics));
+        uint32_t offset = uint32_t(offsetof(GaussianSplat, harmonics));
 
         for (uint32_t i = 0; i < SH_COUNT; ++i)
         {
-            SPLAT_VERTEX_FORMAT.push_back({ vk::Format::eR32G32B32Sfloat, offset });
+            vertexFormat.push_back({ vk::Format::eR32G32B32Sfloat, offset });
             offset += sizeof(glm::vec3);
         }
 
@@ -124,7 +132,7 @@ protected:
             { m_device, vk::PipelineCacheCreateInfo() },
             shaderStagesInfo,
             sizeof(GaussianSplat),
-            SPLAT_VERTEX_FORMAT,
+            vertexFormat,
             vk::PrimitiveTopology::ePointList,
             vk::FrontFace::eClockwise,
             true,
@@ -140,7 +148,7 @@ protected:
 
         // Draw all the scene, but for this example it's just a single cube.
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, {0});
-        commandBuffer.draw(SPLAT_VERTEX_COUNT, 1, 0, 0);
+        commandBuffer.draw(m_splatCount, 1, 0, 0);
     }
 
 private:
@@ -153,6 +161,7 @@ private:
     spock::BufferWrapper m_vertexBuffer;
     spock::BufferWrapper m_uniformBuffer;
 
+    uint32_t m_splatCount = 0;
 };
 
 class SplatApp : public spock::App
@@ -178,6 +187,11 @@ protected:
     void update() override
     {
         SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
+
+        if (m_time == std::chrono::microseconds(0))
+        {
+            renderer->loadSplat(std::string(SPOCK_SOURCE_DIR) + "/samples/splats/tomatoes.ply");
+        }
 
         vk::Offset2D cursor = m_window.cursorPosition();
         if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
