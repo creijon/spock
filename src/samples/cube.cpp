@@ -10,6 +10,7 @@
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
+#include "spock/wrappers.hpp"
 
 #include "vulkan/vulkan.hpp"
 
@@ -71,12 +72,11 @@ static const CubeVertex CUBE_VERTEX_DATA[] =
 
 static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
 static constexpr uint32_t CUBE_VERTEX_COUNT{std::size(CUBE_VERTEX_DATA)};
-static constexpr uint32_t CUBE_VERTEX_STRIDE{sizeof(CubeVertex)};
-static const std::vector<std::pair<vk::Format, uint32_t>> CUBE_VERTEX_FORMAT{
-    {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, pos))},
-    {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, rgba))}
-};
-
+static const spock::VertexFormatWrapper CUBE_VERTEX_FORMAT(
+    {{vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, pos))},
+     {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, rgba))}},
+    sizeof(CubeVertex)
+);
 
 static const std::string VERTEX_SHADER_SOURCE = R"(
 #version 400
@@ -182,9 +182,8 @@ protected:
         // Finally create the graphics pipeline.
         m_graphicsPipeline = spock::createGraphicsPipeline(
             m_device,
-            { m_device, vk::PipelineCacheCreateInfo() },
             shaderStagesInfo,
-            CUBE_VERTEX_STRIDE, CUBE_VERTEX_FORMAT,
+            CUBE_VERTEX_FORMAT,
             vk::PrimitiveTopology::eTriangleList,
             vk::FrontFace::eClockwise,
             true,

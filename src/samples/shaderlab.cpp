@@ -7,6 +7,7 @@
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
+#include "spock/wrappers.hpp"
 
 #include "vulkan/vulkan.hpp"
 
@@ -16,26 +17,18 @@
 #include <utility>
 #include <vector>
 
-struct ShaderLabVertex
+static const glm::vec2 SHADERLAB_VERTEX_DATA[] =
 {
-    glm::vec4 pos;
-    glm::vec2 uv;
-};
-
-static const ShaderLabVertex SHADERLAB_VERTEX_DATA[] =
-{
-    {{-1.0f, -1.0f, 0.0f, 1.0f}, {0.0f, 0.0f}},
-    {{ 3.0f, -1.0f, 1.0f, 1.0f}, {2.0f, 0.0f}},
-    {{-1.0f,  3.0f, 1.0f, 1.0f}, {0.0f, 2.0f}},
+    {-1.0f, -1.0f},
+    { 3.0f, -1.0f},
+    {-1.0f,  3.0f},
 };
 
 static const uint32_t SHADERLAB_VERTEX_BUFFER_SIZE{sizeof(SHADERLAB_VERTEX_DATA)};
 static const uint32_t SHADERLAB_VERTEX_COUNT{std::size(SHADERLAB_VERTEX_DATA)};
-static const uint32_t SHADERLAB_VERTEX_STRIDE{sizeof(SHADERLAB_VERTEX_DATA[0])};
-static const std::vector<std::pair<vk::Format, uint32_t>> SHADERLAB_VERTEX_FORMAT{
-    {vk::Format::eR32G32B32A32Sfloat, 0},
-    {vk::Format::eR32G32Sfloat, uint32_t(offsetof(ShaderLabVertex, uv))}
-};
+static const spock::VertexFormatWrapper SHADERLAB_VERTEX_FORMAT({
+    {vk::Format::eR32G32Sfloat, 0}},
+    sizeof(glm::vec2));
 
 static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/shaderlab/";
 static const std::string VERTEX_SHADER = "default.vs";
@@ -119,9 +112,8 @@ public:
             m_graphicsPipeline =
                 spock::createGraphicsPipeline(
                     m_device,
-                    {m_device, vk::PipelineCacheCreateInfo()},
                     shaderStagesInfo,
-                    SHADERLAB_VERTEX_STRIDE, SHADERLAB_VERTEX_FORMAT,
+                    SHADERLAB_VERTEX_FORMAT,
                     vk::PrimitiveTopology::eTriangleList,
                     vk::FrontFace::eClockwise,
                     false,

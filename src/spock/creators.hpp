@@ -70,10 +70,8 @@ namespace spock
     // Create a graphics pipeline using the provided shaders, vertex inputs, and render pass.
     vk::raii::Pipeline createGraphicsPipeline(
         vk::raii::Device const &device,
-        vk::raii::PipelineCache const &pipelineCache,
         std::vector<vk::PipelineShaderStageCreateInfo> const& shaderStagesInfo,
-        uint32_t vertexStride,
-        std::vector<std::pair<vk::Format, uint32_t>> const &vertexAttributes,
+        VertexFormatWrapper const &vertexDescription,
         vk::PrimitiveTopology primitiveTopology,
         vk::FrontFace frontFace,
         bool depthBuffered,

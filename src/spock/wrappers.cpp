@@ -9,6 +9,53 @@
 
 namespace spock
 {
+
+    VertexFormatWrapper::VertexFormatWrapper(
+        Attributes const& attributes,
+        uint32_t stride)
+    {
+        addBinding(attributes, stride);
+    }
+
+    void VertexFormatWrapper::addBinding(
+        Attributes const& attributes,
+        uint32_t stride,
+        uint32_t index,
+        vk::VertexInputRate inputRate)
+    {
+        // Check to see whether there is already a binding on this slot.
+        auto it = std::find_if(m_bindings.begin(), m_bindings.end(),
+            [index](auto desc) { return desc.binding == index; });
+
+        uint32_t location = 0;
+
+        if (it == m_bindings.end())
+        {
+            // If the isn't a binding, create one.
+            m_bindings.emplace_back(index, stride, inputRate);
+        }
+        else
+        {
+            // If there is a binding, add the attributes after those already present.
+            for (auto& it = m_attributes.begin(); it != m_attributes.end(); ++it)
+            {
+                location = std::max(location, it->location) + 1;
+            }
+        }
+
+        // Populate the attributes.
+        for (auto& it = attributes.begin(); it != attributes.end(); ++it)
+        {
+            m_attributes.emplace_back(location, index, it->first, it->second);
+            ++location;
+        }
+    }
+
+    vk::PipelineVertexInputStateCreateInfo VertexFormatWrapper::createInfo() const
+    {
+        return { vk::PipelineVertexInputStateCreateFlags(), m_bindings, m_attributes };
+    }
+
     BufferWrapper::BufferWrapper(
         vk::raii::PhysicalDevice const &physicalDevice,
         vk::raii::Device const &device,

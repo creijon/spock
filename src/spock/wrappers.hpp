@@ -11,6 +11,27 @@
 
 namespace spock
 {
+    class VertexFormatWrapper
+    {
+    public:
+        using Attributes = std::vector<std::pair<vk::Format, uint32_t>>;
+
+        VertexFormatWrapper() = default;
+        VertexFormatWrapper(Attributes const& attributes, uint32_t stride);
+
+        void addBinding(
+            Attributes const& attributes,
+            uint32_t stride,
+            uint32_t index = 0,
+            vk::VertexInputRate inputRate = vk::VertexInputRate::eVertex);
+
+        vk::PipelineVertexInputStateCreateInfo createInfo() const;
+
+    private:
+        std::vector<vk::VertexInputBindingDescription> m_bindings;
+        std::vector<vk::VertexInputAttributeDescription> m_attributes;
+    };
+
     class BufferWrapper
     {
     public:

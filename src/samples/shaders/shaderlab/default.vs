@@ -13,14 +13,13 @@ layout(push_constant) uniform PushConstants {
   int iFrame;         // image/buffer Current frame
 } pc;
 
-layout (location = 0) in vec4 pos;
-layout (location = 1) in vec2 uv;
+layout (location = 0) in vec2 pos;
 
 layout (location = 0) out vec2 fragCoord;
 
 void main()
 {
   // The coordinates are in pixel units, ranging from 0.5 to resolution-0.5
-  fragCoord = uv * pc.iResolution.xy + 0.5;
-  gl_Position = pos;
+  fragCoord = (pos.xy + 1.0) * 0.5 * pc.iResolution.xy + 0.5;
+  gl_Position = vec4(pos, 1.0, 1.0);
 }

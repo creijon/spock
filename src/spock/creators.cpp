@@ -323,10 +323,8 @@ namespace spock
     // shaders, render pass, and optional depth testing.
     vk::raii::Pipeline createGraphicsPipeline(
         vk::raii::Device const &device,
-        vk::raii::PipelineCache const &pipelineCache,
         std::vector<vk::PipelineShaderStageCreateInfo> const &shaderStagesInfo,
-        uint32_t vertexStride,
-        std::vector<std::pair<vk::Format, uint32_t>> const &vertexAttributes,
+        VertexFormatWrapper const &vertexDescription,
         vk::PrimitiveTopology primitiveTopology,
         vk::FrontFace frontFace,
         bool depthBuffered,
@@ -334,19 +332,6 @@ namespace spock
         vk::raii::RenderPass const &renderPass)
     {
         std::vector<vk::VertexInputAttributeDescription> vertexAttributeDescriptions;
-        vk::PipelineVertexInputStateCreateInfo vertexInfo;
-        vk::VertexInputBindingDescription vertexBindingDescription(0, vertexStride);
-
-        if (0 < vertexStride)
-        {
-            vertexAttributeDescriptions.reserve(vertexAttributes.size());
-            for (uint32_t i = 0; i < vertexAttributes.size(); i++)
-            {
-                vertexAttributeDescriptions.emplace_back(i, 0, vertexAttributes[i].first, vertexAttributes[i].second);
-            }
-            vertexInfo.setVertexBindingDescriptions(vertexBindingDescription);
-            vertexInfo.setVertexAttributeDescriptions(vertexAttributeDescriptions);
-        }
 
         vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo(
             vk::PipelineInputAssemblyStateCreateFlags(),
@@ -406,7 +391,7 @@ namespace spock
         vk::GraphicsPipelineCreateInfo graphicsPipelineInfo(
             vk::PipelineCreateFlags(),
             shaderStagesInfo,
-            &vertexInfo,
+            &vertexDescription.createInfo(),
             &inputAssemblyInfo,
             nullptr,
             &viewportInfo,
@@ -418,7 +403,10 @@ namespace spock
             pipelineLayout,
             renderPass);
 
-        return vk::raii::Pipeline(device, pipelineCache, graphicsPipelineInfo);
+        // TODO: might need to pass in VkPipelineCacheCreateFlagBits at some stage.
+        vk::raii::PipelineCache cache(device, vk::PipelineCacheCreateInfo());
+
+        return vk::raii::Pipeline(device, cache, graphicsPipelineInfo);
     }
 
     // Upload buffer and texture bindings into the descriptor set. Buffer data is

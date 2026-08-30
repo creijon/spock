@@ -20,6 +20,14 @@ static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples
 static const std::string VERTEX_SHADER = "splat.vs";
 static const std::string FRAGMENT_SHADER = "splat.fs";
 
+static const spock::VertexDescription SPLAT_VERTEX_FORMAT(
+    { {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, centroid))},
+     {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(GaussianSplat, rotation))},
+     {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, scale))},
+     {vk::Format::eR32Sfloat, uint32_t(offsetof(GaussianSplat, opacity))} },
+    SPLAT_VERTEX_STRIDE
+);
+
 class SplatRenderer : public spock::Renderer
 {
 public:
@@ -110,21 +118,6 @@ protected:
             {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
             {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
         };
-
-        std::vector<std::pair<vk::Format, uint32_t>> vertexFormat{
-            {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, centroid))},
-            {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(GaussianSplat, rotation))},
-            {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(GaussianSplat, scale))},
-            {vk::Format::eR32Sfloat, uint32_t(offsetof(GaussianSplat, opacity))},
-        };
-
-        uint32_t offset = uint32_t(offsetof(GaussianSplat, harmonics));
-
-        for (uint32_t i = 0; i < SH_COUNT; ++i)
-        {
-            vertexFormat.push_back({ vk::Format::eR32G32B32Sfloat, offset });
-            offset += sizeof(glm::vec3);
-        }
 
         // Finally create the graphics pipeline.
         m_graphicsPipeline = spock::createGraphicsPipeline(
