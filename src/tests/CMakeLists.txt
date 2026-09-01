@@ -15,12 +15,17 @@ add_executable(spock_tests
     test_setup.cpp
     camera_tests.cpp
     math_tests.cpp
+    math_extended_tests.cpp
     utils_tests.cpp
+    utils_extended_tests.cpp
     helpers_tests.cpp
+    helpers_extended_tests.cpp
     shaders_tests.cpp
     gpu_fixture.hpp
     gpu_tests.cpp
     renderer_tests.cpp
+    wrappers_tests.cpp
+    creators_tests.cpp
 )
 
 target_link_libraries(spock_tests PRIVATE ${BINARY_NAME} Catch2::Catch2WithMain)
