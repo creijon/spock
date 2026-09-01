@@ -157,12 +157,14 @@ namespace spock
         m_presentQueue = vk::raii::Queue(device, queueIndices.present, 0);
 
         // Synchronisation primitives.
+        // imageSemaphores and frameFences are indexed by frame index (caller's in-flight index).
+        // renderSemaphores must be indexed by swapchain image index.
         m_imageSemaphores.reserve(framesInFlight);
-        m_renderSemaphores.reserve(framesInFlight);
         m_frameFences.reserve(framesInFlight);
+        m_renderSemaphores.reserve(m_images.size());
         m_imageSemaphores.clear();
-        m_renderSemaphores.clear();
         m_frameFences.clear();
+        m_renderSemaphores.clear();
 
         vk::FenceCreateInfo fenceInfo{vk::FenceCreateFlagBits::eSignaled};
         vk::SemaphoreCreateInfo semaphoreInfo{};
@@ -170,8 +172,13 @@ namespace spock
         for (size_t i = 0; i < framesInFlight; i++)
         {
             m_imageSemaphores.push_back(device.createSemaphore(semaphoreInfo));
-            m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
             m_frameFences.push_back(device.createFence(fenceInfo));
+        }
+
+        // Create semaphores for each swapchain image
+        for (size_t i = 0; i < m_images.size(); i++)
+        {
+            m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
         }
     }
 
@@ -193,9 +200,7 @@ namespace spock
             result = vk::Result::eErrorOutOfDateKHR;
         }
 
-        // Always reset: submitCommands() below is called unconditionally by
-        // the caller even on an invalid/stale frame, and vkQueueSubmit
-        // requires the fence it's given to be unsignaled.
+        // Reset the fence for use in submitCommands().
         device.resetFences({ m_frameFences[frameIndex] });
 
         return result;
@@ -208,7 +213,7 @@ namespace spock
             *m_imageSemaphores[frameIndex],
             waitStages,
             *commandBuffer,
-            *m_renderSemaphores[frameIndex]);
+            *m_renderSemaphores[m_imageIndex]);
 
         m_graphicsQueue.submit(submitInfo, m_frameFences[frameIndex]);
 
@@ -221,7 +226,7 @@ namespace spock
         {
             // Present the rendered image to the swapchain.
             vk::PresentInfoKHR presentInfo;
-            presentInfo.setWaitSemaphores(*m_renderSemaphores[frameIndex]);
+            presentInfo.setWaitSemaphores(*m_renderSemaphores[m_imageIndex]);
             presentInfo.setSwapchains(*m_swapchain);
             presentInfo.setPImageIndices(&m_imageIndex);
 

@@ -203,17 +203,13 @@ protected:
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
         static const glm::vec3 up(0.0f, -1.0f, 0.0f);
         PushConstants pushConstants{spock::viewProjClipMatrix(m_extents, m_view, target, up)};
-
-        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
-            sizeof(PushConstants),
-            reinterpret_cast<const uint8_t*>(&pushConstants)};
-
-        commandBuffer.pushConstants<uint8_t>(
+        commandBuffer.pushConstants(
             m_pipelineLayout,
             vk::ShaderStageFlagBits::eVertex,
             0,
-            dataSpan);
-        
+            sizeof(PushConstants),
+            reinterpret_cast<const uint8_t*>(&pushConstants));
+
         // Draw all the scene, but for this example it's just a single cube.
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, {0});
         commandBuffer.draw(CUBE_VERTEX_COUNT, 1, 0, 0);

@@ -103,9 +103,15 @@ namespace spock
 
     vk::Result Renderer::renderFrame(std::chrono::microseconds time)
     {
-        // Aquire the next frame in the swapchain and wait for the fence
-        // to ensure that the previous frame has finished rendering.
         vk::Result acquireResult = m_presenter->acquireFrame(m_device, m_inFlightIndex);
+
+        // If frame acquisition failed, skip rendering and present this frame.
+        // The semaphore was not signaled by the swapchain, so we cannot wait on it.
+        if (acquireResult != vk::Result::eSuccess)
+        {
+            m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
+            return acquireResult;
+        }
 
         // Begin the render pass.
         auto& commandBuffer = m_commandBuffers[m_inFlightIndex];

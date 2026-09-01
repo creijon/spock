@@ -22,8 +22,8 @@ layout(location = 4) in float inInstanceOpacity;
 
 void main()
 {
-//    gl_Position = ubo.mvp * vec4(inPos.x, inPos.y, 0.0, 1.0);
-
+    gl_Position = ubo.mvp * vec4(inPos.x, inPos.y, 0.0, 1.0);
+/*
     vec4 centerClip = ubo.proj * ubo.view * vec4(inInstanceCentroid, 1.0);
     vec3 ndc = centerClip.xyz / centerClip.w;
 
@@ -34,4 +34,5 @@ void main()
     vec2 ndcOffset = pixelOffset / (ubo.viewport * 0.5);
 
     gl_Position = vec4(ndc.xy + ndcOffset, ndc.z, 1.0);
+*/
 }
