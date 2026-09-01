@@ -10,9 +10,12 @@
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
+#include "spock/watcher.hpp"
 #include "spock/wrappers.hpp"
 
 #include "vulkan/vulkan.hpp"
+
+#include <efsw/efsw.hpp>
 
 #include <iterator>
 #include <utility>
@@ -174,9 +177,8 @@ protected:
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
-
-        // Draw all the scene, but for this example it's just a single cube.
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer(), m_instanceBuffer.buffer()}, {0, 0});
+
         commandBuffer.draw(m_splatCount, 1, 0, 0);
     }
 
@@ -212,20 +214,21 @@ protected:
         vk::raii::SurfaceKHR windowSurface,
         vk::Extent2D const& extents) override
     {
-        return std::make_unique<SplatRenderer>(instance, std::move(windowSurface), extents);
+        auto renderer = std::make_unique<SplatRenderer>(instance, std::move(windowSurface), extents);
+
+        loadScene(std::string(SPOCK_SOURCE_DIR) + "/samples/splats/tomatoes.ply");
+
+        renderer->createResources(m_scene);
+
+        m_camera.setFocus(m_sceneBounds);
+        m_camera.setDistance(m_sceneBounds.w);
+
+        return renderer;
     }
 
     void update() override
     {
         SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
-
-        if (m_time == std::chrono::microseconds(0))
-        {
-            loadScene(std::string(SPOCK_SOURCE_DIR) + "/samples/splats/tomatoes.ply");
-            m_camera.setFocus(m_sceneBounds);
-            m_camera.setDistance(m_sceneBounds.w);
-            renderer->createResources(m_scene);
-        }
 
         vk::Offset2D cursor = m_window.cursorPosition();
         if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
@@ -260,6 +263,22 @@ private:
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f};
+
+    struct Watcher : public spock::Watcher
+    {
+        Watcher() : spock::Watcher(SHADER_PATH)
+        {}
+
+        void fileModified(std::string const& filename) override
+        {
+            if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+            if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
+        }
+
+        vk::ShaderStageFlags modifiedShaders{ 0 };
+    };
+
+    Watcher m_watcher;
 };
 
 int main()

@@ -7,28 +7,33 @@
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
+#include "spock/watcher.hpp"
 #include "spock/wrappers.hpp"
 
 #include "vulkan/vulkan.hpp"
 
-#include <efsw/efsw.hpp>
-
+#include <functional>
 #include <iterator>
 #include <utility>
 #include <vector>
 
-static const glm::vec2 SHADERLAB_VERTEX_DATA[] =
+struct ShaderLabVertex
 {
-    {-1.0f, -1.0f},
-    { 3.0f, -1.0f},
-    {-1.0f,  3.0f},
+    glm::vec2 pos;
+};
+
+static const ShaderLabVertex SHADERLAB_VERTEX_DATA[] =
+{
+    {{-1.0f, -1.0f}},
+    {{ 3.0f, -1.0f}},
+    {{-1.0f,  3.0f}},
 };
 
 static const uint32_t SHADERLAB_VERTEX_BUFFER_SIZE{sizeof(SHADERLAB_VERTEX_DATA)};
 static const uint32_t SHADERLAB_VERTEX_COUNT{std::size(SHADERLAB_VERTEX_DATA)};
 static const spock::VertexFormatWrapper SHADERLAB_VERTEX_FORMAT({
     {vk::Format::eR32G32Sfloat, 0}},
-    sizeof(glm::vec2));
+    sizeof(ShaderLabVertex));
 
 static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/shaderlab/";
 static const std::string VERTEX_SHADER = "default.vs";
@@ -181,21 +186,8 @@ class ShaderLabApp : public spock::App
 {
 public:
     ShaderLabApp(uint32_t windowWidth, uint32_t windowHeight)
-        : spock::App(
-            "ShaderLab",
-            windowWidth,
-            windowHeight)
+        : spock::App("ShaderLab", windowWidth, windowHeight)
     {
-        m_fileWatcher = std::make_unique<efsw::FileWatcher>();
-        m_listener = std::make_unique<UpdateListener>(*this);
-
-        m_watchID = m_fileWatcher->addWatch(SHADER_PATH, m_listener.get());
-        m_fileWatcher->watch();
-    }
-
-    ~ShaderLabApp()
-    {
-        m_fileWatcher->removeWatch(m_watchID);
     }
 
 protected:
@@ -221,50 +213,31 @@ protected:
             renderer->setMouseClickPos(mousePos);
         }
 
-        if (m_modifiedShaders)
+        if (m_watcher.modifiedShaders)
         {
             // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
             renderer->waitIdle();
-            renderer->createGraphicsPipeline(m_modifiedShaders);
-            m_modifiedShaders = vk::ShaderStageFlags(0);
+            renderer->createGraphicsPipeline(m_watcher.modifiedShaders);
+            m_watcher.modifiedShaders = vk::ShaderStageFlags(0);
         }
     }
 
 private:
-    void shaderModified(std::string const& filename)
+    struct Watcher : public spock::Watcher
     {
-        if (filename == VERTEX_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
-        if (filename == FRAGMENT_SHADER) m_modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
-    }
-
-    class UpdateListener : public efsw::FileWatchListener
-    {
-    public:
-        UpdateListener(ShaderLabApp& app)
-            : m_app(app)
+        Watcher() : spock::Watcher(SHADER_PATH)
         {}
 
-        void handleFileAction(
-            efsw::WatchID watchid,
-            const std::string& dir,
-            const std::string& filename,
-            efsw::Action action,
-            const std::string& oldFilename) override
+        void fileModified(std::string const& filename) override
         {
-            if (action == efsw::Actions::Modified)
-            {
-                m_app.shaderModified(filename);
-            }
+            if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+            if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
         }
 
-    private:
-        ShaderLabApp& m_app;
+        vk::ShaderStageFlags modifiedShaders{ 0 };
     };
 
-    std::unique_ptr<efsw::FileWatcher> m_fileWatcher;
-    std::unique_ptr<UpdateListener> m_listener;
-    efsw::WatchID m_watchID;
-    vk::ShaderStageFlags m_modifiedShaders{0};
+    Watcher m_watcher;
 };
 
 int main()

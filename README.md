@@ -1,5 +1,11 @@
 # Spock
 
+## Design Goals
+
+- Allow rapid iteration: minimal setup for new projects, runtime shader compilation.
+- Cross platform: Linux, Windows and MacOS currently supporte (Android to follow).
+- Thin abstraction: use Vulkan_Hpp RAII to simplify Vulkan API but not hide it.
+
 Spock is a small C++ Vulkan framework and sample project built around Vulkan-Hpp RAII wrappers, GLFW, GLM, and glslang. The library is organized as a shared core library plus separate executable samples for different rendering demos.
 
 ## Build system
@@ -32,7 +38,7 @@ The reusable engine code lives under `src/spock` and includes:
 - `renderer.*` — base renderer class: owns the device, command pool, and render pass; subclass it to add your own pipeline and draw calls
 - `presenter.*` — swapchain and per-frame synchronization primitives, owned by a `Renderer`
 - `creators.*` — helper functions for creating Vulkan resources and pipeline objects
-- `wrappers.*` — RAII wrappers around Vulkan objects such as buffers, images and textures
+- `wrappers.*` — Wrappers around Vulkan objects such as vertex assembly, buffers, images and textures
 - `shaders.*` — shader compilation support
 - `helpers.*` — Vulkan-specific helper routines (queue selection, image layout transitions, memory allocation, surface/present-mode selection, the debug messenger)
 - `utils.*` — small non-Vulkan utilities (logging, checked casts)
@@ -43,9 +49,15 @@ The reusable engine code lives under `src/spock` and includes:
 
 The current demos are in `src/samples`:
 
-- `cube.cpp` — a colored cube, using push constants for the model-view-projection matrix
-- `splat.cpp` — the same cube, using a uniform buffer and descriptor set for the MVP matrix instead
-- `shaderlab.cpp` — a full-screen shader sandbox with live shader recompilation on save (ShaderToy-style)
+- `cube.cpp` — a colored cube, with everything in one source file; shaders, geometry, update and render.
+- `shaderlab.cpp` — a shader sandbox, demonstrating runtime shader editing (ShaderToy-style)
+- `splat.cpp` — basic gaussian splatting demonstrating instanced rendering
+
+To come:
+
+Compute
+Ray traci
+GLTF loading
 
 ## Tests
 
