@@ -19,6 +19,8 @@ namespace spock
 
         void update(glm::vec2 const &mouseDelta);
 
+        glm::mat4x4 view() const;
+        glm::mat4x4 projection(vk::Extent2D const &extent) const;
         glm::mat4x4 viewProjClipMatrix(vk::Extent2D const &extent) const;
 
         glm::vec3 const &focus() const
@@ -26,9 +28,19 @@ namespace spock
             return m_focus;
         }
 
+        void setFocus(glm::vec3 const& focus)
+        {
+            m_focus = focus;
+        }
+
         float distance() const
         {
             return m_distance;
+        }
+
+        void setDistance(float distance)
+        {
+            m_distance = distance;
         }
 
         float fov() const

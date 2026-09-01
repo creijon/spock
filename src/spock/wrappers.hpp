@@ -19,10 +19,10 @@ namespace spock
         VertexFormatWrapper() = default;
         VertexFormatWrapper(Attributes const& attributes, uint32_t stride);
 
-        void addBinding(
+        void addAttributes(
             Attributes const& attributes,
             uint32_t stride,
-            uint32_t index = 0,
+            uint32_t binding = 0,
             vk::VertexInputRate inputRate = vk::VertexInputRate::eVertex);
 
         vk::PipelineVertexInputStateCreateInfo createInfo() const;

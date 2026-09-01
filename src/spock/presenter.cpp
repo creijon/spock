@@ -147,7 +147,7 @@ namespace spock
         m_imageViews.reserve(m_images.size());
         m_imageViews.clear();
 
-        for (auto image : m_images)
+        for (const auto& image : m_images)
         {
             imageViewCreateInfo.image = image;
             m_imageViews.emplace_back(device, imageViewCreateInfo);

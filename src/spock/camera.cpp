@@ -29,22 +29,39 @@ namespace spock
         m_pitch = glm::clamp(m_pitch + mouseDelta.y, -glm::half_pi<float>() + 0.001f, glm::half_pi<float>() - 0.001f);
     }
 
-    glm::mat4x4 OrbitCamera::viewProjClipMatrix(vk::Extent2D const &extent) const
+    glm::mat4x4 OrbitCamera::view() const
     {
-        glm::vec3 direction(
+        glm::vec3 fwd{
             std::cos(m_pitch) * std::sin(m_yaw),
             std::sin(m_pitch),
-            std::cos(m_pitch) * std::cos(m_yaw));
-        glm::vec3 eye = m_focus + direction * m_distance;
+            std::cos(m_pitch) * std::cos(m_yaw)};
+        glm::vec3 eye = m_focus + fwd * m_distance;
+        glm::vec3 up{0.0f, 1.0f, 0.0f};
 
-        return spock::viewProjClipMatrix(
-            extent,
-            eye,
-            m_focus,
-            glm::vec3(0.0f, 1.0f, 0.0f),
-            m_fov,
-            m_zNear,
-            m_zFar);
+        return glm::lookAt(eye, m_focus, up);
+    }
+
+    glm::mat4x4 OrbitCamera::projection(vk::Extent2D const &extent) const
+    {
+        float aspect = extent.height > 0
+            ? static_cast<float>(extent.width) / static_cast<float>(extent.height)
+            : 1.0f;
+
+        return glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
+    }
+
+    glm::mat4x4 OrbitCamera::viewProjClipMatrix(vk::Extent2D const &extent) const
+    {
+        // clang-format off
+        // Vulkan clip space has inverted y and half z.
+        static constexpr glm::mat4x4 clip{
+            1.0f,  0.0f, 0.0f, 0.0f,
+            0.0f, -1.0f, 0.0f, 0.0f,
+            0.0f,  0.0f, 0.5f, 0.0f,
+            0.0f,  0.0f, 0.5f, 1.0f};
+        // clang-format on 
+
+        return clip * projection(extent) * view();
     }
 
     glm::mat4x4 viewProjClipMatrix(
@@ -62,9 +79,10 @@ namespace spock
 
         glm::mat4x4 view = glm::lookAt(eye, center, up);
         glm::mat4x4 projection = glm::perspective(glm::radians(fov), aspect, zNear, zFar);
+
         // clang-format off
         // Vulkan clip space has inverted y and half z.
-        glm::mat4x4 clip{
+        static constexpr glm::mat4x4 clip{
             1.0f,  0.0f, 0.0f, 0.0f,
             0.0f, -1.0f, 0.0f, 0.0f,
             0.0f,  0.0f, 0.5f, 0.0f,

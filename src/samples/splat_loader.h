@@ -14,12 +14,44 @@ constexpr int SH_COUNT = 16;
 constexpr int SH_CHANNEL_COUNT = 3;
 constexpr int SH_REST_FLOAT_COUNT = SH_COUNT * SH_CHANNEL_COUNT - 3;
 
-struct GaussianSplat {
-    glm::vec3 centroid{ 0.0f };
-    glm::quat rotation{ 1.0f, 0.0f, 0.0f, 0.0f };
-    glm::vec3 scale{ 0.0f };
-    float opacity{ 0.0f };
-    std::array<glm::vec3, SH_COUNT> harmonics{};
+struct SplatInstance
+{
+    glm::vec3 centroid;
+    glm::quat rotation;
+    glm::vec3 scale;
+    float opacity;
+};
+
+using SplatHarmonics = std::array<glm::vec3, SH_COUNT>;
+
+struct SplatScene
+{
+    std::vector<SplatInstance> instances;
+    std::vector<SplatHarmonics> harmonics;
+
+    glm::vec4 computeBounds() const
+    {
+        if (instances.empty()) {
+            return {};
+        }
+
+        glm::vec3 sum(0.0f);
+
+        for (const auto& instance : instances)
+        {
+            sum += instance.centroid;
+        }
+
+        glm::vec3 centre = sum / static_cast<float>(instances.size());
+
+        float maxDistance = 0.0f;
+        for (const auto& instance : instances)
+        {
+            maxDistance = std::max(maxDistance, glm::length(instance.centroid - centre));
+        }
+
+        return glm::vec4(centre, maxDistance);
+    }
 };
 
 namespace plyDetail {
@@ -109,7 +141,7 @@ inline const Property& requireProperty(const std::unordered_map<std::string, std
 
 } // namespace plyDetail
 
-inline std::vector<GaussianSplat> loadPly(const std::string& path) {
+inline void loadPly(const std::string& path, SplatScene& scene) {
     std::ifstream file(path, std::ios::binary);
     if (!file) {
         throw std::runtime_error("Could not open PLY file: " + path);
@@ -219,8 +251,10 @@ inline std::vector<GaussianSplat> loadPly(const std::string& path) {
             "PLY f_rest_* properties must contain the same count per RGB channel");
     }
 
-    std::vector<GaussianSplat> result;
-    result.reserve(vertexCount);
+    scene.instances.reserve(vertexCount);
+    scene.harmonics.reserve(vertexCount);
+    scene.instances.clear();
+    scene.harmonics.clear();
 
     std::vector<unsigned char> row(rowStride);
     for (std::size_t i = 0; i < vertexCount; ++i) {
@@ -229,7 +263,7 @@ inline std::vector<GaussianSplat> loadPly(const std::string& path) {
             throw std::runtime_error("PLY ended before all vertex records were read");
         }
 
-        GaussianSplat splat;
+        SplatInstance splat;
         splat.centroid = {
             plyDetail::readAsFloat(row, x),
             plyDetail::readAsFloat(row, y),
@@ -251,7 +285,9 @@ inline std::vector<GaussianSplat> loadPly(const std::string& path) {
 
         splat.opacity = plyDetail::readAsFloat(row, opacity);
 
-        splat.harmonics[0] = {
+        SplatHarmonics harmonics;
+
+        harmonics[0] = {
             plyDetail::readAsFloat(row, dcR),
             plyDetail::readAsFloat(row, dcG),
             plyDetail::readAsFloat(row, dcB)
@@ -260,15 +296,14 @@ inline std::vector<GaussianSplat> loadPly(const std::string& path) {
         size_t harmonicCount = shRest.size() / SH_CHANNEL_COUNT;
         for (size_t harmonic = 1; harmonic < harmonicCount; ++harmonic) {
             uint32_t offset = (harmonic - 1) * SH_CHANNEL_COUNT;
-            splat.harmonics[harmonic] = {
+            harmonics[harmonic] = {
                 plyDetail::readAsFloat(row, *shRest[offset + 0]),
                 plyDetail::readAsFloat(row, *shRest[offset + 1]),
                 plyDetail::readAsFloat(row, *shRest[offset + 2])
             };
         }
 
-        result.push_back(splat);
+        scene.instances.emplace_back(splat);
+        scene.harmonics.emplace_back(harmonics);
     }
-
-    return result;
 }

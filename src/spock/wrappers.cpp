@@ -14,39 +14,40 @@ namespace spock
         Attributes const& attributes,
         uint32_t stride)
     {
-        addBinding(attributes, stride);
+        m_bindings.emplace_back(0, stride);
+
+        uint32_t location = 0;
+        for (const auto& attr : attributes)
+        {
+            m_attributes.emplace_back(location, 0, attr.first, attr.second);
+            ++location;
+        }
     }
 
-    void VertexFormatWrapper::addBinding(
+    void VertexFormatWrapper::addAttributes(
         Attributes const& attributes,
         uint32_t stride,
-        uint32_t index,
+        uint32_t binding,
         vk::VertexInputRate inputRate)
     {
         // Check to see whether there is already a binding on this slot.
-        auto it = std::find_if(m_bindings.begin(), m_bindings.end(),
-            [index](auto desc) { return desc.binding == index; });
-
-        uint32_t location = 0;
+        auto it = std::find_if(
+            m_bindings.begin(), m_bindings.end(),
+            [binding](auto desc) { return desc.binding == binding; });
 
         if (it == m_bindings.end())
         {
             // If the isn't a binding, create one.
-            m_bindings.emplace_back(index, stride, inputRate);
-        }
-        else
-        {
-            // If there is a binding, add the attributes after those already present.
-            for (auto& it = m_attributes.begin(); it != m_attributes.end(); ++it)
-            {
-                location = std::max(location, it->location) + 1;
-            }
+            m_bindings.emplace_back(binding, stride, inputRate);
         }
 
+        // Attributes are sorted, so the last one will have the highest location.
+        uint32_t location = (!m_attributes.empty()) ? m_attributes.back().location + 1 : 0;
+
         // Populate the attributes.
-        for (auto& it = attributes.begin(); it != attributes.end(); ++it)
+        for (const auto& attr : attributes)
         {
-            m_attributes.emplace_back(location, index, it->first, it->second);
+            m_attributes.emplace_back(location, binding, attr.first, attr.second);
             ++location;
         }
     }
