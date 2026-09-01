@@ -26,6 +26,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/app.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/camera.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/creators.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/filewatcher.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presenter.hpp

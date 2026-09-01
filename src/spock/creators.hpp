@@ -71,9 +71,9 @@ namespace spock
     vk::raii::Pipeline createGraphicsPipeline(
         vk::raii::Device const &device,
         std::vector<vk::PipelineShaderStageCreateInfo> const& shaderStagesInfo,
-        VertexFormatWrapper const &vertexDescription,
+        VertexFormat const &vertexFormat,
         vk::PrimitiveTopology primitiveTopology,
-        vk::FrontFace frontFace,
+        vk::CullModeFlagBits cullMode,
         bool depthBuffered,
         vk::raii::PipelineLayout const &pipelineLayout,
         vk::raii::RenderPass const &renderPass);

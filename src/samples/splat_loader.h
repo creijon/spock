@@ -1,6 +1,7 @@
 #pragma once
 
 #include "spock/math.hpp"
+#include "spock/wrappers.hpp"
 
 #include <cstdint>
 #include <cstring>
@@ -16,6 +17,16 @@ constexpr int SH_REST_FLOAT_COUNT = SH_COUNT * SH_CHANNEL_COUNT - 3;
 
 struct SplatInstance
 {
+    static spock::VertexFormat::Attributes attributes()
+    {
+        return {
+            { vk::Format::eR32G32B32Sfloat, offsetof(SplatInstance, centroid) },
+            { vk::Format::eR32G32B32A32Sfloat, offsetof(SplatInstance, rotation) },
+            { vk::Format::eR32G32B32Sfloat, offsetof(SplatInstance, scale) },
+            { vk::Format::eR32Sfloat, offsetof(SplatInstance, opacity) }
+        };
+    }
+
     glm::vec3 centroid;
     glm::quat rotation;
     glm::vec3 scale;

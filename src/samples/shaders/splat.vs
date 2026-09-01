@@ -8,6 +8,7 @@ layout (std140, binding = 0) uniform buffer
   mat4 view;
   mat4 proj;
   vec2 viewport;
+  mat4 mvp;
 } ubo;
 
 // Per-vertex (binding 0, shared quad)
@@ -21,11 +22,13 @@ layout(location = 4) in float inInstanceOpacity;
 
 void main()
 {
+//    gl_Position = ubo.mvp * vec4(inPos.x, inPos.y, 0.0, 1.0);
+
     vec4 centerClip = ubo.proj * ubo.view * vec4(inInstanceCentroid, 1.0);
     vec3 ndc = centerClip.xyz / centerClip.w;
 
-    vec2 axis0 = vec2(1.0, 0.0);
-    vec2 axis1 = vec2(0.0, 1.0);
+    vec2 axis0 = vec2(10.0, 0.0);
+    vec2 axis1 = vec2(0.0, 10.0);
 
     vec2 pixelOffset = inPos.x * axis0 + inPos.y * axis1;
     vec2 ndcOffset = pixelOffset / (ubo.viewport * 0.5);

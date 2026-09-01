@@ -6,11 +6,11 @@
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
+#include "spock/filewatcher.hpp"
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
-#include "spock/watcher.hpp"
 #include "spock/wrappers.hpp"
 
 #include "vulkan/vulkan.hpp"
@@ -23,6 +23,11 @@
 
 struct QuadVertex
 {
+    static spock::VertexFormat::Attributes attributes()
+    {
+        return { {vk::Format::eR32G32Sfloat, 0} };
+    }
+
     glm::vec2 pos;
 };
 
@@ -31,6 +36,7 @@ struct CameraUniforms
     glm::mat4 view;
     glm::mat4 proj;
     glm::vec2 viewport;
+    glm::mat4 mvp;
 };
 
 static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/";
@@ -81,7 +87,8 @@ public:
         {
             camera.view(),
             camera.projection(viewExtents),
-            {viewExtents.width, viewExtents.height}
+            {viewExtents.width, viewExtents.height},
+            camera.viewProjClipMatrix(viewExtents)
         };
 
         spock::copyToDevice(m_uniformBuffer.deviceMemory(), ubo);
@@ -106,74 +113,75 @@ public:
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), quadCorners, 4);
 
         // Upload the splat instances into the vertex buffer.
-        uint32_t splatCount = uint32_t(scene.instances.size());
+        m_splatCount = uint32_t(scene.instances.size());
 
         m_instanceBuffer = spock::BufferWrapper(
             m_physicalDevice,
             m_device,
-            splatCount * sizeof(SplatInstance),
+            m_splatCount * sizeof(SplatInstance),
             vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_instanceBuffer.deviceMemory(), scene.instances.data(), splatCount);
+        spock::copyToDevice(m_instanceBuffer.deviceMemory(), scene.instances.data(), m_splatCount);
 
         // Upload the splat spherical harmonics into a uniform buffer.
     }
 
-protected:
-    void createGraphicsPipeline()
+    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         // Create the shaders.
         glslang::InitializeProcess();
-        vk::raii::ShaderModule vertexShader{nullptr};
-        vk::raii::ShaderModule fragmentShader{nullptr};
         try
         {
-            vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
-            fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+            if (shaderStages & vk::ShaderStageFlagBits::eVertex)
+            {
+                m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+            }
+
+            if (shaderStages & vk::ShaderStageFlagBits::eFragment)
+            {
+                m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+            }
         }
         catch (std::exception const& e)
         {
             spock::writeLog("Error compiling shaders: %s\n" + std::string(e.what()));
-            glslang::FinalizeProcess();
-            throw;
         }
         glslang::FinalizeProcess();
 
-        const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
-        std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
-        };
+        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
+        {
+            const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
+            std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
+            };
 
-        spock::VertexFormatWrapper vertexFormat;
+            spock::VertexFormat vertexFormat;
 
-        // The quad corners are the vertex data.
-        vertexFormat.addAttributes({ {vk::Format::eR32G32Sfloat, 0} }, sizeof(QuadVertex));
-        
-        // The gaussian data is the per-instance data.
-        vertexFormat.addAttributes({
-            {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(SplatInstance, centroid))},
-            {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(SplatInstance, rotation))},
-            {vk::Format::eR32G32B32Sfloat, uint32_t(offsetof(SplatInstance, scale))},
-            {vk::Format::eR32Sfloat, uint32_t(offsetof(SplatInstance, opacity))} },
-            sizeof(SplatInstance),
-            1,
-            vk::VertexInputRate::eInstance
-        );
+            // The quad corners are the vertex data.
+            vertexFormat.addAttributes<QuadVertex>();
 
-        // Finally create the graphics pipeline.
-        m_graphicsPipeline = spock::createGraphicsPipeline(
-            m_device,
-            shaderStagesInfo,
-            vertexFormat,
-            vk::PrimitiveTopology::eTriangleStrip,
-            vk::FrontFace::eClockwise,
-            true,
-            m_pipelineLayout,
-            m_renderPass);
+            // The gaussian data is the per-instance data.
+            vertexFormat.addAttributes<SplatInstance>(1, vk::VertexInputRate::eInstance);
+
+            m_graphicsPipeline = spock::createGraphicsPipeline(
+                m_device,
+                shaderStagesInfo,
+                vertexFormat,
+                vk::PrimitiveTopology::eTriangleStrip,
+                vk::CullModeFlagBits::eNone,
+                true,
+                m_pipelineLayout,
+                m_renderPass);
+            spock::writeLog("Shaders compiled successfully.\n");
+        }
     }
 
+protected:
     void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
     {
+        // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
+        if (m_graphicsPipeline == nullptr) return;
+
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
@@ -188,6 +196,8 @@ private:
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
+    vk::raii::ShaderModule m_vertexShader{ nullptr };
+    vk::raii::ShaderModule m_fragmentShader{ nullptr };
 
     spock::BufferWrapper m_vertexBuffer;
     spock::BufferWrapper m_instanceBuffer;
@@ -240,6 +250,15 @@ protected:
         }
         m_previousCursor = cursor;
 
+        if (m_watcher.modifiedShaders)
+        {
+            // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
+            renderer->waitIdle();
+            renderer->createGraphicsPipeline(m_watcher.modifiedShaders);
+            m_watcher.modifiedShaders = vk::ShaderStageFlags(0);
+        }
+
+
         renderer->update(m_camera, m_window.extents());
     }
 
@@ -264,9 +283,9 @@ private:
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f};
 
-    struct Watcher : public spock::Watcher
+    struct Watcher : public spock::FileWatcher
     {
-        Watcher() : spock::Watcher(SHADER_PATH)
+        Watcher() : spock::FileWatcher(SHADER_PATH)
         {}
 
         void fileModified(std::string const& filename) override

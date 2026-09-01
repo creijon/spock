@@ -10,7 +10,7 @@
 namespace spock
 {
 
-    VertexFormatWrapper::VertexFormatWrapper(
+    VertexFormat::VertexFormat(
         Attributes const& attributes,
         uint32_t stride)
     {
@@ -19,12 +19,12 @@ namespace spock
         uint32_t location = 0;
         for (const auto& attr : attributes)
         {
-            m_attributes.emplace_back(location, 0, attr.first, attr.second);
+            m_attributes.emplace_back(location, 0, attr.first, uint32_t(attr.second));
             ++location;
         }
     }
 
-    void VertexFormatWrapper::addAttributes(
+    void VertexFormat::addAttributes(
         Attributes const& attributes,
         uint32_t stride,
         uint32_t binding,
@@ -47,12 +47,12 @@ namespace spock
         // Populate the attributes.
         for (const auto& attr : attributes)
         {
-            m_attributes.emplace_back(location, binding, attr.first, attr.second);
+            m_attributes.emplace_back(location, binding, attr.first, uint32_t(attr.second));
             ++location;
         }
     }
 
-    vk::PipelineVertexInputStateCreateInfo VertexFormatWrapper::createInfo() const
+    vk::PipelineVertexInputStateCreateInfo VertexFormat::createInfo() const
     {
         return { vk::PipelineVertexInputStateCreateFlags(), m_bindings, m_attributes };
     }

@@ -3,11 +3,11 @@
 
 #include "spock/app.hpp"
 #include "spock/creators.hpp"
+#include "spock/filewatcher.hpp"
 #include "spock/renderer.hpp"
 #include "spock/math.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
-#include "spock/watcher.hpp"
 #include "spock/wrappers.hpp"
 
 #include "vulkan/vulkan.hpp"
@@ -19,6 +19,11 @@
 
 struct ShaderLabVertex
 {
+    static spock::VertexFormat::Attributes attributes()
+    {
+        return {{ vk::Format::eR32G32Sfloat, 0 }};
+    }
+
     glm::vec2 pos;
 };
 
@@ -31,9 +36,6 @@ static const ShaderLabVertex SHADERLAB_VERTEX_DATA[] =
 
 static const uint32_t SHADERLAB_VERTEX_BUFFER_SIZE{sizeof(SHADERLAB_VERTEX_DATA)};
 static const uint32_t SHADERLAB_VERTEX_COUNT{std::size(SHADERLAB_VERTEX_DATA)};
-static const spock::VertexFormatWrapper SHADERLAB_VERTEX_FORMAT({
-    {vk::Format::eR32G32Sfloat, 0}},
-    sizeof(ShaderLabVertex));
 
 static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/shaderlab/";
 static const std::string VERTEX_SHADER = "default.vs";
@@ -118,9 +120,9 @@ public:
                 spock::createGraphicsPipeline(
                     m_device,
                     shaderStagesInfo,
-                    SHADERLAB_VERTEX_FORMAT,
+                    spock::VertexFormatWrapper<ShaderLabVertex>(),
                     vk::PrimitiveTopology::eTriangleList,
-                    vk::FrontFace::eClockwise,
+                    vk::CullModeFlagBits::eNone,
                     false,
                     m_pipelineLayout,
                     m_renderPass);
@@ -223,9 +225,9 @@ protected:
     }
 
 private:
-    struct Watcher : public spock::Watcher
+    struct Watcher : public spock::FileWatcher
     {
-        Watcher() : spock::Watcher(SHADER_PATH)
+        Watcher() : spock::FileWatcher(SHADER_PATH)
         {}
 
         void fileModified(std::string const& filename) override

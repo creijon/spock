@@ -20,6 +20,14 @@
 
 struct CubeVertex
 {
+    static spock::VertexFormat::Attributes attributes()
+    {
+        return {
+            { vk::Format::eR32G32B32A32Sfloat, offsetof(CubeVertex, pos) },
+            { vk::Format::eR32G32B32A32Sfloat, offsetof(CubeVertex, rgba) }
+        };
+    }
+
     glm::vec4 pos;
     glm::vec4 rgba;
 };
@@ -72,11 +80,6 @@ static const CubeVertex CUBE_VERTEX_DATA[] =
 
 static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
 static constexpr uint32_t CUBE_VERTEX_COUNT{std::size(CUBE_VERTEX_DATA)};
-static const spock::VertexFormatWrapper CUBE_VERTEX_FORMAT(
-    {{vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, pos))},
-     {vk::Format::eR32G32B32A32Sfloat, uint32_t(offsetof(CubeVertex, rgba))}},
-    sizeof(CubeVertex)
-);
 
 static const std::string VERTEX_SHADER_SOURCE = R"(
 #version 400
@@ -183,9 +186,9 @@ protected:
         m_graphicsPipeline = spock::createGraphicsPipeline(
             m_device,
             shaderStagesInfo,
-            CUBE_VERTEX_FORMAT,
+            spock::VertexFormatWrapper<CubeVertex>(),
             vk::PrimitiveTopology::eTriangleList,
-            vk::FrontFace::eClockwise,
+            vk::CullModeFlagBits::eBack,
             true,
             m_pipelineLayout,
             m_renderPass);

@@ -11,13 +11,23 @@
 
 namespace spock
 {
-    class VertexFormatWrapper
+    class VertexFormat
     {
     public:
-        using Attributes = std::vector<std::pair<vk::Format, uint32_t>>;
+        using Attributes = std::vector<std::pair<vk::Format, size_t>>;
 
-        VertexFormatWrapper() = default;
-        VertexFormatWrapper(Attributes const& attributes, uint32_t stride);
+        VertexFormat() = default;
+        VertexFormat(Attributes const& attributes, uint32_t stride);
+
+        // VertexType must provide a static method attributes() returning
+        // (vk::Format, offset) pairs, where each offset is relative to VertexType.
+        template <typename VertexType>
+        void addAttributes(
+            uint32_t binding = 0,
+            vk::VertexInputRate inputRate = vk::VertexInputRate::eVertex)
+        {
+            addAttributes(VertexType::attributes(), sizeof(VertexType), binding, inputRate);
+        }
 
         void addAttributes(
             Attributes const& attributes,
@@ -30,6 +40,18 @@ namespace spock
     private:
         std::vector<vk::VertexInputBindingDescription> m_bindings;
         std::vector<vk::VertexInputAttributeDescription> m_attributes;
+    };
+
+    // VertexType must provide static method attributes() returning
+    // (vk::Format, offset) pairs, where each offset is relative to VertexType.
+    template <typename VertexType>
+    class VertexFormatWrapper : public VertexFormat
+    {
+    public:
+        VertexFormatWrapper()
+        {
+            addAttributes<VertexType>();
+        }
     };
 
     class BufferWrapper

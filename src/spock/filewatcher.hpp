@@ -5,21 +5,20 @@
 
 #include <efsw/efsw.hpp>
 
-#include <functional>
 #include <string>
 
 namespace spock
 {
-    class Watcher : public efsw::FileWatchListener
+    class FileWatcher : public efsw::FileWatchListener
     {
     public:
-        Watcher(std::string const& path)
+        FileWatcher(std::string const& path)
         {
             m_watchID = m_fileWatcher.addWatch(path, this);
             m_fileWatcher.watch();
         }
 
-        ~Watcher()
+        virtual ~FileWatcher()
         {
             m_fileWatcher.removeWatch(m_watchID);
         }
