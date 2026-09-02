@@ -166,12 +166,12 @@ public:
             m_graphicsPipeline = spock::createGraphicsPipeline(
                 m_device,
                 shaderStagesInfo,
+                m_pipelineLayout,
+                m_renderPass,
                 vertexFormat,
                 vk::PrimitiveTopology::eTriangleStrip,
                 vk::CullModeFlagBits::eNone,
-                true,
-                m_pipelineLayout,
-                m_renderPass);
+                false);
             spock::writeLog("Shaders compiled successfully.\n");
         }
     }

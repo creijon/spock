@@ -232,12 +232,11 @@ protected:
         m_graphicsPipeline = spock::createGraphicsPipeline(
             m_device,
             shaderStagesInfo,
+            m_pipelineLayout,
+            m_renderPass,
             vertexFormat,
             vk::PrimitiveTopology::eTriangleList,
-            vk::CullModeFlagBits::eNone,
-            true,
-            m_pipelineLayout,
-            m_renderPass);
+            vk::CullModeFlagBits::eNone);
     }
 
     void render(vk::raii::CommandBuffer const& commandBuffer, std::chrono::microseconds time) override

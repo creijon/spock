@@ -71,12 +71,12 @@ namespace spock
     vk::raii::Pipeline createGraphicsPipeline(
         vk::raii::Device const &device,
         std::vector<vk::PipelineShaderStageCreateInfo> const& shaderStagesInfo,
-        VertexFormat const &vertexFormat,
-        vk::PrimitiveTopology primitiveTopology,
-        vk::CullModeFlagBits cullMode,
-        bool depthBuffered,
         vk::raii::PipelineLayout const &pipelineLayout,
-        vk::raii::RenderPass const &renderPass);
+        vk::raii::RenderPass const &renderPass,
+        VertexFormat const &vertexFormat,
+        vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList,
+        vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eBack,
+        bool depthBuffered = true);
 
     // Typed alias for descriptor set update data. Each tuple contains the
     // descriptor type, buffer, buffer size, and optional buffer view.

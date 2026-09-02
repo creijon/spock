@@ -186,12 +186,9 @@ protected:
         m_graphicsPipeline = spock::createGraphicsPipeline(
             m_device,
             shaderStagesInfo,
-            spock::VertexFormatWrapper<CubeVertex>(),
-            vk::PrimitiveTopology::eTriangleList,
-            vk::CullModeFlagBits::eBack,
-            true,
             m_pipelineLayout,
-            m_renderPass);
+            m_renderPass,
+            spock::VertexFormatWrapper<CubeVertex>());
     }
 
     void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override

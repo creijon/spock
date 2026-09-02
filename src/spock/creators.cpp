@@ -324,12 +324,12 @@ namespace spock
     vk::raii::Pipeline createGraphicsPipeline(
         vk::raii::Device const &device,
         std::vector<vk::PipelineShaderStageCreateInfo> const &shaderStagesInfo,
+        vk::raii::PipelineLayout const &pipelineLayout,
+        vk::raii::RenderPass const &renderPass,
         VertexFormat const& vertexFormat,
         vk::PrimitiveTopology primitiveTopology,
         vk::CullModeFlagBits cullMode,
-        bool depthBuffered,
-        vk::raii::PipelineLayout const &pipelineLayout,
-        vk::raii::RenderPass const &renderPass)
+        bool depthBuffered)
     {
         std::vector<vk::VertexInputAttributeDescription> vertexAttributeDescriptions;
 
