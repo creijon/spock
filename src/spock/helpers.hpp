@@ -109,4 +109,22 @@ namespace spock
     {
         copyToDevice<T>(deviceMemory, &data, 1);
     }
+
+    template <typename T>
+    void pushConstants(
+        vk::raii::CommandBuffer const& commandBuffer,
+        vk::raii::PipelineLayout const& pipelineLayout,
+        vk::ShaderStageFlags stageFlags,
+        T const& constants)
+    {
+        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
+            sizeof(T),
+            reinterpret_cast<const uint8_t*>(&constants) };
+
+        commandBuffer.pushConstants<uint8_t>(
+            pipelineLayout,
+            stageFlags,
+            0,
+            dataSpan);
+    }
 }

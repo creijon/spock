@@ -35,7 +35,7 @@ namespace spock
             uint32_t binding = 0,
             vk::VertexInputRate inputRate = vk::VertexInputRate::eVertex);
 
-        vk::PipelineVertexInputStateCreateInfo createInfo() const;
+        explicit operator vk::PipelineVertexInputStateCreateInfo() const;
 
     private:
         std::vector<vk::VertexInputBindingDescription> m_bindings;

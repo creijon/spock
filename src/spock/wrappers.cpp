@@ -52,7 +52,7 @@ namespace spock
         }
     }
 
-    vk::PipelineVertexInputStateCreateInfo VertexFormat::createInfo() const
+    VertexFormat::operator vk::PipelineVertexInputStateCreateInfo() const
     {
         return { vk::PipelineVertexInputStateCreateFlags(), m_bindings, m_attributes };
     }

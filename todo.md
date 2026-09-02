@@ -47,3 +47,13 @@
 
 - Excellent: https://docs.vulkan.org/tutorial/latest/00_Introduction.html
 - Android: https://developer.android.com/ndk/guides/graphics/getting-started
+
+## Agentic
+
+Used this prompt:
+
+```
+Using the Cube app as an example, write a sample app that renders a grid of 16 x 16 instanced sprites.
+```
+
+It created the instancing example perfectly.
