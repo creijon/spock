@@ -320,16 +320,17 @@ void main() { outColor = vec4(1.0); }
             {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexModule, "main"},
             {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *fragmentModule, "main"}};
 
+    spock::VertexFormat vertexFormat{{vk::Format::eR32G32B32A32Sfloat, 0}, sizeof(float) * 4};
+
     vk::raii::Pipeline pipeline = spock::createGraphicsPipeline(
         fixture->device,
         shaderStagesInfo,
-        sizeof(float) * 4,
-        {{vk::Format::eR32G32B32A32Sfloat, 0}},
-        vk::PrimitiveTopology::eTriangleList,
-        vk::FrontFace::eClockwise,
-        false,
         pipelineLayout,
-        renderPass);
+        renderPass,
+        vertexFormat,
+        vk::PrimitiveTopology::eTriangleList,
+        vk::CullModeFlagBits::eNone,
+        false);
 
     CHECK(*pipeline != VK_NULL_HANDLE);
 }
