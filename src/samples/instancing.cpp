@@ -66,17 +66,18 @@ static constexpr uint32_t QUAD_VERTEX_COUNT{std::size(QUAD_VERTICES)};
 // Create a 16x16 grid of sprite instances
 static std::vector<SpriteInstance> createSpriteGrid()
 {
+    static const uint32_t dim = 16;
     std::vector<SpriteInstance> instances;
-    instances.reserve(16 * 16);
+    instances.reserve(dim * dim);
 
     const float gridSpacing = 1.5f;
-    const float gridSize = 16.0f * gridSpacing;
-    const float startX = -gridSize / 2.0f;
-    const float startY = -gridSize / 2.0f;
+    const float gridSize = dim * gridSpacing;
+    const float startX = -gridSize * 0.5f;
+    const float startY = -gridSize * 0.5f;
 
-    for (int y = 0; y < 16; ++y)
+    for (int y = 0; y < dim; ++y)
     {
-        for (int x = 0; x < 16; ++x)
+        for (int x = 0; x < dim; ++x)
         {
             glm::vec2 position{
                 startX + x * gridSpacing,
@@ -84,9 +85,9 @@ static std::vector<SpriteInstance> createSpriteGrid()
             };
 
             // Create a color gradient based on position
-            float r = (x / 15.0f);
-            float g = (y / 15.0f);
-            float b = 0.5f + 0.5f * std::sin((x + y) * 0.3f);
+            float r = (float(x) / (dim - 1));
+            float g = (float(y) / (dim - 1));
+            float b = 0.5f + 0.5f * std::sin((x + y) * 5.0f / (dim - 1));
             glm::vec4 color{r, g, b, 1.0f};
 
             instances.push_back({position, color});
