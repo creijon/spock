@@ -156,12 +156,16 @@ protected:
             glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
             std::chrono::duration_cast<Seconds>(time).count(),
             (int)m_frameCount};
-        commandBuffer.pushConstants(
-            m_pipelineLayout,
-            vk::ShaderStageFlagBits::eVertex,
-            0,
+
+        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
             sizeof(PushConstants),
-            reinterpret_cast<const uint8_t*>(&pushConstants));
+            reinterpret_cast<const uint8_t*>(&pushConstants)};
+
+        commandBuffer.pushConstants<uint8_t>(
+            m_pipelineLayout,
+            vk::ShaderStageFlagBits::eAllGraphics,
+            0,
+            dataSpan);
 
         // Draw the single triangle.
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, { 0 });

@@ -387,11 +387,12 @@ namespace spock
 
         std::array<vk::DynamicState, 2> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
         vk::PipelineDynamicStateCreateInfo dynamicStateInfo(vk::PipelineDynamicStateCreateFlags(), dynamicStates);
+        vk::PipelineVertexInputStateCreateInfo vertexInputInfo{vertexFormat.createInfo()};
 
         vk::GraphicsPipelineCreateInfo graphicsPipelineInfo(
             vk::PipelineCreateFlags(),
             shaderStagesInfo,
-            &vertexFormat.createInfo(),
+            &vertexInputInfo,
             &inputAssemblyInfo,
             nullptr,
             &viewportInfo,
