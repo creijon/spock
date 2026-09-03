@@ -10,6 +10,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/app.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/creators.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presenter.cpp
@@ -26,6 +27,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/app.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/camera.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/creators.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/filewatcher.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.hpp
