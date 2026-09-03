@@ -42,6 +42,14 @@ namespace spock
         std::vector<vk::VertexInputAttributeDescription> m_attributes;
     };
 
+    struct BindingData
+    {
+        uint32_t binding;
+        vk::DescriptorType type;
+        uint32_t count;
+        vk::ShaderStageFlags stageFlags;
+    };
+
     // VertexType must provide static method attributes() returning
     // (vk::Format, offset) pairs, where each offset is relative to VertexType.
     template <typename VertexType>

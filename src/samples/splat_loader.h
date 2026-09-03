@@ -44,6 +44,18 @@ struct SplatInstance
 //    glm::vec3 sh3[SH_DEGREE3_COUNT];
 };
 
+struct SplatIndex
+{
+    static spock::VertexFormat::Attributes attributes()
+    {
+        return {
+            { vk::Format::eR32Uint, 0 }
+        };
+    }
+
+    uint32_t index;
+};
+
 struct SplatScene
 {
     std::vector<SplatInstance> instances;

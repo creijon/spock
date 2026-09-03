@@ -55,9 +55,7 @@ static const SpriteVertex QUAD_VERTICES[] = {
     {{-0.5f, -0.5f}, {0.0f, 0.0f}},
     {{ 0.5f, -0.5f}, {1.0f, 0.0f}},
     {{-0.5f,  0.5f}, {0.0f, 1.0f}},
-    {{ 0.5f, -0.5f}, {1.0f, 0.0f}},
-    {{ 0.5f,  0.5f}, {1.0f, 1.0f}},
-    {{-0.5f,  0.5f}, {0.0f, 1.0f}},
+    {{ 0.5f,  0.5f}, {1.0f, 1.0f}}
 };
 
 static constexpr uint32_t QUAD_VERTEX_BUFFER_SIZE{sizeof(QUAD_VERTICES)};
@@ -255,7 +253,7 @@ protected:
             m_pipelineLayout,
             m_renderPass,
             vertexFormat,
-            vk::PrimitiveTopology::eTriangleList,
+            vk::PrimitiveTopology::eTriangleStrip,
             vk::CullModeFlagBits::eNone);
     }
 

@@ -282,15 +282,16 @@ namespace spock
     // element counts and shader stage visibility.
     vk::raii::DescriptorSetLayout createDescriptorSetLayout(
         vk::raii::Device const &device,
-        std::vector<std::tuple<vk::DescriptorType,
-                               uint32_t, vk::ShaderStageFlags>> const &bindingData,
+        std::vector<BindingData> const &bindingDatas,
         vk::DescriptorSetLayoutCreateFlags flags)
     {
-        std::vector<vk::DescriptorSetLayoutBinding> bindings(bindingData.size());
-        for (size_t i = 0; i < bindingData.size(); i++)
+        std::vector<vk::DescriptorSetLayoutBinding> bindings;
+
+        uint32_t index = 0;
+        for (const auto& bindingData : bindingDatas)
         {
-            bindings[i] = vk::DescriptorSetLayoutBinding(
-                checked_cast<uint32_t>(i), std::get<0>(bindingData[i]), std::get<1>(bindingData[i]), std::get<2>(bindingData[i]));
+            bindings.emplace_back(index, bindingData.type, bindingData.count, bindingData.stageFlags);
+            index++;
         }
         vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo(flags, bindings);
         return vk::raii::DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);

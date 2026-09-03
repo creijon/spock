@@ -40,4 +40,4 @@ set(HEADERS
     PARENT_SCOPE
 )
 
-set_target_properties(spock PROPERTIES FOLDER "libraries")
+set_target_properties(spock PROPERTIES FOLDER "libs")

@@ -13,4 +13,4 @@ target_include_directories(geo
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/deps/glm)
 
-set_target_properties(geo PROPERTIES FOLDER "libraries")
+set_target_properties(geo PROPERTIES FOLDER "libs")
