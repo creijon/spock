@@ -6,7 +6,7 @@
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
-#include "spock/filewatcher.hpp"
+#include "spock/file_watcher.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
