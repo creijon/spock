@@ -81,8 +81,6 @@ public:
             m_vertexBuffer.deviceMemory(),
             SHADERLAB_VERTEX_DATA,
             SHADERLAB_VERTEX_COUNT);
-
-        createGraphicsPipeline();
     }
 
     void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
@@ -227,7 +225,7 @@ private:
             if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
         }
 
-        vk::ShaderStageFlags modifiedShaders{ 0 };
+        vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
     };
 
     Watcher m_watcher;

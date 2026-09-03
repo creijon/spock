@@ -104,7 +104,9 @@ static const std::string VERTEX_SHADER_SOURCE = R"(
 #extension GL_ARB_shading_language_420pack : enable
 
 layout(push_constant) uniform PushConstants {
-    mat4 mvp;
+    mat4 view;
+    mat4 proj;
+    vec2 viewport;
 } pc;
 
 layout (location = 0) in vec2 inPos;
@@ -117,8 +119,16 @@ layout (location = 1) out vec2 outTexCoord;
 
 void main()
 {
+    mat4 clip = mat4(
+            1.0f,  0.0f, 0.0f, 0.0f,
+            0.0f, -1.0f, 0.0f, 0.0f,
+            0.0f,  0.0f, 0.5f, 0.0f,
+            0.0f,  0.0f, 0.5f, 1.0f
+    );
+    mat4 mvp = clip * pc.proj * pc.view;
+
     vec2 worldPos = inPos + inInstancePos;
-    gl_Position = pc.mvp * vec4(worldPos, 0.0, 1.0);
+    gl_Position = mvp * vec4(worldPos, 0.0, 1.0);
     outColor = inColor;
     outTexCoord = inTexCoord;
 }
@@ -148,7 +158,9 @@ void main()
 
 struct PushConstants
 {
-    glm::mat4x4 mvp;
+    glm::mat4 view;
+    glm::mat4 proj;
+    glm::vec2 viewport;
 };
 
 class InstancingRenderer : public spock::Renderer
@@ -194,9 +206,11 @@ public:
         createGraphicsPipeline();
     }
 
-    void setView(glm::vec3 const& view)
+    void update(spock::OrbitCamera const& camera, vk::Extent2D const& viewExtents)
     {
-        m_view = view;
+        m_cameraConstants.view = camera.view();
+        m_cameraConstants.proj = camera.projection(viewExtents);
+        m_cameraConstants.viewport = { viewExtents.width, viewExtents.height };
     }
 
 protected:
@@ -242,22 +256,13 @@ protected:
 
     void render(vk::raii::CommandBuffer const& commandBuffer, std::chrono::microseconds time) override
     {
-        // Bind the pipeline
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
-
-        // Update push constants
-        static const glm::vec3 target(0.0f, 0.0f, 0.0f);
-        static const glm::vec3 up(0.0f, 1.0f, 0.0f);
-        PushConstants pushConstants{spock::viewProjClipMatrix(m_extents, m_view, target, up)};
-        spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
-
-        // Bind vertex and instance buffers
+        spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, m_cameraConstants);
         commandBuffer.bindVertexBuffers(
             0,
             {m_vertexBuffer.buffer(), m_instanceBuffer.buffer()},
             {0, 0});
 
-        // Draw instanced: all vertices for each instance
         commandBuffer.draw(QUAD_VERTEX_COUNT, m_instanceCount, 0, 0);
     }
 
@@ -269,7 +274,7 @@ private:
     spock::BufferWrapper m_instanceBuffer;
     uint32_t m_instanceCount = 0;
 
-    glm::vec3 m_view{};
+    PushConstants m_cameraConstants{};
 };
 
 class InstancingApp : public spock::App
@@ -281,6 +286,7 @@ public:
             windowWidth,
             windowHeight)
     {
+        m_camera.setDistance(30.0f);
     }
 
 protected:
@@ -299,13 +305,20 @@ protected:
 
         InstancingRenderer* renderer = static_cast<InstancingRenderer*>(m_renderer.get());
 
-        // Orbit around the grid
-        float distance = 30.0f;
-        renderer->setView(glm::vec3(
-            std::sin(angle * 0.5f) * distance,
-            15.0f,
-            std::cos(angle * 0.5f) * distance));
+        vk::Offset2D cursor = m_window.cursorPosition();
+        if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
+        {
+            static const float sensitivity = 0.005f;
+            m_camera.update(glm::vec2(
+                static_cast<float>(m_previousCursor.x - cursor.x) * sensitivity,
+                static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
+        }
+        m_previousCursor = cursor;
+        renderer->update(m_camera, m_window.extents());
     }
+
+    vk::Offset2D m_previousCursor{};
+    spock::OrbitCamera m_camera{ glm::vec3(0.0f), 5.0f };
 };
 
 int main()

@@ -5,10 +5,10 @@
 
 layout (std140, binding = 0) uniform buffer
 {
+  mat4 mvp;
   mat4 view;
   mat4 proj;
   vec2 viewport;
-  mat4 mvp;
 } ubo;
 
 // Per-vertex (binding 0, shared quad)

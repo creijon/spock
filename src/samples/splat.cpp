@@ -30,12 +30,21 @@ struct QuadVertex
     glm::vec2 pos;
 };
 
+static constexpr QuadVertex quadCorners[]
+{
+    {{-1.0f, -1.0f}},
+    {{1.0f, -1.0f}},
+    {{-1.0f, 1.0f}},
+    {{1.0f, 1.0f}},
+};
+static constexpr uint32_t QUAD_VERTEX_COUNT = sizeof(quadCorners) / sizeof(QuadVertex);
+
 struct CameraUniforms
 {
+    glm::mat4 mvp;
     glm::mat4 view;
     glm::mat4 proj;
     glm::vec2 viewport;
-    glm::mat4 mvp;
 };
 
 static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/";
@@ -56,7 +65,6 @@ public:
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0})
     {
-        // Create the sample cube geometry and the uniform buffer for the model-view-projection matrix.
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             m_device,
             {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
@@ -74,20 +82,18 @@ public:
         spock::updateDescriptorSets(
             m_device,
             m_descriptorSet,
-            {{vk::DescriptorType::eUniformBuffer,m_uniformBuffer.buffer(), VK_WHOLE_SIZE, nullptr}},
+            {{vk::DescriptorType::eUniformBuffer, m_uniformBuffer.buffer(), VK_WHOLE_SIZE, nullptr}},
             {});
-
-        createGraphicsPipeline();
     }
 
     void update(spock::OrbitCamera const &camera, vk::Extent2D const &viewExtents)
     {
         CameraUniforms ubo
         {
+            camera.viewProjClipMatrix(viewExtents),
             camera.view(),
             camera.projection(viewExtents),
-            {viewExtents.width, viewExtents.height},
-            camera.viewProjClipMatrix(viewExtents)
+            {viewExtents.width, viewExtents.height}
         };
 
         spock::copyToDevice(m_uniformBuffer.deviceMemory(), ubo);
@@ -96,20 +102,13 @@ public:
     void createResources(SplatScene const &scene)
     {
         // Create a small vertex buffer for the quad rendering.
-        constexpr QuadVertex quadCorners[]
-        {
-            {{-1.0f, -1.0f}},
-            {{1.0f, -1.0f}},
-            {{-1.0f, 1.0f}},
-            {{1.0f, 1.0f}},
-        };
 
         m_vertexBuffer = spock::BufferWrapper(
             m_physicalDevice,
             m_device,
-            4 * sizeof(QuadVertex),
+            QUAD_VERTEX_COUNT * sizeof(QuadVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_vertexBuffer.deviceMemory(), quadCorners, 4);
+        spock::copyToDevice(m_vertexBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
 
         // Upload the splat instances into the vertex buffer.
         m_splatCount = uint32_t(scene.instances.size());
@@ -186,7 +185,7 @@ protected:
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
         commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer(), m_instanceBuffer.buffer()}, {0, 0});
 
-        commandBuffer.draw(m_splatCount, 1, 0, 0);
+        commandBuffer.draw(QUAD_VERTEX_COUNT, m_splatCount, 0, 0);
     }
 
 private:
@@ -198,9 +197,9 @@ private:
     vk::raii::ShaderModule m_vertexShader{ nullptr };
     vk::raii::ShaderModule m_fragmentShader{ nullptr };
 
+    spock::BufferWrapper m_uniformBuffer;
     spock::BufferWrapper m_vertexBuffer;
     spock::BufferWrapper m_instanceBuffer;
-    spock::BufferWrapper m_uniformBuffer;
 
     uint32_t m_splatCount = 0;
     glm::vec4 m_sceneBounds;
@@ -247,7 +246,6 @@ protected:
                 static_cast<float>(m_previousCursor.x - cursor.x) * sensitivity,
                 static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
         }
-        m_previousCursor = cursor;
 
         if (m_watcher.modifiedShaders)
         {
@@ -257,7 +255,7 @@ protected:
             m_watcher.modifiedShaders = vk::ShaderStageFlags(0);
         }
 
-
+        m_previousCursor = cursor;
         renderer->update(m_camera, m_window.extents());
     }
 
@@ -293,7 +291,7 @@ private:
             if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
         }
 
-        vk::ShaderStageFlags modifiedShaders{ 0 };
+        vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
     };
 
     Watcher m_watcher;
