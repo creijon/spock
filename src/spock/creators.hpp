@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "shaders.hpp"
 #include "wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
