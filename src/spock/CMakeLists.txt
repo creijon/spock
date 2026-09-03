@@ -40,4 +40,4 @@ set(HEADERS
     PARENT_SCOPE
 )
 
-#set_target_properties(${BINARY_NAME} PROPERTIES FOLDER "src/spock")
+set_target_properties(spock PROPERTIES FOLDER "libraries")

@@ -10,7 +10,7 @@
 TEST_CASE("VertexFormat default-constructs empty", "[wrappers]")
 {
     spock::VertexFormat format;
-    auto info = format.createInfo();
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     CHECK(info.vertexBindingDescriptionCount == 0);
     CHECK(info.vertexAttributeDescriptionCount == 0);
@@ -23,7 +23,7 @@ TEST_CASE("VertexFormat can be constructed with attributes and stride", "[wrappe
         {vk::Format::eR32G32Sfloat, 12}
     };
     spock::VertexFormat format(attrs, 20);
-    auto info = format.createInfo();
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     CHECK(info.vertexBindingDescriptionCount == 1);
     CHECK(info.vertexAttributeDescriptionCount == 2);
@@ -41,7 +41,7 @@ TEST_CASE("VertexFormat addAttributes adds new binding with correct stride and i
     };
     
     format.addAttributes(attrs, 12, 1, vk::VertexInputRate::eInstance);
-    auto info = format.createInfo();
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     CHECK(info.vertexBindingDescriptionCount == 1);
     CHECK(info.pVertexBindingDescriptions[0].binding == 1);
@@ -64,8 +64,8 @@ TEST_CASE("VertexFormat supports multiple bindings", "[wrappers]")
         {vk::Format::eR32G32B32A32Sfloat, 8}
     };
     format.addAttributes(instanceAttrs, 24, 1, vk::VertexInputRate::eInstance);
-    
-    auto info = format.createInfo();
+
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     CHECK(info.vertexBindingDescriptionCount == 2);
     CHECK(info.vertexAttributeDescriptionCount == 4);
@@ -102,8 +102,8 @@ TEST_CASE("VertexFormat assigns sequential locations to attributes", "[wrappers]
         {vk::Format::eR32Sfloat, 8}
     };
     format.addAttributes(secondAttrs, 12, 0);
-    
-    auto info = format.createInfo();
+
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     CHECK(info.vertexAttributeDescriptionCount == 3);
     
@@ -131,8 +131,8 @@ TEST_CASE("VertexFormat reuses existing binding when adding attributes to same b
         {vk::Format::eR32G32Sfloat, 12}
     };
     format.addAttributes(attrs2, 20, 0);  // Same binding and stride
-    
-    auto info = format.createInfo();
+
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     CHECK(info.vertexBindingDescriptionCount == 1);
     CHECK(info.vertexAttributeDescriptionCount == 2);
@@ -151,8 +151,8 @@ TEST_CASE("VertexFormat attributes use correct binding indices", "[wrappers]")
         {vk::Format::eR32G32Sfloat, 0}
     };
     format.addAttributes(secondBindingAttrs, 8, 1);
-    
-    auto info = format.createInfo();
+
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     auto attrs = std::vector<vk::VertexInputAttributeDescription>(
         info.pVertexAttributeDescriptions,
@@ -170,7 +170,7 @@ TEST_CASE("VertexFormat preserves attribute offsets", "[wrappers]")
         {vk::Format::eR32Sfloat, 20}
     };
     spock::VertexFormat format(attrs, 24);
-    auto info = format.createInfo();
+    vk::PipelineVertexInputStateCreateInfo info{ format };
 
     auto attrDescs = std::vector<vk::VertexInputAttributeDescription>(
         info.pVertexAttributeDescriptions,
@@ -198,7 +198,7 @@ TEST_CASE("VertexFormatWrapper constructs from vertex type with attributes", "[w
     };
 
     spock::VertexFormatWrapper<TestVertex> wrapper;
-    auto info = wrapper.createInfo();
+    vk::PipelineVertexInputStateCreateInfo info{ wrapper };
 
     CHECK(info.vertexAttributeDescriptionCount == 2);
     CHECK(info.vertexBindingDescriptionCount == 1);

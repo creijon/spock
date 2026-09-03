@@ -6,6 +6,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
 ENDIF ()
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/spock)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/geo)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/samples)
 
 if (SPOCK_BUILD_TESTS)
