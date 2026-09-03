@@ -17,29 +17,22 @@
 #include <efsw/efsw.hpp>
 
 #include <iterator>
+#include <numeric>
 #include <utility>
 #include <vector>
 
-struct QuadVertex
+using QUAD_VERTEX = glm::vec2;
+
+static constexpr QUAD_VERTEX quadCorners[]
 {
-    static spock::VertexFormat::Attributes attributes()
-    {
-        return { {vk::Format::eR32G32Sfloat, 0} };
-    }
-
-    glm::vec2 pos;
+    {-1.0f, -1.0f},
+    {1.0f, -1.0f},
+    {-1.0f, 1.0f},
+    {1.0f, 1.0f},
 };
+static constexpr uint32_t QUAD_VERTEX_COUNT = std::size(quadCorners);
 
-static constexpr QuadVertex quadCorners[]
-{
-    {{-1.0f, -1.0f}},
-    {{1.0f, -1.0f}},
-    {{-1.0f, 1.0f}},
-    {{1.0f, 1.0f}},
-};
-static constexpr uint32_t QUAD_VERTEX_COUNT = sizeof(quadCorners) / sizeof(QuadVertex);
-
-struct CameraUniforms
+struct PushConstants
 {
     glm::mat4 view;
     glm::mat4 proj;
@@ -64,63 +57,68 @@ public:
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0})
     {
-        spock::BindingData frameBinding{0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex};
-
-        m_descriptorSetLayout = spock::createDescriptorSetLayout(
-            m_device,
-            {frameBinding});
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, *m_descriptorSetLayout}));
-
-        // Camera uniforms.
-        m_frameUniforms = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
-            sizeof(CameraUniforms),
-            vk::BufferUsageFlagBits::eUniformBuffer);
-
-        m_descriptorPool = spock::createDescriptorPool(m_device, {{vk::DescriptorType::eUniformBuffer, 1}});
-        m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, {m_descriptorPool, *m_descriptorSetLayout}).front());
-        spock::updateDescriptorSets(
-            m_device,
-            m_descriptorSet,
-            {{vk::DescriptorType::eUniformBuffer, m_frameUniforms.buffer(), VK_WHOLE_SIZE, nullptr}},
-            {});
     }
 
     void update(spock::OrbitCamera const &camera, vk::Extent2D const &viewExtents)
     {
-        CameraUniforms ubo
-        {
-            camera.view(),
-            camera.projection(viewExtents),
-            {viewExtents.width, viewExtents.height}
-        };
-
-        spock::copyToDevice(m_frameUniforms.deviceMemory(), ubo);
+        m_frameConstants.view = camera.view();
+        m_frameConstants.proj = camera.projection(viewExtents);
+        m_frameConstants.viewport = { viewExtents.width, viewExtents.height };
     }
 
     void createResources(SplatScene const &scene)
     {
-        // Create a small vertex buffer for the quad rendering.
+        m_splatCount = uint32_t(scene.instances.size());
 
+        spock::BindingData splatBinding{ 0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eVertex };
+        vk::PushConstantRange pushConstantRange{
+            vk::ShaderStageFlagBits::eVertex,
+            0,
+            sizeof(PushConstants) };
+
+        m_descriptorSetLayout = spock::createDescriptorSetLayout(
+            m_device,
+            { splatBinding });
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, *m_descriptorSetLayout, pushConstantRange }));
+
+        // Upload the splat data into a storage buffer.
+        m_splatStorage = spock::BufferWrapper(
+            m_physicalDevice,
+            m_device,
+            sizeof(SplatInstance) * m_splatCount,
+            vk::BufferUsageFlagBits::eStorageBuffer);
+        spock::copyToDevice(m_splatStorage.deviceMemory(), scene.instances.data(), m_splatCount);
+
+        m_descriptorPool = spock::createDescriptorPool(
+            m_device,
+            { {vk::DescriptorType::eStorageBuffer, 1} });
+        m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front());
+        spock::updateDescriptorSets(
+            m_device,
+            m_descriptorSet,
+            {
+                {vk::DescriptorType::eStorageBuffer, m_splatStorage.buffer(), VK_WHOLE_SIZE, nullptr}
+            },
+            {});
+
+        // Create a small vertex buffer for the quad rendering.
         m_quadBuffer = spock::BufferWrapper(
             m_physicalDevice,
             m_device,
-            QUAD_VERTEX_COUNT * sizeof(QuadVertex),
+            QUAD_VERTEX_COUNT * sizeof(QUAD_VERTEX),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
 
-        // Upload the splat instances into the vertex buffer.
-        m_splatCount = uint32_t(scene.instances.size());
+        // Create a indirection buffer, which will be used to sort the splats back-to-front.
+        std::vector<uint32_t> indices(m_splatCount);
+        std::iota(indices.begin(), indices.end(), 0);
 
         m_splatIndexes = spock::BufferWrapper(
             m_physicalDevice,
             m_device,
-            m_splatCount * sizeof(SplatInstance),
+            m_splatCount * sizeof(uint32_t),
             vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_splatIndexes.deviceMemory(), scene.instances.data(), m_splatCount);
-
-        // Upload the splat spherical harmonics into a uniform buffer.
+        spock::copyToDevice(m_splatIndexes.deviceMemory(), indices.data(), m_splatCount);
     }
 
     void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
@@ -156,10 +154,8 @@ public:
             spock::VertexFormat vertexFormat;
 
             // The quad corners are the vertex data.
-            vertexFormat.addAttributes<QuadVertex>();
-
-            // The gaussian data is the per-instance data.
-            vertexFormat.addAttributes<SplatInstance>(1, vk::VertexInputRate::eInstance);
+            vertexFormat.addAttributes({ {vk::Format::eR32G32Sfloat, 0} }, sizeof(QUAD_VERTEX));
+            vertexFormat.addAttributes({ {vk::Format::eR32Uint, 0} }, sizeof(uint32_t), 1, vk::VertexInputRate::eInstance);
 
             m_graphicsPipeline = spock::createGraphicsPipeline(
                 m_device,
@@ -183,6 +179,7 @@ protected:
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
+        spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, m_frameConstants);
         commandBuffer.bindVertexBuffers(0, {m_quadBuffer.buffer(), m_splatIndexes.buffer()}, {0, 0});
 
         commandBuffer.draw(QUAD_VERTEX_COUNT, m_splatCount, 0, 0);
@@ -197,14 +194,13 @@ private:
     vk::raii::ShaderModule m_vertexShader{ nullptr };
     vk::raii::ShaderModule m_fragmentShader{ nullptr };
 
-    spock::BufferWrapper m_frameUniforms; // Might not be needed if we can keep them in a push constant.
-    spock::BufferWrapper m_splatUniforms; // The splat data.
-
+    spock::BufferWrapper m_splatStorage; // The splat data.
     spock::BufferWrapper m_splatIndexes; // The ordering of the splats for rendering.
     spock::BufferWrapper m_quadBuffer; // The quad that is instanced.
 
     uint32_t m_splatCount = 0;
     glm::vec4 m_sceneBounds;
+    PushConstants m_frameConstants{};
 };
 
 class SplatApp : public spock::App

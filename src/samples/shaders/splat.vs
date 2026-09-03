@@ -1,24 +1,33 @@
-#version 400
+#version 460
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (std140, binding = 0) uniform buffer
+layout(push_constant) uniform PushConstants {
+    mat4 view;
+    mat4 proj;
+    vec2 viewport;
+} pc;
+
+struct InstanceData
 {
-  mat4 view;
-  mat4 proj;
-  vec2 viewport;
-} ubo;
+    vec3 position;
+    vec4 rotation;
+    vec3 scale;
+    float opacity;
+    vec3 sh0;
+};
+
+layout (std430, binding = 0) readonly buffer InstanceBuffer
+{
+  InstanceData instances[];
+} instanceBuffer;
 
 // Per-vertex (binding 0, shared quad)
-layout(location = 0) in vec2 inPos;
+layout(location = 0) in vec2 inVertPos;
 
 // Per-instance (binding 1, one entry per sprite)
-layout(location = 1) in vec3 inInstancePosition;
-layout(location = 2) in vec4 inInstanceRotation;
-layout(location = 3) in vec3 inInstanceScale;
-layout(location = 4) in float inInstanceOpacity;
-layout(location = 5) in vec3 inSH0;
+layout(location = 1) in uint inInstance;
 
 layout (location = 0) out vec4 outFragColor;
 
@@ -39,21 +48,20 @@ const float SH_C3_6 = -0.5900435899266435;
 
 void main()
 {
-    vec4 centerClip = ubo.proj * ubo.view * vec4(inInstancePosition, 1.0);
+    InstanceData i = instanceBuffer.instances[inInstance];
+  
+    vec4 centerClip = pc.proj * pc.view * vec4(i.position, 1.0);
     vec3 ndc = centerClip.xyz / centerClip.w;
 
     vec2 axis0 = vec2(1.0, 0.0);
     vec2 axis1 = vec2(0.0, 1.0);
 
-    vec2 pixelOffset = inPos.x * axis0 + inPos.y * axis1;
-    vec2 ndcOffset = pixelOffset / (ubo.viewport * 0.5);
+    vec2 pixelOffset = inVertPos.x * axis0 + inVertPos.y * axis1;
+    vec2 ndcOffset = pixelOffset / (pc.viewport * 0.5);
 
-    vec3 view = normalize(inInstancePosition - ubo.view[3].xyz);
+    vec3 rgb = SH_C0 * i.sh0;
 
-    vec3 rgb = SH_C0 * inSH0;
-    float opacity = 1.0 / (1.0 + exp(-inInstanceOpacity));
-
-    outFragColor = vec4(rgb, opacity);
+    outFragColor = vec4(rgb, 1.0 / (1.0 + exp(-i.opacity)));
 
     gl_Position = vec4(ndc.xy + ndcOffset, ndc.z, 1.0);
 }
