@@ -49,6 +49,14 @@ namespace spock
         uint32_t count;
         vk::ShaderStageFlags stageFlags;
     };
+    
+    struct BufferUpdateData
+    {
+        vk::DescriptorType type;
+        vk::raii::Buffer const& buffer;
+        vk::DeviceSize size;
+        vk::raii::BufferView const* bufferView;
+    };
 
     // VertexType must provide static method attributes() returning
     // (vk::Format, offset) pairs, where each offset is relative to VertexType.

@@ -416,7 +416,7 @@ namespace spock
     void updateDescriptorSets(
         vk::raii::Device const &device,
         vk::raii::DescriptorSet const &descriptorSet,
-        DescriptorSetUpdateData const &bufferData,
+        std::vector<BufferUpdateData> const& bufferData,
         std::vector<TextureWrapper> const &textureData,
         uint32_t bindingOffset)
     {
@@ -428,21 +428,21 @@ namespace spock
         uint32_t dstBinding = bindingOffset;
         for (auto const &bd : bufferData)
         {
-            bufferInfos.emplace_back(std::get<1>(bd), 0, std::get<2>(bd));
-            vk::BufferView bufferView;
-            if (std::get<3>(bd))
+            bufferInfos.emplace_back(bd.buffer, 0, bd.size);
+            vk::BufferView bufferView{nullptr};
+            if (bd.bufferView)
             {
-                bufferView = *std::get<3>(bd);
+                bufferView = *bd.bufferView;
             }
             writeDescriptorSets.emplace_back(
                 descriptorSet, 
                 dstBinding++,
                 0,
                 1,
-                std::get<0>(bd),
+                bd.type,
                 nullptr,
                 &bufferInfos.back(),
-                std::get<3>(bd) ? &bufferView : nullptr);
+                bd.bufferView ? &bufferView : nullptr);
         }
 
         std::vector<vk::DescriptorImageInfo> imageInfos;

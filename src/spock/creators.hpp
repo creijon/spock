@@ -77,20 +77,11 @@ namespace spock
         vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eBack,
         bool depthBuffered = true);
 
-    // Typed alias for descriptor set update data. Each tuple contains the
-    // descriptor type, buffer, buffer size, and optional buffer view.
-    typedef std::vector<
-        std::tuple<vk::DescriptorType,
-                   vk::raii::Buffer const &,
-                   vk::DeviceSize,
-                   vk::raii::BufferView const *>>
-        DescriptorSetUpdateData;
-
     // Update a descriptor set with uniform buffer bindings and optional textures.
     void updateDescriptorSets(
         vk::raii::Device const &device,
         vk::raii::DescriptorSet const &descriptorSet,
-        DescriptorSetUpdateData const &bufferData,
+        std::vector<BufferUpdateData> const &bufferData,
         std::vector<TextureWrapper> const &textureData,
         uint32_t bindingOffset = 0);
 } // namespace spock
