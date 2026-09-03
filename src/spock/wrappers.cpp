@@ -35,11 +35,12 @@ namespace spock
             m_bindings.begin(), m_bindings.end(),
             [binding](auto desc) { return desc.binding == binding; });
 
-        if (it == m_bindings.end())
+        if (it != m_bindings.end())
         {
-            // If the isn't a binding, create one.
-            m_bindings.emplace_back(binding, stride, inputRate);
+            throw std::runtime_error("VertexFormat: binding " + std::to_string(binding) + " already exists");
         }
+
+        m_bindings.emplace_back(binding, stride, inputRate);
 
         // Attributes are sorted, so the last one will have the highest location.
         uint32_t location = (!m_attributes.empty()) ? m_attributes.back().location + 1 : 0;
