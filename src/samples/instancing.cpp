@@ -106,6 +106,7 @@ static const std::string VERTEX_SHADER_SOURCE = R"(
 layout(push_constant) uniform PushConstants {
     mat4 view;
     mat4 proj;
+    mat4 invView;
     vec2 viewport;
 } pc;
 
@@ -127,8 +128,10 @@ void main()
     );
     mat4 mvp = clip * pc.proj * pc.view;
 
-    vec2 worldPos = inPos + inInstancePos;
-    gl_Position = mvp * vec4(worldPos, 0.0, 1.0);
+    vec3 cameraRight = vec3(pc.invView[0][0], pc.invView[0][1], pc.invView[0][2]);
+    vec3 cameraUp = vec3(pc.invView[1][0], pc.invView[1][1], pc.invView[1][2]);
+    vec3 worldPos = vec3(inInstancePos, 0.0) + cameraRight * inPos.x + cameraUp * inPos.y;
+    gl_Position = mvp * vec4(worldPos, 1.0);
     outColor = inColor;
     outTexCoord = inTexCoord;
 }
@@ -160,6 +163,7 @@ struct PushConstants
 {
     glm::mat4 view;
     glm::mat4 proj;
+    glm::mat4 invView;
     glm::vec2 viewport;
 };
 
@@ -174,7 +178,7 @@ public:
             instance,
             std::move(windowSurface),
             extents,
-            {0.1f, 0.1f, 0.15f, 1.0},
+            {0.2f, 0.2f, 0.35f, 1.0},
             {1.0f, 0})
     {
         // Create the sprite geometry and push constants for the MVP matrix
@@ -210,6 +214,7 @@ public:
     {
         m_cameraConstants.view = camera.view();
         m_cameraConstants.proj = camera.projection(viewExtents);
+        m_cameraConstants.invView = glm::inverse(camera.view());
         m_cameraConstants.viewport = { viewExtents.width, viewExtents.height };
     }
 
