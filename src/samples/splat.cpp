@@ -41,7 +41,6 @@ static constexpr uint32_t QUAD_VERTEX_COUNT = sizeof(quadCorners) / sizeof(QuadV
 
 struct CameraUniforms
 {
-    glm::mat4 mvp;
     glm::mat4 view;
     glm::mat4 proj;
     glm::vec2 viewport;
@@ -90,7 +89,6 @@ public:
     {
         CameraUniforms ubo
         {
-            camera.viewProjClipMatrix(viewExtents),
             camera.view(),
             camera.projection(viewExtents),
             {viewExtents.width, viewExtents.height}
@@ -229,7 +227,7 @@ protected:
         renderer->createResources(m_scene);
 
         m_camera.setFocus(m_sceneBounds);
-        m_camera.setDistance(m_sceneBounds.w);
+        m_camera.setDistance(m_sceneBounds.w * 4.0f);
 
         return renderer;
     }

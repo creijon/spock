@@ -11,34 +11,42 @@
 #include <unordered_map>
 #include <vector>
 
-constexpr int SH_COUNT = 16;
-constexpr int SH_CHANNEL_COUNT = 3;
-constexpr int SH_REST_FLOAT_COUNT = SH_COUNT * SH_CHANNEL_COUNT - 3;
+static const uint32_t SH_DEGREE0_COUNT = 1;
+static const uint32_t SH_DEGREE1_COUNT = 3;
+static const uint32_t SH_DEGREE2_COUNT = 5;
+static const uint32_t SH_DEGREE3_COUNT = 7;
+
+constexpr uint32_t SH_COUNT = SH_DEGREE0_COUNT + SH_DEGREE1_COUNT + SH_DEGREE2_COUNT + SH_DEGREE3_COUNT;
+constexpr uint32_t SH_CHANNEL_COUNT = 3;
+constexpr uint32_t SH_REST_COUNT = SH_DEGREE1_COUNT + SH_DEGREE2_COUNT + SH_DEGREE3_COUNT;
+constexpr uint32_t SH_REST_FLOAT_COUNT = SH_REST_COUNT * SH_CHANNEL_COUNT;
 
 struct SplatInstance
 {
     static spock::VertexFormat::Attributes attributes()
     {
         return {
-            { vk::Format::eR32G32B32Sfloat, offsetof(SplatInstance, centroid) },
+            { vk::Format::eR32G32B32Sfloat, offsetof(SplatInstance, position) },
             { vk::Format::eR32G32B32A32Sfloat, offsetof(SplatInstance, rotation) },
             { vk::Format::eR32G32B32Sfloat, offsetof(SplatInstance, scale) },
-            { vk::Format::eR32Sfloat, offsetof(SplatInstance, opacity) }
+            { vk::Format::eR32Sfloat, offsetof(SplatInstance, opacity) },
+            { vk::Format::eR32G32B32Sfloat, offsetof(SplatInstance, sh0) }
         };
     }
 
-    glm::vec3 centroid;
+    glm::vec3 position;
     glm::quat rotation;
     glm::vec3 scale;
     float opacity;
+    glm::vec3 sh0;
+//    glm::vec3 sh1[SH_DEGREE1_COUNT]; 
+//    glm::vec3 sh2[SH_DEGREE2_COUNT];
+//    glm::vec3 sh3[SH_DEGREE3_COUNT];
 };
-
-using SplatHarmonics = std::array<glm::vec3, SH_COUNT>;
 
 struct SplatScene
 {
     std::vector<SplatInstance> instances;
-    std::vector<SplatHarmonics> harmonics;
 
     glm::vec4 computeBounds() const
     {
@@ -50,7 +58,7 @@ struct SplatScene
 
         for (const auto& instance : instances)
         {
-            sum += instance.centroid;
+            sum += instance.position;
         }
 
         glm::vec3 centre = sum / static_cast<float>(instances.size());
@@ -58,7 +66,7 @@ struct SplatScene
         float maxDistance = 0.0f;
         for (const auto& instance : instances)
         {
-            maxDistance = std::max(maxDistance, glm::length(instance.centroid - centre));
+            maxDistance = std::max(maxDistance, glm::length(instance.position - centre));
         }
 
         return glm::vec4(centre, maxDistance);
@@ -263,9 +271,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
     }
 
     scene.instances.reserve(vertexCount);
-    scene.harmonics.reserve(vertexCount);
     scene.instances.clear();
-    scene.harmonics.clear();
 
     std::vector<unsigned char> row(rowStride);
     for (std::size_t i = 0; i < vertexCount; ++i) {
@@ -275,7 +281,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
         }
 
         SplatInstance splat;
-        splat.centroid = {
+        splat.position = {
             plyDetail::readAsFloat(row, x),
             plyDetail::readAsFloat(row, y),
             plyDetail::readAsFloat(row, z),
@@ -296,14 +302,13 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
 
         splat.opacity = plyDetail::readAsFloat(row, opacity);
 
-        SplatHarmonics harmonics;
-
-        harmonics[0] = {
+        // SH Degree 0
+        splat.sh0 = {
             plyDetail::readAsFloat(row, dcR),
             plyDetail::readAsFloat(row, dcG),
             plyDetail::readAsFloat(row, dcB)
         };
-
+/*
         size_t harmonicCount = shRest.size() / SH_CHANNEL_COUNT;
         for (size_t harmonic = 1; harmonic < harmonicCount; ++harmonic) {
             uint32_t offset = (harmonic - 1) * SH_CHANNEL_COUNT;
@@ -313,8 +318,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
                 plyDetail::readAsFloat(row, *shRest[offset + 2])
             };
         }
-
+*/
         scene.instances.emplace_back(splat);
-        scene.harmonics.emplace_back(harmonics);
     }
 }

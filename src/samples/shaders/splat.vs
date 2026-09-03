@@ -5,7 +5,6 @@
 
 layout (std140, binding = 0) uniform buffer
 {
-  mat4 mvp;
   mat4 view;
   mat4 proj;
   vec2 viewport;
@@ -15,24 +14,46 @@ layout (std140, binding = 0) uniform buffer
 layout(location = 0) in vec2 inPos;
 
 // Per-instance (binding 1, one entry per sprite)
-layout(location = 1) in vec3 inInstanceCentroid;
+layout(location = 1) in vec3 inInstancePosition;
 layout(location = 2) in vec4 inInstanceRotation;
 layout(location = 3) in vec3 inInstanceScale;
 layout(location = 4) in float inInstanceOpacity;
+layout(location = 5) in vec3 inSH0;
+
+layout (location = 0) out vec4 outFragColor;
+
+const float SH_C0 = 0.28209479177387814;
+const float SH_C1 = 0.4886025119029199;
+const float SH_C2_0 = 1.0925484305920792;
+const float SH_C2_1 = -1.0925484305920792;
+const float SH_C2_2 = 0.31539156525252005;
+const float SH_C2_3 = -1.0925484305920792;
+const float SH_C2_4 = 0.5462742152960396;
+const float SH_C3_0 = -0.5900435899266435;
+const float SH_C3_1 = 2.890611442640554;
+const float SH_C3_2 = -0.4570457994644658;
+const float SH_C3_3 = 0.3731763325901154;
+const float SH_C3_4 = -0.4570457994644658;
+const float SH_C3_5 = 1.445305721320277;
+const float SH_C3_6 = -0.5900435899266435;
 
 void main()
 {
-    gl_Position = ubo.mvp * vec4(inPos.x, inPos.y, 0.0, 1.0);
-/*
-    vec4 centerClip = ubo.proj * ubo.view * vec4(inInstanceCentroid, 1.0);
+    vec4 centerClip = ubo.proj * ubo.view * vec4(inInstancePosition, 1.0);
     vec3 ndc = centerClip.xyz / centerClip.w;
 
-    vec2 axis0 = vec2(10.0, 0.0);
-    vec2 axis1 = vec2(0.0, 10.0);
+    vec2 axis0 = vec2(1.0, 0.0);
+    vec2 axis1 = vec2(0.0, 1.0);
 
     vec2 pixelOffset = inPos.x * axis0 + inPos.y * axis1;
     vec2 ndcOffset = pixelOffset / (ubo.viewport * 0.5);
 
+    vec3 view = normalize(inInstancePosition - ubo.view[3].xyz);
+
+    vec3 rgb = SH_C0 * inSH0;
+    float opacity = 1.0 / (1.0 + exp(-inInstanceOpacity));
+
+    outFragColor = vec4(rgb, opacity);
+
     gl_Position = vec4(ndc.xy + ndcOffset, ndc.z, 1.0);
-*/
 }
