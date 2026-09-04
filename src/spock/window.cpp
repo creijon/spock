@@ -45,6 +45,9 @@ namespace
         (void)glfwCtx;
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+#ifdef __APPLE__
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#endif
         return glfwCreateWindow(extent.width, extent.height, windowName.c_str(), nullptr, nullptr);
     }
 

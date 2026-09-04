@@ -51,12 +51,13 @@ The current demos are in `src/samples`:
 
 - `cube.cpp` — a colored cube, with everything in one source file; shaders, geometry, update and render.
 - `shaderlab.cpp` — a shader sandbox, demonstrating runtime shader editing (ShaderToy-style)
+- `instancing.cpp` - 
 - `splat.cpp` — basic gaussian splatting demonstrating instanced rendering
 
 To come:
 
 Compute
-Ray traci
+Ray tracing
 GLTF loading
 
 ## Tests
@@ -112,7 +113,17 @@ Bundled as git submodules under `deps/` and built as part of the project — no 
 
 - Windows builds use Win32 Vulkan platform definitions.
 - Linux builds support XCB and Wayland selection via the `VULKAN_HPP_USE_WAYLAND` option.
-- The project currently uses a static `spock` library target and sample-specific executables instead of building one monolithic app binary.
+
+### MacOS
+
+MacOS requires the MoltenVK SDK for Vulkan support, which can be downloaded from the [lunarg](https://vulkan.lunarg.com/sdk/home) site.
+
+For some samples I use the TBB and OneDPL libraries for parallel sort.  These can be installed with brew:
+
+```
+brew install tbb onedpl 
+```
+
 
 ## Getting started
 

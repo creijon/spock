@@ -98,10 +98,10 @@ namespace spock
 
         using Alpha = vk::CompositeAlphaFlagBitsKHR;
         auto compositeAlpha =
+            (surfaceCapabilities.supportedCompositeAlpha & Alpha::eOpaque)         ? Alpha::eOpaque :
             (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePreMultiplied)  ? Alpha::ePreMultiplied :
             (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePostMultiplied) ? Alpha::ePostMultiplied :
-            (surfaceCapabilities.supportedCompositeAlpha & Alpha::eInherit)        ? Alpha::eInherit :
-            Alpha::eOpaque;
+            Alpha::eInherit;
 
         vk::PresentModeKHR presentMode = pickPresentMode(physicalDevice.getSurfacePresentModesKHR(surface));
         vk::SwapchainKHR prevSwapchain = *m_swapchain;
