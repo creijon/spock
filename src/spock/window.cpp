@@ -47,6 +47,12 @@ namespace
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
         return glfwCreateWindow(extent.width, extent.height, windowName.c_str(), nullptr, nullptr);
     }
+
+    void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
+    {
+        Window* win = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
+        win->setScrollWheelOffset(xoffset, yoffset);
+    }
 } // namespace
 
 Window::Window(
@@ -56,6 +62,8 @@ Window::Window(
     , m_extents(extents)
     , m_handle(createGlfwWindow(m_name, m_extents))
 {
+    glfwSetWindowUserPointer(m_handle, this);
+    glfwSetScrollCallback(m_handle, scrollCallback);
 }
 
 Window::~Window()
@@ -93,6 +101,12 @@ vk::Offset2D Window::cursorPosition() const
 bool Window::isMouseButtonPressed(MouseButton button) const
 {
     return glfwGetMouseButton(m_handle, toGlfwButton(button)) == GLFW_PRESS;
+}
+
+void Window::setScrollWheelOffset(double xoffset, double yoffset)
+{
+    m_scrollWheelX = xoffset;
+    m_scrollWheelY = yoffset;
 }
 
 void Window::pollEvents()

@@ -371,11 +371,11 @@ namespace spock
         vk::ColorComponentFlags colorComponentFlags(
             vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
         vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachment(
-            false,
-            vk::BlendFactor::eZero,
-            vk::BlendFactor::eZero,
+            true,
+            vk::BlendFactor::eSrcAlpha,
+            vk::BlendFactor::eOneMinusSrcAlpha,
             vk::BlendOp::eAdd,
-            vk::BlendFactor::eZero,
+            vk::BlendFactor::eOne,
             vk::BlendFactor::eZero,
             vk::BlendOp::eAdd,
             colorComponentFlags);

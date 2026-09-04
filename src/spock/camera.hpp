@@ -12,13 +12,15 @@ namespace spock
     public:
         OrbitCamera(
             glm::vec3 const &focus,
-            float distance,
+            float minDistance,
+            float maxDistance,
             float fov = 45.0f,
             float zNear = 0.1f,
             float zFar = 1000.0f);
 
         void update(glm::vec2 const &mouseDelta);
 
+        glm::vec3 position() const;
         glm::mat4x4 view() const;
         glm::mat4x4 projection(vk::Extent2D const &extent) const;
         glm::mat4x4 viewProjClipMatrix(vk::Extent2D const &extent) const;
@@ -35,12 +37,12 @@ namespace spock
 
         float distance() const
         {
-            return m_distance;
+            return m_minDistance;
         }
 
         void setDistance(float distance)
         {
-            m_distance = distance;
+            m_minDistance = distance;
         }
 
         float fov() const
@@ -50,7 +52,8 @@ namespace spock
 
     private:
         glm::vec3 m_focus;
-        float m_distance;
+        float m_minDistance;
+        float m_maxDistance;
         float m_fov;
         float m_zNear;
         float m_zFar;

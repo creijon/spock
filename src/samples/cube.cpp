@@ -195,6 +195,7 @@ protected:
     {
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
+        commandBuffer.bindVertexBuffers(0, { m_vertexBuffer.buffer() }, { 0 });
 
         // Update the push constants.
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
@@ -203,7 +204,6 @@ protected:
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
         
         // Draw all the scene, but for this example it's just a single cube.
-        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, {0});
         commandBuffer.draw(CUBE_VERTEX_COUNT, 1, 0, 0);
     }
 
@@ -243,7 +243,8 @@ protected:
         
         CubeRenderer* renderer = static_cast<CubeRenderer*>(m_renderer.get());
 
-        renderer->setView(glm::vec3(sinf(angle) * 5.0f, -3.0f, cosf(angle) * 5.0f));
+        const float radius = 5.0f;
+        renderer->setView(glm::vec3(sinf(angle) * radius, -3.0f, cosf(angle) * radius));
     }
 };
 

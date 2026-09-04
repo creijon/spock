@@ -20,16 +20,18 @@ constexpr uint32_t SH_CHANNEL_COUNT = 3;
 constexpr uint32_t SH_REST_COUNT = SH_DEGREE1_COUNT + SH_DEGREE2_COUNT + SH_DEGREE3_COUNT;
 constexpr uint32_t SH_REST_FLOAT_COUNT = SH_REST_COUNT * SH_CHANNEL_COUNT;
 
+// Note: these members will be packed, but on the GLSL side, the shader would expect them to be
+// aligned to vec4 boundaries so all vec3 and quat members should be represented as arrays of floats.
 struct SplatInstance
 {
     glm::vec3 position;
-    glm::quat rotation;
+    glm::quat rotation; // TODO: Check whether wxyz or xyzw is expected by the shader.
     glm::vec3 scale;
     float opacity;
     glm::vec3 sh0;
-//    glm::vec3 sh1[SH_DEGREE1_COUNT]; 
-//    glm::vec3 sh2[SH_DEGREE2_COUNT];
-//    glm::vec3 sh3[SH_DEGREE3_COUNT];
+    glm::vec3 sh1[SH_DEGREE1_COUNT]; 
+    glm::vec3 sh2[SH_DEGREE2_COUNT];
+    glm::vec3 sh3[SH_DEGREE3_COUNT];
 };
 
 struct SplatScene
@@ -296,17 +298,74 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
             plyDetail::readAsFloat(row, dcG),
             plyDetail::readAsFloat(row, dcB)
         };
-/*
+
+        // SH Degree 1, 2, 3
         size_t harmonicCount = shRest.size() / SH_CHANNEL_COUNT;
-        for (size_t harmonic = 1; harmonic < harmonicCount; ++harmonic) {
-            uint32_t offset = (harmonic - 1) * SH_CHANNEL_COUNT;
-            harmonics[harmonic] = {
-                plyDetail::readAsFloat(row, *shRest[offset + 0]),
-                plyDetail::readAsFloat(row, *shRest[offset + 1]),
-                plyDetail::readAsFloat(row, *shRest[offset + 2])
-            };
+
+        if (harmonicCount >= SH_DEGREE1_COUNT)
+        {
+            for (size_t harmonic = 0; harmonic < SH_DEGREE1_COUNT; ++harmonic)
+            {
+                uint32_t offset = harmonic * SH_CHANNEL_COUNT;
+                splat.sh1[harmonic] = {
+                    plyDetail::readAsFloat(row, *shRest[offset + 0]),
+                    plyDetail::readAsFloat(row, *shRest[offset + 1]),
+                    plyDetail::readAsFloat(row, *shRest[offset + 2])
+                };
+            }
         }
-*/
+        else
+        {
+            for (size_t harmonic = 0; harmonic < SH_DEGREE1_COUNT; ++harmonic)
+            {
+                splat.sh1[harmonic] = { 0.0f, 0.0f, 0.0f };
+            }
+        }
+
+        harmonicCount -= SH_DEGREE1_COUNT;
+
+        if (harmonicCount >= SH_DEGREE2_COUNT)
+        {
+            for (size_t harmonic = 0; harmonic < SH_DEGREE2_COUNT; ++harmonic)
+            {
+                uint32_t offset = (harmonic + SH_DEGREE1_COUNT) * SH_CHANNEL_COUNT;
+                splat.sh2[harmonic] = {
+                    plyDetail::readAsFloat(row, *shRest[offset + 0]),
+                    plyDetail::readAsFloat(row, *shRest[offset + 1]),
+                    plyDetail::readAsFloat(row, *shRest[offset + 2])
+                };
+            }
+        }
+        else
+        {
+            for (size_t harmonic = 0; harmonic < SH_DEGREE2_COUNT; ++harmonic)
+            {
+                splat.sh2[harmonic] = { 0.0f, 0.0f, 0.0f };
+            }
+        }
+
+        harmonicCount -= SH_DEGREE2_COUNT;
+
+        if (harmonicCount >= SH_DEGREE3_COUNT)
+        {
+            for (size_t harmonic = 0; harmonic < SH_DEGREE3_COUNT; ++harmonic)
+            {
+                uint32_t offset = (harmonic + SH_DEGREE1_COUNT + SH_DEGREE2_COUNT) * SH_CHANNEL_COUNT;
+                splat.sh3[harmonic] = {
+                    plyDetail::readAsFloat(row, *shRest[offset + 0]),
+                    plyDetail::readAsFloat(row, *shRest[offset + 1]),
+                    plyDetail::readAsFloat(row, *shRest[offset + 2])
+                };
+            }
+        }
+        else
+        {
+            for (size_t harmonic = 0; harmonic < SH_DEGREE3_COUNT; ++harmonic)
+            {
+                splat.sh3[harmonic] = { 0.0f, 0.0f, 0.0f };
+            }
+        }
+
         scene.instances.emplace_back(splat);
     }
 }

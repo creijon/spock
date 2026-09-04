@@ -1,6 +1,14 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+// This sample demonstrates instanced rendering and the use of uniform and storage buffers.
+// It implements a basic form of 3D Gaussian Splatting, derived from the tutorial:
+// "3D Gaussian Splatting in a Weekend"
+// by Benjamin Feldman
+// https://bfeldman.me/3dgs-weekend/
+// Some of the code is adapted from the original tutorial, but the rendering pipeline and
+// resource management are implemented using Vulkan and the Spock framework.
+
 #include "splat_loader.h"
 
 #include "spock/app.hpp"
@@ -45,16 +53,20 @@ struct SortingEntry
 };
 
 
-struct PushConstants
+// Padded to match the std140 layout of the FrameConstants uniform block in splat.vs
+struct FrameConstants
 {
     glm::mat4 view;
     glm::mat4 proj;
-    glm::vec2 viewport;
+    glm::vec4 cameraPos;
+    glm::vec4 viewport;
 };
 
-static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/";
+static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/src/samples/shaders/";
 static const std::string VERTEX_SHADER = "splat.vs";
 static const std::string FRAGMENT_SHADER = "splat.fs";
+
+static const std::string SPLAT_PATH = std::string(SPOCK_DIR) + "/assets/splats/tomatoes/scene.ply";
 
 class SplatRenderer : public spock::Renderer
 {
@@ -74,24 +86,33 @@ public:
 
     void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
     {
-        m_frameConstants.view = camera.view();
-        m_frameConstants.proj = camera.projection(viewExtents);
-        m_frameConstants.viewport = { viewExtents.width, viewExtents.height };
+        FrameConstants frameConstants{
+            camera.view(),
+            camera.projection(viewExtents),
+            glm::vec4(camera.position(), 1.0f),
+            glm::vec4(viewExtents.width, viewExtents.height, 0.0f, 0.0f)
+        };
+
+        spock::copyToDevice(m_frameUniforms.deviceMemory(), frameConstants);
 
         if (cameraMoved)
         {
+            // Rebuild the sorting data with the new Z distances.
             for (uint32_t i = 0; i < m_splatCount; ++i)
             {
-                glm::vec4 viewPos = m_frameConstants.view * glm::vec4(scene.instances[i].position, 1.0f);
+                glm::vec4 viewPos = frameConstants.view * glm::vec4(scene.instances[i].position, 1.0f);
                 m_sorting[i].zDist = viewPos.z;
                 m_sorting[i].index = i;
             }
 
+            // Sort the splats, back to front.
+            // Uses parallel execution policy to speed up sorting on large splat counts.
             std::sort(
                 std::execution::par,
                 m_sorting.begin(), m_sorting.end(),
                 [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
 
+            // Copy to the instanced vertex buffer.
             spock::copyToDevice(m_sortingBuffer.deviceMemory(), m_sorting.data(), m_splatCount);
         }
     }
@@ -100,16 +121,20 @@ public:
     {
         m_splatCount = uint32_t(scene.instances.size());
 
-        spock::BindingData splatBinding{ 0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eVertex };
-        vk::PushConstantRange pushConstantRange{
-            vk::ShaderStageFlagBits::eVertex,
-            0,
-            sizeof(PushConstants) };
+        spock::BindingData frameBinding{ 0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex };
+        spock::BindingData splatBinding{ 1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eVertex };
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             m_device,
-            { splatBinding });
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, *m_descriptorSetLayout, pushConstantRange }));
+            { frameBinding, splatBinding });
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, *m_descriptorSetLayout }));
+
+        // Camera uniforms.
+        m_frameUniforms = spock::BufferWrapper(
+            m_physicalDevice,
+            m_device,
+            sizeof(FrameConstants),
+            vk::BufferUsageFlagBits::eUniformBuffer);
 
         // Upload the splat data into a storage buffer.
         m_splatStorage = spock::BufferWrapper(
@@ -121,12 +146,14 @@ public:
 
         m_descriptorPool = spock::createDescriptorPool(
             m_device,
-            { {vk::DescriptorType::eStorageBuffer, 1} });
+            { {vk::DescriptorType::eUniformBuffer, 1},
+              {vk::DescriptorType::eStorageBuffer, 1} });
         m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front());
         spock::updateDescriptorSets(
             m_device,
             m_descriptorSet,
             {
+                {vk::DescriptorType::eUniformBuffer, m_frameUniforms.buffer(), VK_WHOLE_SIZE, nullptr},
                 {vk::DescriptorType::eStorageBuffer, m_splatStorage.buffer(), VK_WHOLE_SIZE, nullptr}
             },
             {});
@@ -140,6 +167,7 @@ public:
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
 
         // Create an indirection buffer, which will be used to sort the splats back-to-front.
+        // This is populated, sorted and uploaded in the Update() function when the camera moves.
         m_sorting.resize(m_splatCount);
 
         m_sortingBuffer = spock::BufferWrapper(
@@ -153,7 +181,6 @@ public:
 
     void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
-        // Create the shaders.
         vk::raii::ShaderModule vertexShader{ nullptr };
         vk::raii::ShaderModule fragmentShader{ nullptr };
         glslang::InitializeProcess();
@@ -184,7 +211,6 @@ public:
         };
 
         spock::VertexFormat vertexFormat;
-
         vertexFormat.addAttributes({ {vk::Format::eR32G32Sfloat, 0} }, sizeof(QuadVertex));
         vertexFormat.addAttributes<SortingEntry>(1, vk::VertexInputRate::eInstance);
 
@@ -206,8 +232,7 @@ protected:
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
-        spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, m_frameConstants);
-        commandBuffer.bindVertexBuffers(0, {m_quadBuffer.buffer(), m_sortingBuffer.buffer()}, {0, 0});
+        commandBuffer.bindVertexBuffers(0, { m_quadBuffer.buffer(), m_sortingBuffer.buffer() }, { 0, 0 });
 
         commandBuffer.draw(QUAD_VERTEX_COUNT, m_splatCount, 0, 0);
     }
@@ -219,13 +244,13 @@ private:
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
 
+    spock::BufferWrapper m_frameUniforms;   // Per-frame constants.
     spock::BufferWrapper m_splatStorage;    // The splat data.
     spock::BufferWrapper m_sortingBuffer;   // The ordering of the splats for rendering.
     spock::BufferWrapper m_quadBuffer;      // The quad that is instanced.
 
     uint32_t m_splatCount{0};
     std::vector<SortingEntry> m_sorting;
-    PushConstants m_frameConstants{};
 };
 
 class SplatApp : public spock::App
@@ -247,7 +272,7 @@ protected:
     {
         auto renderer = std::make_unique<SplatRenderer>(instance, std::move(windowSurface), extents);
 
-        loadScene(std::string(SPOCK_SOURCE_DIR) + "/samples/splats/tomatoes.ply");
+        loadScene(SPLAT_PATH);
 
         renderer->createResources(m_scene);
 
@@ -295,7 +320,7 @@ private:
     glm::vec4 m_sceneBounds{};
 
     vk::Offset2D m_previousCursor{};
-    spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f};
+    spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f};
 };
 
 int main()

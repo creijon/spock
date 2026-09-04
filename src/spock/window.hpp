@@ -38,6 +38,15 @@ namespace spock
 
         vk::Offset2D cursorPosition() const;
         bool isMouseButtonPressed(MouseButton button) const;
+        double scrollWheelOffsetX() const
+        {
+            return m_scrollWheelX;
+        }
+        double scrollWheelOffsetY() const
+        {
+            return m_scrollWheelY;
+        }
+        void setScrollWheelOffset(double xoffset, double yoffset);
 
         std::string const& name() const { return m_name; }
 
@@ -50,7 +59,9 @@ namespace spock
     private:
         std::string m_name;
         vk::Extent2D m_extents;
-
         GLFWwindow *m_handle{nullptr};
+        double m_scrollWheelX{0.0};
+        double m_scrollWheelY{0.0};
+
     };
 } // namespace spock

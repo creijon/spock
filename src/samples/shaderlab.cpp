@@ -37,7 +37,7 @@ static const ShaderLabVertex SHADERLAB_VERTEX_DATA[] =
 static const uint32_t SHADERLAB_VERTEX_BUFFER_SIZE{sizeof(SHADERLAB_VERTEX_DATA)};
 static const uint32_t SHADERLAB_VERTEX_COUNT{std::size(SHADERLAB_VERTEX_DATA)};
 
-static const std::string SHADER_PATH = std::string(SPOCK_SOURCE_DIR) + "/samples/shaders/shaderlab/";
+static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/src/samples/shaders/shaderlab/";
 static const std::string VERTEX_SHADER = "default.vs";
 static const std::string FRAGMENT_SHADER = "default.fs";
 

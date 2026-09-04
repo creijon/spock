@@ -5,16 +5,22 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-DNOMINMAX)
 ENDIF ()
 
+if (WIN32)
+else()
+find_package(TBB REQUIRED)
+endif()
+
 function(add_sample_target target_name source_file)
     if (WIN32)
         add_executable(${target_name} WIN32 ${source_file})
     else()
         add_executable(${target_name} ${source_file})
+        target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} TBB::tbb)
     endif()
     target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} efsw)
 
     target_compile_definitions(${target_name} PRIVATE
-        SPOCK_SOURCE_DIR="${PROJECT_SOURCE_DIR}/src"
+        SPOCK_DIR="${PROJECT_SOURCE_DIR}"
     )
 
     target_include_directories(${target_name} PRIVATE

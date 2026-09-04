@@ -1,3 +1,4 @@
+
 ## Vulkan Features to Explore
 
 - Compute Shaders
@@ -8,25 +9,33 @@
 
 ## High Priority Features
 
-- Mesh Loading and Rendering (GLTF)
-- Scene Representation
+- Mesh loading and rendering (GLTF)
+- Scene representation
 - imGUI
-- Asset repository (I haven't seen this before on small engines)
+- Asset repository:
   - All assets are registered there and linked to their source file.
   - Each asset type can have a mechanism to rebuild after the source file changes.
   - Doing this in a general way could be hard - if the vertex attributes of a model changes, does the shader have to as well?
+  - Perhaps just keep it simple and create a file watcher class. DONE
 
 ## Lower Priority Features
 
-- Display Lists, high priority as soon as you have a scene representation.
-- Debug Line Rendering
+- Display lists, high priority as soon as you have a scene representation.
+- Debug line rendering. DONE
+- Geometric primitives. NEEDS TESTING
 - VMA integration
 
 ## Larger Scope, Specific Features
 
 - Contree (64tree) structure for voxels of volumetric textures
-- Gaussian Splatting
+- Gaussian splatting (see below)
 - Lighting
+
+### Gaussian Splatting
+
+- Initial CPU-GPU hybrid sample. DONE
+- Extend to compute-based solution.
+- 4DGS.
 
 ## Fixes/Refactoring
 

@@ -10,13 +10,15 @@
 namespace spock
 {
     OrbitCamera::OrbitCamera(
-        glm::vec3 const &focus,
-        float distance,
+        glm::vec3 const& focus,
+        float minDistance,
+        float maxDistance,
         float fov,
         float zNear,
         float zFar)
         : m_focus(focus)
-        , m_distance(distance)
+        , m_minDistance(minDistance)
+        , m_maxDistance(maxDistance)
         , m_fov(fov)
         , m_zNear(zNear)
         , m_zFar(zFar)
@@ -29,16 +31,22 @@ namespace spock
         m_pitch = glm::clamp(m_pitch + mouseDelta.y, -glm::half_pi<float>() + 0.001f, glm::half_pi<float>() - 0.001f);
     }
 
+    glm::vec3 OrbitCamera::position() const
+    {
+        glm::vec3 eye = m_focus;
+
+        eye.x += m_minDistance * std::cos(m_pitch) * std::sin(m_yaw);
+        eye.y += m_minDistance * std::sin(m_pitch);
+        eye.z += m_minDistance * std::cos(m_pitch) * std::cos(m_yaw);
+
+        return eye;
+    }
+
     glm::mat4x4 OrbitCamera::view() const
     {
-        glm::vec3 fwd{
-            std::cos(m_pitch) * std::sin(m_yaw),
-            std::sin(m_pitch),
-            std::cos(m_pitch) * std::cos(m_yaw)};
-        glm::vec3 eye = m_focus + fwd * m_distance;
         glm::vec3 up{0.0f, 1.0f, 0.0f};
 
-        return glm::lookAt(eye, m_focus, up);
+        return glm::lookAt(position(), m_focus, up);
     }
 
     glm::mat4x4 OrbitCamera::projection(vk::Extent2D const &extent) const
