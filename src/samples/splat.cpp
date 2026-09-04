@@ -139,7 +139,7 @@ public:
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
 
-        // Create a indirection buffer, which will be used to sort the splats back-to-front.
+        // Create an indirection buffer, which will be used to sort the splats back-to-front.
         m_sorting.resize(m_splatCount);
 
         m_sortingBuffer = spock::BufferWrapper(
@@ -154,57 +154,55 @@ public:
     void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         // Create the shaders.
+        vk::raii::ShaderModule vertexShader{ nullptr };
+        vk::raii::ShaderModule fragmentShader{ nullptr };
         glslang::InitializeProcess();
         try
         {
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
-                m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
-                m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
         }
         catch (std::exception const& e)
         {
             spock::writeLog("Error compiling shaders: %s\n" + std::string(e.what()));
+            glslang::FinalizeProcess();
+            throw;
         }
         glslang::FinalizeProcess();
 
-        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
-        {
-            const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
-            std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
-            };
+        const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
+        std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+        };
 
-            spock::VertexFormat vertexFormat;
+        spock::VertexFormat vertexFormat;
 
-            vertexFormat.addAttributes({ {vk::Format::eR32G32Sfloat, 0} }, sizeof(QuadVertex));
-            vertexFormat.addAttributes<SortingEntry>(1, vk::VertexInputRate::eInstance);
+        vertexFormat.addAttributes({ {vk::Format::eR32G32Sfloat, 0} }, sizeof(QuadVertex));
+        vertexFormat.addAttributes<SortingEntry>(1, vk::VertexInputRate::eInstance);
 
-            m_graphicsPipeline = spock::createGraphicsPipeline(
-                m_device,
-                shaderStagesInfo,
-                m_pipelineLayout,
-                m_renderPass,
-                vertexFormat,
-                vk::PrimitiveTopology::eTriangleStrip,
-                vk::CullModeFlagBits::eNone,
-                false);
-            spock::writeLog("Shaders compiled successfully.\n");
-        }
+        m_graphicsPipeline = spock::createGraphicsPipeline(
+            m_device,
+            shaderStagesInfo,
+            m_pipelineLayout,
+            m_renderPass,
+            vertexFormat,
+            vk::PrimitiveTopology::eTriangleStrip,
+            vk::CullModeFlagBits::eNone,
+            false);
+        spock::writeLog("Shaders compiled successfully.\n");
     }
 
 protected:
     void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
     {
-        // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
-        if (m_graphicsPipeline == nullptr) return;
-
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
@@ -220,15 +218,12 @@ private:
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
-    vk::raii::ShaderModule m_vertexShader{ nullptr };
-    vk::raii::ShaderModule m_fragmentShader{ nullptr };
 
     spock::BufferWrapper m_splatStorage;    // The splat data.
     spock::BufferWrapper m_sortingBuffer;   // The ordering of the splats for rendering.
     spock::BufferWrapper m_quadBuffer;      // The quad that is instanced.
 
-    uint32_t m_splatCount = 0;
-    glm::vec4 m_sceneBounds;
+    uint32_t m_splatCount{0};
     std::vector<SortingEntry> m_sorting;
     PushConstants m_frameConstants{};
 };
@@ -265,21 +260,20 @@ protected:
     void update() override
     {
         SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
-
         vk::Offset2D cursor = m_window.cursorPosition();
+        bool cameraMoved = (m_time == 0us);
+
         if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
         {
             static const float sensitivity = 0.005f;
             m_camera.update(glm::vec2(
                 static_cast<float>(m_previousCursor.x - cursor.x) * sensitivity,
                 static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
-            m_cameraMoved = true;
-
-            m_previousCursor = cursor;
+            cameraMoved = true;
         }
 
-        renderer->update(m_scene, m_camera, m_cameraMoved, m_window.extents());
-        m_cameraMoved = false;
+        renderer->update(m_scene, m_camera, cameraMoved, m_window.extents());
+        m_previousCursor = cursor;
     }
 
 private:
@@ -302,7 +296,6 @@ private:
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f};
-    bool m_cameraMoved{true};
 };
 
 int main()
