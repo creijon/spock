@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
-// This sample is a completely self-contained renderer: the cube geometry and both
-// shaders are defined inline below, with no external asset or shader files to load.
+// This sample is a completely self-contained renderer: the cube geometry and both shaders are
+// defined inline below, with no external asset or shader files to load.
 
 #include "spock/app.hpp"
 #include "spock/camera.hpp"

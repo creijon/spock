@@ -6,8 +6,8 @@
 // "3D Gaussian Splatting in a Weekend"
 // by Benjamin Feldman
 // https://bfeldman.me/3dgs-weekend/
-// Some of the code is adapted from the original tutorial, but the rendering pipeline and
-// resource management are implemented using Vulkan and the Spock framework.
+// Some of the code is adapted from the original tutorial, but the rendering pipeline and resource
+// management are implemented using Vulkan and the Spock framework.
 
 #include "splat_loader.h"
 

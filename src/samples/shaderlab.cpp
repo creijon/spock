@@ -1,6 +1,10 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+// This sample demonstrates automatic shader compilation and hot-reloading.
+// As an example, the default shaders implement a simple ShaderToy-like interface, where the
+// fragment shader can be experimented with in real-time.
+
 #include "spock/app.hpp"
 #include "spock/creators.hpp"
 #include "spock/file_watcher.hpp"
@@ -144,8 +148,9 @@ protected:
         // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
         if (m_graphicsPipeline == nullptr) return;
 
-        // Bind the pipeline.
+        // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
+        commandBuffer.bindVertexBuffers(0, { m_vertexBuffer.buffer() }, { 0 });
 
         // Update the push constants.
         using Seconds = std::chrono::duration<float>;
@@ -157,7 +162,6 @@ protected:
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
 
         // Draw the single triangle.
-        commandBuffer.bindVertexBuffers(0, {m_vertexBuffer.buffer()}, { 0 });
         commandBuffer.draw(SHADERLAB_VERTEX_COUNT, 1, 0, 0);
     }
 

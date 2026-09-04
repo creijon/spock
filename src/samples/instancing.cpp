@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // This sample demonstrates instanced rendering with a 16x16 grid of sprites.
-// The vertex buffer contains a single quad geometry, and the instance buffer
-// contains position and color data for each sprite instance.
+// The vertex buffer contains a single quad geometry, and the instance buffer contains position and
+// color data for each sprite instance.
 
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
