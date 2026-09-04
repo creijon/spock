@@ -6,7 +6,6 @@
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
-#include "spock/file_watcher.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
@@ -14,16 +13,15 @@
 
 #include "vulkan/vulkan.hpp"
 
-#include <efsw/efsw.hpp>
-
+#include <execution>
 #include <iterator>
 #include <numeric>
 #include <utility>
 #include <vector>
 
-using QUAD_VERTEX = glm::vec2;
+using QuadVertex = glm::vec2;
 
-static constexpr QUAD_VERTEX quadCorners[]
+static constexpr QuadVertex quadCorners[]
 {
     {-1.0f, -1.0f},
     {1.0f, -1.0f},
@@ -31,6 +29,21 @@ static constexpr QUAD_VERTEX quadCorners[]
     {1.0f, 1.0f},
 };
 static constexpr uint32_t QUAD_VERTEX_COUNT = std::size(quadCorners);
+
+struct SortingEntry
+{
+    static spock::VertexFormat::Attributes attributes()
+    {
+        return {
+            { vk::Format::eR32Sfloat, 0 },
+            { vk::Format::eR32Uint, offsetof(SortingEntry, index) }
+        };
+    }
+
+    float zDist;
+    uint32_t index;
+};
+
 
 struct PushConstants
 {
@@ -59,11 +72,28 @@ public:
     {
     }
 
-    void update(spock::OrbitCamera const &camera, vk::Extent2D const &viewExtents)
+    void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
     {
         m_frameConstants.view = camera.view();
         m_frameConstants.proj = camera.projection(viewExtents);
         m_frameConstants.viewport = { viewExtents.width, viewExtents.height };
+
+        if (cameraMoved)
+        {
+            for (uint32_t i = 0; i < m_splatCount; ++i)
+            {
+                glm::vec4 viewPos = m_frameConstants.view * glm::vec4(scene.instances[i].position, 1.0f);
+                m_sorting[i].zDist = viewPos.z;
+                m_sorting[i].index = i;
+            }
+
+            std::sort(
+                std::execution::par,
+                m_sorting.begin(), m_sorting.end(),
+                [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
+
+            spock::copyToDevice(m_sortingBuffer.deviceMemory(), m_sorting.data(), m_splatCount);
+        }
     }
 
     void createResources(SplatScene const &scene)
@@ -105,20 +135,20 @@ public:
         m_quadBuffer = spock::BufferWrapper(
             m_physicalDevice,
             m_device,
-            QUAD_VERTEX_COUNT * sizeof(QUAD_VERTEX),
+            QUAD_VERTEX_COUNT * sizeof(QuadVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
 
         // Create a indirection buffer, which will be used to sort the splats back-to-front.
-        std::vector<uint32_t> indices(m_splatCount);
-        std::iota(indices.begin(), indices.end(), 0);
+        m_sorting.resize(m_splatCount);
 
-        m_splatIndexes = spock::BufferWrapper(
+        m_sortingBuffer = spock::BufferWrapper(
             m_physicalDevice,
             m_device,
-            m_splatCount * sizeof(uint32_t),
+            m_splatCount * sizeof(SortingEntry),
             vk::BufferUsageFlagBits::eVertexBuffer);
-        spock::copyToDevice(m_splatIndexes.deviceMemory(), indices.data(), m_splatCount);
+
+        createGraphicsPipeline();
     }
 
     void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
@@ -153,9 +183,8 @@ public:
 
             spock::VertexFormat vertexFormat;
 
-            // The quad corners are the vertex data.
-            vertexFormat.addAttributes({ {vk::Format::eR32G32Sfloat, 0} }, sizeof(QUAD_VERTEX));
-            vertexFormat.addAttributes({ {vk::Format::eR32Uint, 0} }, sizeof(uint32_t), 1, vk::VertexInputRate::eInstance);
+            vertexFormat.addAttributes({ {vk::Format::eR32G32Sfloat, 0} }, sizeof(QuadVertex));
+            vertexFormat.addAttributes<SortingEntry>(1, vk::VertexInputRate::eInstance);
 
             m_graphicsPipeline = spock::createGraphicsPipeline(
                 m_device,
@@ -180,7 +209,7 @@ protected:
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, m_frameConstants);
-        commandBuffer.bindVertexBuffers(0, {m_quadBuffer.buffer(), m_splatIndexes.buffer()}, {0, 0});
+        commandBuffer.bindVertexBuffers(0, {m_quadBuffer.buffer(), m_sortingBuffer.buffer()}, {0, 0});
 
         commandBuffer.draw(QUAD_VERTEX_COUNT, m_splatCount, 0, 0);
     }
@@ -194,12 +223,13 @@ private:
     vk::raii::ShaderModule m_vertexShader{ nullptr };
     vk::raii::ShaderModule m_fragmentShader{ nullptr };
 
-    spock::BufferWrapper m_splatStorage; // The splat data.
-    spock::BufferWrapper m_splatIndexes; // The ordering of the splats for rendering.
-    spock::BufferWrapper m_quadBuffer; // The quad that is instanced.
+    spock::BufferWrapper m_splatStorage;    // The splat data.
+    spock::BufferWrapper m_sortingBuffer;   // The ordering of the splats for rendering.
+    spock::BufferWrapper m_quadBuffer;      // The quad that is instanced.
 
     uint32_t m_splatCount = 0;
     glm::vec4 m_sceneBounds;
+    std::vector<SortingEntry> m_sorting;
     PushConstants m_frameConstants{};
 };
 
@@ -243,18 +273,13 @@ protected:
             m_camera.update(glm::vec2(
                 static_cast<float>(m_previousCursor.x - cursor.x) * sensitivity,
                 static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
+            m_cameraMoved = true;
+
+            m_previousCursor = cursor;
         }
 
-        if (m_watcher.modifiedShaders)
-        {
-            // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-            renderer->waitIdle();
-            renderer->createGraphicsPipeline(m_watcher.modifiedShaders);
-            m_watcher.modifiedShaders = vk::ShaderStageFlags(0);
-        }
-
-        m_previousCursor = cursor;
-        renderer->update(m_camera, m_window.extents());
+        renderer->update(m_scene, m_camera, m_cameraMoved, m_window.extents());
+        m_cameraMoved = false;
     }
 
 private:
@@ -277,22 +302,7 @@ private:
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f};
-
-    struct Watcher : public spock::FileWatcher
-    {
-        Watcher() : spock::FileWatcher(SHADER_PATH)
-        {}
-
-        void fileModified(std::string const& filename) override
-        {
-            if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
-            if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
-        }
-
-        vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
-    };
-
-    Watcher m_watcher;
+    bool m_cameraMoved{true};
 };
 
 int main()
