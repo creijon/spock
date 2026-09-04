@@ -50,15 +50,9 @@ The reusable engine code lives under `src/spock` and includes:
 The current demos are in `src/samples`:
 
 - `cube.cpp` — a colored cube, with everything in one source file; shaders, geometry, update and render.
-- `shaderlab.cpp` — a shader sandbox, demonstrating runtime shader editing (ShaderToy-style)
-- `instancing.cpp` - 
-- `splat.cpp` — basic gaussian splatting demonstrating instanced rendering
-
-To come:
-
-Compute
-Ray tracing
-GLTF loading
+- `shaderlab.cpp` — a shader sandbox, demonstrating runtime shader editing.  Inspired by https://www.shadertoy.com/
+- `instancing.cpp` - demonstrates instanced rendering with a grid of camera facing quads.
+- `splat.cpp` — basic gaussian splatting derived from https://bfeldman.me/3dgs-weekend/
 
 ## Tests
 
@@ -118,12 +112,11 @@ Bundled as git submodules under `deps/` and built as part of the project — no 
 
 MacOS requires the MoltenVK SDK for Vulkan support, which can be downloaded from the [lunarg](https://vulkan.lunarg.com/sdk/home) site.
 
-For some samples I use the TBB and OneDPL libraries for parallel sort.  These can be installed with brew:
+Some of the samples require TBB and OneDPL libraries for parallel sort.  These can be installed with brew:
 
+```bash
+brew install tbb onedpl
 ```
-brew install tbb onedpl 
-```
-
 
 ## Getting started
 
