@@ -7,7 +7,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 layout(push_constant) uniform PushConstants {
-  vec4 iMouse;        // image/buffer xy = current pixel coords (if LMB is down). zw = click pixel
+  vec4 iMouse;        // image/buffer xy = current pixel coords. zw = click pixel
   vec3 iResolution;   // image/buffer The viewport resolution (z is pixel aspect ratio, usually 1.0)
   float iTime;        // image/sound/buffer Current time in seconds
   int iFrame;         // image/buffer Current frame

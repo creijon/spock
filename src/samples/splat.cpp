@@ -113,16 +113,12 @@ public:
             // Uses parallel execution policy to speed up sorting on large splat counts.
 
 #if defined(__APPLE__)
-            oneapi::dpl::sort(
-                oneapi::dpl::execution::par,
-                m_sorting.begin(), m_sorting.end(),
-                [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
+            using namespace oneapi::dpl;
 #else
-            std::sort(
-                std::execution::par,
-                m_sorting.begin(), m_sorting.end(),
-                [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
+            using namespace std;
 #endif
+            sort(execution::par, m_sorting.begin(), m_sorting.end(),
+                [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
 
             // Copy to the instanced vertex buffer.
             spock::copyToDevice(m_sortingBuffer.deviceMemory(), m_sorting.data(), m_splatCount);
