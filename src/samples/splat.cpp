@@ -3,8 +3,7 @@
 
 // This sample demonstrates instanced rendering and the use of uniform and storage buffers.
 // It implements a basic form of 3D Gaussian Splatting, derived from the tutorial:
-// "3D Gaussian Splatting in a Weekend"
-// by Benjamin Feldman
+// Feldman, Benjamin. (May 2026). “3D Gaussian Splatting in a Weekend”. bfeldman.me.
 // https://bfeldman.me/3dgs-weekend/
 // Some of the code is adapted from the original tutorial, but the rendering pipeline and resource
 // management are implemented using Vulkan and the Spock framework.
@@ -26,6 +25,11 @@
 #include <numeric>
 #include <utility>
 #include <vector>
+
+#if defined(__APPLE__)
+#include <oneapi/dpl/execution>
+#include <oneapi/dpl/algorithm>
+#endif
 
 using QuadVertex = glm::vec2;
 
@@ -107,9 +111,13 @@ public:
 
             // Sort the splats, back to front.
             // Uses parallel execution policy to speed up sorting on large splat counts.
-            std::sort(
-                std::execution::par,
-                m_sorting.begin(), m_sorting.end(),
+
+#if defined(__APPLE__)
+            using namespace oneapi::dpl;
+#else
+            using namespace std;
+#endif
+            sort(execution::par, m_sorting.begin(), m_sorting.end(),
                 [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
 
             // Copy to the instanced vertex buffer.
@@ -198,7 +206,7 @@ public:
         }
         catch (std::exception const& e)
         {
-            spock::writeLog("Error compiling shaders: %s\n" + std::string(e.what()));
+            spock::writeLog(std::string(e.what()));
             glslang::FinalizeProcess();
             throw;
         }

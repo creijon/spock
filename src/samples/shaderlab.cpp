@@ -105,7 +105,7 @@ public:
         }
         catch (std::exception const& e)
         {
-            spock::writeLog("Error compiling shaders: %s\n" + std::string(e.what()));
+            spock::writeLog(std::string(e.what()));
         }
 
         glslang::FinalizeProcess();
@@ -134,12 +134,16 @@ public:
 
     void setMousePos(vk::Offset2D const &mousePos)
     {
-        m_mousePos = mousePos;
+        m_mousePos.x = mousePos.x;
+        // Flip Y to make it consistent with OpenGL
+        m_mousePos.y = m_extents.height - mousePos.y;
     }
 
     void setMouseClickPos(vk::Offset2D const& mouseClickPos)
     {
-        m_mouseClickPos = mouseClickPos;
+        m_mouseClickPos.x = mouseClickPos.x;
+        // Flip Y to make it consistent with OpenGL
+        m_mouseClickPos.y = m_extents.height - mouseClickPos.y;
     }
 
 protected:

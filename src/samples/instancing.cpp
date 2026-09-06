@@ -321,7 +321,7 @@ protected:
     }
 
     vk::Offset2D m_previousCursor{};
-    spock::OrbitCamera m_camera{ glm::vec3(0.0f), 5.0f };
+    spock::OrbitCamera m_camera{ glm::vec3(0.0f), 5.0f, 5.0f };
 };
 
 int main()

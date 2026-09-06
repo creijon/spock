@@ -21,6 +21,8 @@ void main()
 {
   // The coordinates are in pixel units, ranging from 0.5 to resolution-0.5
   vec2 uv = (pos.xy + 1.0) * 0.5;
+  // Flip Y to make it consistent with OpenGL
+  uv.y = 1.0 - uv.y;
   fragCoord = uv * pc.iResolution.xy + 0.5;
   gl_Position = vec4(pos, 1.0, 1.0);
 }

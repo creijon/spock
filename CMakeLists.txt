@@ -25,6 +25,13 @@ if (CMAKE_SYSTEM_NAME STREQUAL Windows)
     add_definitions(-DNOMINMAX)
 ENDIF ()
 
+# Output all executables and DLLs (runtime targets) into the same folder
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+
+# Output static libraries and DLL import .lib files
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
+
 add_library(${BINARY_NAME} STATIC)
 
 find_package(OpenGL REQUIRED)

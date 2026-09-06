@@ -31,13 +31,8 @@ function(add_sample_target target_name source_file)
         ${Vulkan_INCLUDE_DIRS}
         ${GLFW_GAD_INCLUDE_DIRS})
 
-
-    # Place sample executables in the top-level build/binaries folder for easy discovery
-    set(sample_output_dir ${CMAKE_BINARY_DIR}/binaries)
     set_target_properties(${target_name} PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY ${sample_output_dir}
-        RUNTIME_OUTPUT_DIRECTORY_DEBUG ${sample_output_dir}
-        RUNTIME_OUTPUT_DIRECTORY_RELEASE ${sample_output_dir})
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 endfunction()
 
 add_sample_target(cube ${CMAKE_CURRENT_SOURCE_DIR}/cube.cpp)
@@ -51,5 +46,3 @@ set_target_properties(
     splat
     instancing
     PROPERTIES FOLDER "samples")
-
-#set_target_properties(${BINARY_NAME} PROPERTIES FOLDER "src/utils")

@@ -49,7 +49,7 @@ void main()
   vec3 p = origin + dir * t;
   vec3 n = normalize(p - centre);
 
-  vec3 lightDir = normalize(vec3(-0.5, -0.5, -0.5));
+  vec3 lightDir = normalize(vec3(-0.5, 0.5, -0.5));
   float diff = dot(n, lightDir);
 
   vec3 diffuseColor = vec3(0.9, 0.7, 0.1);
