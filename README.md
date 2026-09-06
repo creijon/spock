@@ -8,15 +8,16 @@
 
 Spock is a small C++ Vulkan framework and sample project built around Vulkan-Hpp RAII wrappers, GLFW, GLM, and glslang. The library is organized as a shared core library plus separate executable samples for different rendering demos.
 
-## Build system
+## Samples
 
-The root CMake project defines a static library target named `spock` and then creates sample executables for each demo.
+There are a set of samples which demonstrate functions of Vulkan and the framework.  These will continue to be expanded.
 
-Current targets:
-- `spock` — shared core library
-- `cube` — a completely self-contained renderer: the geometry and shaders are defined inline
-- `splat` — will become a gaussian splatting example
-- `shaderlab` — an interactive fragment shader playground, similar to the shadertoy.com site
+- `cube` — a completely self-contained renderer: the cube geometry and both shaders are defined inline below, with no external asset or shader files to load.
+- `shaderlab` - demonstrates automatic shader compilation and hot-reloading. As an example, the default shaders implement a simple ShaderToy-like interface, where the fragment shader can be experimented with in real-time.
+- `instancing` - renders a 16x16 grid of sprites. The vertex buffer contains a single quad and the instance buffer contains position and color data for each instance.
+- `splat` - demonstrates instanced rendering and the use of uniform and storage buffers.  It implements a basic form of 3D Gaussian Splatting, derived from the tutorial: “3D Gaussian Splatting in a Weekend” by Benjamin Feldman https://bfeldman.me/3dgs-weekend/  Some of the code is adapted from the original tutorial.
+
+## Building
 
 Example:
 
@@ -34,25 +35,16 @@ The sample targets link against the shared `spock` library so the reusable rende
 The reusable engine code lives under `src/spock` and includes:
 
 - `app.*` — base application class: owns the Vulkan context/instance, a `Window`, and the renderer, and runs the main loop
-- `window.*` — owns the GLFW window handle and creates its rendering surface from an app-provided Vulkan instance
-- `renderer.*` — base renderer class: owns the device, command pool, and render pass; subclass it to add your own pipeline and draw calls
-- `presenter.*` — swapchain and per-frame synchronization primitives, owned by a `Renderer`
+- `camera.*` - a simple orbit camera.
 - `creators.*` — helper functions for creating Vulkan resources and pipeline objects
-- `wrappers.*` — Wrappers around Vulkan objects such as vertex assembly, buffers, images and textures
-- `shaders.*` — shader compilation support
 - `helpers.*` — Vulkan-specific helper routines (queue selection, image layout transitions, memory allocation, surface/present-mode selection, the debug messenger)
-- `utils.*` — small non-Vulkan utilities (logging, checked casts)
-- `camera.*` — view/projection matrix helper
 - `math.*` — shared GLM include and compiler warning setup
-
-## Samples
-
-The current demos are in `src/samples`:
-
-- `cube.cpp` — a colored cube, with everything in one source file; shaders, geometry, update and render.
-- `shaderlab.cpp` — a shader sandbox, demonstrating runtime shader editing.  Inspired by https://www.shadertoy.com/
-- `instancing.cpp` - demonstrates instanced rendering with a grid of camera facing quads.
-- `splat.cpp` — basic gaussian splatting derived from https://bfeldman.me/3dgs-weekend/
+- `window.*` — owns the GLFW window handle and creates its rendering surface from an app-provided Vulkan instance
+- `presenter.*` — swapchain and per-frame synchronization primitives, owned by a `Renderer`
+- `renderer.*` — base renderer class: owns the device, command pool, and render pass; subclass it to add your own pipeline and draw calls
+- `shaders.*` — shader compilation support
+- `utils.*` — small non-Vulkan utilities (logging, checked casts)
+- `wrappers.*` — Wrappers around Vulkan objects such as vertex assembly, buffers, images and textures
 
 ## Tests
 
