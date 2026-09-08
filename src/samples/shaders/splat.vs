@@ -1,3 +1,9 @@
+// Derived from the tutorial “3D Gaussian Splatting in a Weekend”
+// Feldman, Benjamin. (May 2026)
+// https://bfeldman.me/3dgs-weekend/
+// https://github.com/benjamin-feldman/3dgs-weekend
+// Conversion to Vulkan by Jon Creighton (2026)
+
 #version 460
 
 #extension GL_ARB_separate_shader_objects : enable

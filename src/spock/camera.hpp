@@ -37,13 +37,15 @@ namespace spock
 
         float distance() const
         {
-            return m_minDistance;
+            return m_distance;
         }
 
         void setDistance(float distance)
         {
-            m_minDistance = distance;
+            m_distance = glm::clamp(distance, m_minDistance, m_maxDistance);
         }
+
+        void setDistanceRange(float minDistance, float maxDistance);
 
         float fov() const
         {
@@ -52,6 +54,7 @@ namespace spock
 
     private:
         glm::vec3 m_focus;
+        float m_distance;
         float m_minDistance;
         float m_maxDistance;
         float m_fov;

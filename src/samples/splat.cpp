@@ -26,6 +26,7 @@
 #include <utility>
 #include <vector>
 
+// Required for Apple platforms to use parallel execution policy with std::sort.
 #if defined(__APPLE__)
 #include <oneapi/dpl/execution>
 #include <oneapi/dpl/algorithm>
@@ -111,7 +112,6 @@ public:
 
             // Sort the splats, back to front.
             // Uses parallel execution policy to speed up sorting on large splat counts.
-
 #if defined(__APPLE__)
             using namespace oneapi::dpl;
 #else
@@ -285,7 +285,7 @@ protected:
         renderer->createResources(m_scene);
 
         m_camera.setFocus(m_sceneBounds);
-        m_camera.setDistance(m_sceneBounds.w * 4.0f);
+        m_camera.setDistanceRange(m_sceneBounds.w, m_sceneBounds.w * 4.0f);
 
         return renderer;
     }
@@ -296,14 +296,23 @@ protected:
         vk::Offset2D cursor = m_window.cursorPosition();
         bool cameraMoved = (m_time == 0us);
 
+        if (m_window.scrollWheelOffsetY() != 0.0)
+        {
+            static const float wheelSensitivity = 0.1f;
+            m_camera.setDistance(m_window.scrollWheelOffsetY() * wheelSensitivity + m_camera.distance());
+            cameraMoved = true;
+        }
+        
         if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
         {
             static const float sensitivity = 0.005f;
+
             m_camera.update(glm::vec2(
                 static_cast<float>(m_previousCursor.x - cursor.x) * sensitivity,
                 static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
             cameraMoved = true;
         }
+
 
         renderer->update(m_scene, m_camera, cameraMoved, m_window.extents());
         m_previousCursor = cursor;

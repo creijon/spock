@@ -25,6 +25,13 @@ namespace spock
     {
     }
 
+    void OrbitCamera::setDistanceRange(float minDistance, float maxDistance)
+    {
+        m_minDistance = minDistance;
+        m_maxDistance = maxDistance;
+        setDistance(m_distance);
+    }
+
     void OrbitCamera::update(glm::vec2 const &mouseDelta)
     {
         m_yaw += mouseDelta.x;
@@ -35,9 +42,9 @@ namespace spock
     {
         glm::vec3 eye = m_focus;
 
-        eye.x += m_minDistance * std::cos(m_pitch) * std::sin(m_yaw);
-        eye.y += m_minDistance * std::sin(m_pitch);
-        eye.z += m_minDistance * std::cos(m_pitch) * std::cos(m_yaw);
+        eye.x += m_distance * std::cos(m_pitch) * std::sin(m_yaw);
+        eye.y += m_distance * std::sin(m_pitch);
+        eye.z += m_distance * std::cos(m_pitch) * std::cos(m_yaw);
 
         return eye;
     }
