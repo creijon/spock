@@ -129,6 +129,25 @@ namespace geo3d
         return testNoBB(triangle, box);
     }
 
+
+    // This is a novel approach to triangle-box intersection that is designed to be more efficient
+    // in situations where the domain is mostly made up of intersecting shapes. It can exit early
+    // with common intersections, rather than only when disjoint.
+
+    // This means that it is significantly more efficient when performing a series of hierarchial
+    // tests such as with the generation of Sparse Voxel Octrees from triangle meshes.
+
+    // If the domain has predominantly disjoint shape queries then performance of the two solutions
+    // is very similar, since the bounding box check is effective in filtering these out early.
+
+    // Description of the algorithm:
+
+    // 1. Intersection between the AABB and the triangle bounds. Exit early if disjoint. (Optional)
+    // 2. Test each triangle edge against the AABB. Exit early with an intersection.
+    // 3. Check between the plane of triangle and the AABB. Exit if disjoint.
+    // 4. Test the four internal diagonal axes of the AABB against the triangle, for the cases where
+    //    the box intersects the face of the triangle without touching any of its edges.
+
     bool Intersect::testNoBB(Triangle const& triangle, Aabb const& box)
     {
         // Test the three triangle edges against the box.
