@@ -31,5 +31,10 @@ namespace geo3d
         // https://michael-schwarz.com/research/publ/2010/vox/
         // Provided for performance comparisons.
         static bool testSS(Triangle const&, Aabb const&);
+
+        // The standard separating-axis-theorem triangle-box overlap test:
+        // Akenine-Möller, "Fast 3D Triangle-Box Overlap Testing", Journal of Graphics Tools, 2001.
+        // Provided for performance comparisons.
+        static bool testAM(Triangle const&, Aabb const&);
     };
 }

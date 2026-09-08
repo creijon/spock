@@ -46,6 +46,25 @@ The reusable engine code lives under `src/spock` and includes:
 - `utils.*` — small non-Vulkan utilities (logging, checked casts)
 - `wrappers.*` — Wrappers around Vulkan objects such as vertex assembly, buffers, images and textures
 
+## Geometry library
+
+`src/geo` is a small standalone 2D/3D intersection-testing library, used for spatial queries such as triangle-vs-AABB overlap testing (e.g. for Sparse Voxel Octree generation from triangle meshes).
+
+`geo3d::Intersect` provides four interchangeable triangle-vs-AABB tests, benchmarked in `src/tests/geo_intersect3d_tests.cpp` (release build, ns/call):
+
+| Scenario                                   | testSS | testNoBB | test | testAM |
+|---------------------------------------------|--------|----------|------|--------|
+| Edge crosses the box (the common case)      |  21ns  |   7ns    | 17ns |  64ns  |
+| Box straddles the interior, no edge touch   |  32ns  |   28ns   | 38ns |  69ns  |
+| Disjoint along the triangle's own normal    |  4ns   |   17ns   | 9ns  |  14ns  |
+
+- `testNoBB` — a novel early-exit algorithm, fastest when queries are mostly intersecting (e.g. SVO generation).
+- `testSS` — adapted from Schwarz-Seidel; fastest when queries are mostly disjoint.
+- `test` — `testNoBB` with an AABB precheck; a middle ground when disjoint queries are common.
+- `testAM` — the standard 13-axis SAT reference (Akenine-Möller); a correctness/performance baseline, not intended for production use.
+
+See the comment above `Intersect::testNoBB` in `src/geo/intersect3d.cpp` for the full breakdown.
+
 ## Tests
 
 The test suite lives under `src/tests` and uses [Catch2](https://github.com/catchorg/Catch2) (v3, found via `find_package`). It builds as a `spock_tests` executable, controlled by the `SPOCK_BUILD_TESTS` CMake option (`ON` by default).

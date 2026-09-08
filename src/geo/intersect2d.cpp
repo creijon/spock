@@ -58,6 +58,12 @@ namespace geo2d
 
     bool Intersect::test(glm::vec2 const& point, Triangle const& triangle)
     {
+        // A degenerate (zero-area) triangle has no interior for a point to be inside: the three
+        // signed areas below all collapse to zero for any point on the triangle's own line, not
+        // just points within its collinear span, so they can't be trusted to reject this case.
+        float area = signedTriArea(triangle.v0, triangle.v1, triangle.v2);
+        if (std::abs(area) <= std::numeric_limits<float>::epsilon()) return false;
+
         float s = signedTriArea(triangle.v0, point, triangle.v2);
         float t = signedTriArea(triangle.v1, point, triangle.v0);
         if (s * t < 0.0f) return false;
