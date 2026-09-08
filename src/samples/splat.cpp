@@ -286,6 +286,7 @@ protected:
 
         m_camera.setFocus(m_sceneBounds);
         m_camera.setDistanceRange(m_sceneBounds.w, m_sceneBounds.w * 4.0f);
+        m_camera.setDistance(m_sceneBounds.w * 4.0f);
 
         return renderer;
     }
