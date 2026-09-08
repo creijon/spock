@@ -52,16 +52,16 @@ The reusable engine code lives under `src/spock` and includes:
 
 `geo3d::Intersect` provides four interchangeable triangle-vs-AABB tests, benchmarked in `src/tests/geo_intersect3d_tests.cpp` (release build, ns/call):
 
-| Scenario                                   | testSS | testNoBB | test | testAM |
-|---------------------------------------------|--------|----------|------|--------|
-| Edge crosses the box (the common case)      |  21ns  |   7ns    | 17ns |  64ns  |
-| Box straddles the interior, no edge touch   |  32ns  |   28ns   | 38ns |  69ns  |
-| Disjoint along the triangle's own normal    |  4ns   |   17ns   | 9ns  |  14ns  |
+| Scenario                                    | testAM | testSS | testNoBB | test |
+|---------------------------------------------|--------|--------|----------|------|
+| Edge crosses the box (the common case)      |  64ns  |  21ns  |   7ns    | 17ns |
+| Box straddles the interior, no edge touch   |  69ns  |  32ns  |   28ns   | 38ns |
+| Disjoint along the triangle's own normal    |  14ns  |  4ns   |   17ns   | 9ns  |
 
-- `testNoBB` — a novel early-exit algorithm, fastest when queries are mostly intersecting (e.g. SVO generation).
-- `testSS` — adapted from Schwarz-Seidel; fastest when queries are mostly disjoint.
-- `test` — `testNoBB` with an AABB precheck; a middle ground when disjoint queries are common.
 - `testAM` — the standard 13-axis SAT reference (Akenine-Möller); a correctness/performance baseline, not intended for production use.
+- `testSS` — adapted from Schwarz-Seidel; fastest when queries are mostly disjoint.
+- `testNoBB` — a novel early-exit algorithm, fastest when queries are mostly intersecting (e.g. SVO generation).
+- `test` — `testNoBB` with an AABB precheck; a middle ground when disjoint queries are common.
 
 See the comment above `Intersect::testNoBB` in `src/geo/intersect3d.cpp` for the full breakdown.
 
