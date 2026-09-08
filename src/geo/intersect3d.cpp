@@ -137,8 +137,14 @@ namespace geo3d
     // This means that it is significantly more efficient when performing a series of hierarchial
     // tests such as with the generation of Sparse Voxel Octrees from triangle meshes.
 
-    // If the domain has predominantly disjoint shape queries then performance of the two solutions
-    // is very similar, since the bounding box check is effective in filtering these out early.
+    // Benchmark summary (release build; see src/tests/geo_intersect3d_tests.cpp):
+    //   - Edge crosses the box (the common case): testNoBB is ~3x faster than testSS (~7ns vs ~20ns).
+    //   - Box straddles the triangle's interior without touching an edge (testNoBB's costliest
+    //     path): testNoBB and testSS are roughly tied (~30ns each).
+    //   - Disjoint along the triangle's own normal: testSS is ~4x faster than testNoBB
+    //     (~4ns vs ~17ns) - testNoBB still runs its three edge tests before rejecting on the same
+    //     plane check testSS rejects on immediately. The Aabb-vs-Aabb precheck in test() closes
+    //     most of that gap (~10ns), at some added cost in the two cases above.
 
     // Description of the algorithm:
 
@@ -170,12 +176,13 @@ namespace geo3d
 
         auto intersectsDiagonal = [&](glm::vec3 const& start, glm::vec3 const& end)
         {
+            // Deliberately unnormalized: t comes back in [0, 1] parametrizing start -> end,
+            // avoiding a sqrt and a vector divide per diagonal.
             glm::vec3 axis = end - start;
-            float length = glm::length(axis);
-            if (length <= std::numeric_limits<float>::epsilon()) return false;
+            if (glm::dot(axis, axis) <= std::numeric_limits<float>::epsilon()) return false;
 
             float t = 0.0f;
-            return test(Ray{start, axis / length}, triangle, t) && t <= length;
+            return test(Ray{start, axis}, triangle, t) && t <= 1.0f;
         };
 
         if (intersectsDiagonal(minimum, maximum)) return true;

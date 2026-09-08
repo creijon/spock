@@ -26,9 +26,10 @@ add_executable(spock_tests
     renderer_tests.cpp
     wrappers_tests.cpp
     creators_tests.cpp
+    geo_intersect3d_tests.cpp
 )
 
-target_link_libraries(spock_tests PRIVATE ${BINARY_NAME} Catch2::Catch2WithMain)
+target_link_libraries(spock_tests PRIVATE ${BINARY_NAME} geo Catch2::Catch2WithMain)
 
 set_target_properties(spock_tests PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/binaries

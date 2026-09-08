@@ -7,6 +7,8 @@
 
 #include <glm/glm.hpp>
 
+#include <algorithm>
+
 namespace geo3d
 {
     struct Ray
