@@ -91,6 +91,8 @@ public:
 
     void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
     {
+        PerFrameData& frameData = m_frameData[m_inFlightIndex];
+
         FrameConstants frameConstants{
             camera.view(),
             camera.projection(viewExtents),
@@ -98,7 +100,7 @@ public:
             glm::vec4(viewExtents.width, viewExtents.height, 0.0f, 0.0f)
         };
 
-        spock::copyToDevice(m_frameUniforms.deviceMemory(), frameConstants);
+        memcpy(frameData.uniforms.map(), &frameConstants, sizeof(frameConstants));
 
         if (cameraMoved)
         {
@@ -117,15 +119,21 @@ public:
 #else
             using namespace std;
 #endif
+
+            // We should be able to write directly into the mapped buffer, but the sort runs
+            // extremely slowly when I do that. So instead, we sort in a temporary vector
+            // and then copy it to the mapped buffer.
+            //sort(execution::par, &sorting[0], &sorting[m_splatCount],
+
             sort(execution::par, m_sorting.begin(), m_sorting.end(),
                 [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
 
             // Copy to the instanced vertex buffer.
-            spock::copyToDevice(m_sortingBuffer.deviceMemory(), m_sorting.data(), m_splatCount);
+            memcpy(frameData.sorting.map(), m_sorting.data(), m_splatCount * sizeof(SortingEntry));
         }
     }
 
-    void createResources(SplatScene const &scene)
+    void createResources(SplatScene const& scene)
     {
         m_splatCount = uint32_t(scene.instances.size());
 
@@ -137,13 +145,6 @@ public:
             { frameBinding, splatBinding });
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, *m_descriptorSetLayout }));
 
-        // Camera uniforms.
-        m_frameUniforms = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
-            sizeof(FrameConstants),
-            vk::BufferUsageFlagBits::eUniformBuffer);
-
         // Upload the splat data into a storage buffer.
         m_splatStorage = spock::BufferWrapper(
             m_physicalDevice,
@@ -154,17 +155,8 @@ public:
 
         m_descriptorPool = spock::createDescriptorPool(
             m_device,
-            { {vk::DescriptorType::eUniformBuffer, 1},
-              {vk::DescriptorType::eStorageBuffer, 1} });
-        m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front());
-        spock::updateDescriptorSets(
-            m_device,
-            m_descriptorSet,
-            {
-                {vk::DescriptorType::eUniformBuffer, m_frameUniforms.buffer(), VK_WHOLE_SIZE, nullptr},
-                {vk::DescriptorType::eStorageBuffer, m_splatStorage.buffer(), VK_WHOLE_SIZE, nullptr}
-            },
-            {});
+            { {vk::DescriptorType::eUniformBuffer, m_framesInFlight},
+              {vk::DescriptorType::eStorageBuffer, m_framesInFlight} });
 
         // Create a small vertex buffer for the quad rendering.
         m_quadBuffer = spock::BufferWrapper(
@@ -173,16 +165,40 @@ public:
             QUAD_VERTEX_COUNT * sizeof(QuadVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
+        vk::MemoryPropertyFlags hostBacked{ vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
+    };
+
+        for (uint32_t i = 0; i < m_framesInFlight; ++i)
+        {
+            m_frameData.push_back({
+                std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front()),
+                spock::BufferWrapper(
+                    m_physicalDevice,
+                    m_device,
+                    sizeof(FrameConstants),
+                    vk::BufferUsageFlagBits::eUniformBuffer,
+                    hostBacked),
+                spock::BufferWrapper(
+                    m_physicalDevice,
+                    m_device,
+                    m_splatCount * sizeof(SortingEntry),
+                    vk::BufferUsageFlagBits::eVertexBuffer,
+                    hostBacked)
+                });
+
+            spock::updateDescriptorSets(
+                m_device,
+                m_frameData.back().descriptorSet,
+                {
+                    {vk::DescriptorType::eUniformBuffer, m_frameData.back().uniforms.buffer(), VK_WHOLE_SIZE, nullptr},
+                    {vk::DescriptorType::eStorageBuffer, m_splatStorage.buffer(), VK_WHOLE_SIZE, nullptr}
+                },
+                {});
+        }
 
         // Create an indirection buffer, which will be used to sort the splats back-to-front.
         // This is populated, sorted and uploaded in the Update() function when the camera moves.
         m_sorting.resize(m_splatCount);
-
-        m_sortingBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
-            m_splatCount * sizeof(SortingEntry),
-            vk::BufferUsageFlagBits::eVertexBuffer);
 
         createGraphicsPipeline();
     }
@@ -234,27 +250,37 @@ public:
         spock::writeLog("Shaders compiled successfully.\n");
     }
 
+    bool initialising() const { return m_frameCount < m_framesInFlight; }
+
 protected:
     void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
     {
-        // Bind the pipeline and vertex buffers.
+        PerFrameData& frameData = m_frameData[m_inFlightIndex];
+
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);
-        commandBuffer.bindVertexBuffers(0, { m_quadBuffer.buffer(), m_sortingBuffer.buffer() }, { 0, 0 });
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {frameData.descriptorSet}, nullptr);
+        commandBuffer.bindVertexBuffers(0, { m_quadBuffer.buffer(), frameData.sorting.buffer() }, { 0, 0 });
 
         commandBuffer.draw(QUAD_VERTEX_COUNT, m_splatCount, 0, 0);
     }
 
 private:
     vk::raii::DescriptorPool m_descriptorPool{nullptr};
-    vk::raii::DescriptorSet m_descriptorSet{nullptr};
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
 
-    spock::BufferWrapper m_frameUniforms;   // Per-frame constants.
+    // Dynamic data
+    struct PerFrameData
+    {
+        vk::raii::DescriptorSet descriptorSet;
+        spock::BufferWrapper uniforms;      // Per-frame constants.
+        spock::BufferWrapper sorting;       // The ordering of the splats for rendering.
+    };
+    std::vector<PerFrameData> m_frameData;
+
+    // Constant data.
     spock::BufferWrapper m_splatStorage;    // The splat data.
-    spock::BufferWrapper m_sortingBuffer;   // The ordering of the splats for rendering.
     spock::BufferWrapper m_quadBuffer;      // The quad that is instanced.
 
     uint32_t m_splatCount{0};
@@ -295,7 +321,10 @@ protected:
     {
         SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
         vk::Offset2D cursor = m_window.cursorPosition();
-        bool cameraMoved = (m_time == 0us);
+
+        // We have to force the camera update for all the frames in flight,
+        // because the renderer is still filling the dynamic buffers.
+        bool cameraMoved = renderer->initialising();
 
         if (m_window.scrollWheelOffsetY() != 0.0)
         {

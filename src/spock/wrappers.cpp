@@ -65,11 +65,10 @@ namespace spock
         vk::BufferUsageFlags usage,
         vk::MemoryPropertyFlags propertyFlags)
         : m_buffer(device, vk::BufferCreateInfo({}, size, usage))
-#if !defined(NDEBUG)
         , m_size(size)
         , m_usage(usage)
         , m_propertyFlags(propertyFlags)
-#endif
+        , m_mapped(nullptr)
     {
         m_deviceMemory = allocateDeviceMemory(
             device,
@@ -79,14 +78,22 @@ namespace spock
         m_buffer.bindMemory(m_deviceMemory, 0);
     }
 
+    BufferWrapper::~BufferWrapper()
+    {
+        if (m_mapped)
+        {
+            m_deviceMemory.unmapMemory();
+            m_mapped = nullptr;
+        }
+    }
+
     BufferWrapper::BufferWrapper(BufferWrapper &&other) noexcept
         : m_deviceMemory(std::move(other.m_deviceMemory))
         , m_buffer(std::move(other.m_buffer))
-#if !defined(NDEBUG)
         , m_size(other.m_size)
         , m_usage(other.m_usage)
         , m_propertyFlags(other.m_propertyFlags)
-#endif
+        , m_mapped(other.m_mapped)
     {
     }
 
@@ -96,14 +103,29 @@ namespace spock
         {
             m_deviceMemory = std::move(other.m_deviceMemory);
             m_buffer = std::move(other.m_buffer);
-#if !defined(NDEBUG)
             m_size = other.m_size;
             m_usage = other.m_usage;
             m_propertyFlags = other.m_propertyFlags;
-#endif
+            m_mapped = other.m_mapped;
         }
 
         return *this;
+    }
+
+    void* BufferWrapper::map()
+    {
+        if (m_mapped)
+        {
+            return m_mapped;
+        }
+
+        if (m_propertyFlags == (vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent))
+        {
+            m_mapped = m_deviceMemory.mapMemory(0, m_size);
+            return m_mapped;
+        }
+
+        return nullptr;
     }
 
     ImageWrapper::ImageWrapper(

@@ -289,7 +289,7 @@ public:
             windowWidth,
             windowHeight)
     {
-        m_camera.setDistance(30.0f);
+        m_camera.setDistanceRange(30.0f, 30.0f);
     }
 
 protected:
