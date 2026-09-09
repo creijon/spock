@@ -18,6 +18,7 @@
 
 #include <functional>
 #include <iterator>
+#include <mutex>
 #include <utility>
 #include <vector>
 
@@ -163,7 +164,7 @@ protected:
             glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
             std::chrono::duration_cast<Seconds>(time).count(),
             (int)m_frameCount};
-        spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
+        spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eAllGraphics, pushConstants);
 
         // Draw the single triangle.
         commandBuffer.draw(SHADERLAB_VERTEX_COUNT, 1, 0, 0);
@@ -212,28 +213,43 @@ protected:
             renderer->setMouseClickPos(mousePos);
         }
 
-        if (m_watcher.modifiedShaders)
-        {
-            // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-            renderer->waitIdle();
-            renderer->createGraphicsPipeline(m_watcher.modifiedShaders);
-            m_watcher.modifiedShaders = vk::ShaderStageFlags(0);
-        }
+        m_watcher.notifyRenderer(renderer);
     }
 
 private:
-    struct Watcher : public spock::FileWatcher
+    class Watcher : public spock::FileWatcher
     {
+    public:
         Watcher() : spock::FileWatcher(SHADER_PATH)
         {}
 
         void fileModified(std::string const& filename) override
         {
+            std::unique_lock lock(mutex);
             if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
             if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
         }
 
+        void notifyRenderer(ShaderLabRenderer* renderer)
+        {
+            vk::ShaderStageFlags temp;
+            {
+                // Take the lock for the minimum amount of time to avoid blocking the file watcher thread.
+                std::unique_lock lock(mutex);
+                temp = modifiedShaders;
+                modifiedShaders = vk::ShaderStageFlags(0);
+            }
+            if (temp)
+            {
+                // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
+                renderer->waitIdle();
+                renderer->createGraphicsPipeline(temp);
+            }
+        }
+
+    private:
         vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
+        std::mutex mutex;
     };
 
     Watcher m_watcher;
