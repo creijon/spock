@@ -157,17 +157,29 @@ void main()
   
     vec3 pos = floatToVec3(s.position);
     vec4 centreClip = fc.proj * fc.view * vec4(pos, 1.0);
+    vec3 ndc = centreClip.xyz / centreClip.w;
     vec3 centreView = vec3(fc.view * vec4(pos, 1.0));
+    vec3 viewVec = normalize(pos - fc.cameraPos.xyz);
+
+    outCoord = inVertPos;
 
     if (centreClip.w <= 0.0 || centreView.z >= -0.001 ||
         fc.viewport.x <= 0.0 || fc.viewport.y <= 0.0)
     {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-        outCoord = inVertPos;
         outColor = vec3(0.0);
         outOpacity = 0.0;
         return;
     }
+
+
+/*
+    outColor = vec3(0.0);
+//    outColor = sphericalHarmonicsToRgb(viewVec, s);
+    outOpacity = 1.0;
+    gl_Position = vec4(ndc.xy + inVertPos * 0.002, ndc.z, 1.0);
+    return;
+*/
 
     mat3 covariance3D = buildCovariance3D(floatToVec4(s.rotation), floatToVec3(s.scale));
     mat3 covariance2D = projectCovarianceToScreen(centreView, covariance3D);
@@ -190,14 +202,11 @@ void main()
     vec2 axis1 = SPLAT_EXTENT * sqrt(lambda1) * axisDirection1;
     vec2 axis2 = SPLAT_EXTENT * sqrt(lambda2) * axisDirection2;
 
-    vec3 ndc = centreClip.xyz / centreClip.w;
-
     vec2 pixelOffset = inVertPos.x * axis1 + inVertPos.y * axis2;
     vec2 ndcOffset = pixelOffset / (fc.viewport.xy * 0.5);
 
-    outCoord = inVertPos;
-    vec3 viewVec = normalize(pos - fc.cameraPos.xyz);
     outColor = sphericalHarmonicsToRgb(viewVec, s);
+//    outOpacity = 1.0;
     outOpacity = 1.0 / (1.0 + exp(-s.opacity));
 
     gl_Position = vec4(ndc.xy + ndcOffset, ndc.z, 1.0);

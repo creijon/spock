@@ -146,7 +146,11 @@ public:
 
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, {}, pushConstantRange }));
 
-        m_vertexBuffer = spock::BufferWrapper(m_physicalDevice, m_device, CUBE_VERTEX_BUFFER_SIZE, vk::BufferUsageFlagBits::eVertexBuffer);
+        m_vertexBuffer = spock::BufferWrapper(
+            m_physicalDevice,
+            m_device,
+            CUBE_VERTEX_BUFFER_SIZE,
+            vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
 
         createGraphicsPipeline();

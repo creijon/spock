@@ -86,11 +86,12 @@ namespace spock
             vk::raii::Device const &device,
             vk::DeviceSize size,
             vk::BufferUsageFlags usage,
-            vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+            vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible);
         BufferWrapper() = default;
         BufferWrapper(const BufferWrapper &) = delete;
         BufferWrapper(BufferWrapper &&other) noexcept;
         BufferWrapper const& operator=(BufferWrapper&& other);
+        ~BufferWrapper();
 
         vk::raii::DeviceMemory const& deviceMemory() const
         {
@@ -101,6 +102,8 @@ namespace spock
         {
             return m_buffer;
         }
+
+        void* map();
 
         template <typename DataType>
         void upload(
@@ -167,12 +170,11 @@ namespace spock
 
         // Declare the buffer SECOND so that it is destroyed first.
         vk::raii::Buffer m_buffer{nullptr};
-#if !defined(NDEBUG)
-    private:
+
         vk::DeviceSize m_size{0};
         vk::BufferUsageFlags m_usage{};
         vk::MemoryPropertyFlags m_propertyFlags{};
-#endif
+        void* m_mapped{nullptr};
     };
 
     class ImageWrapper
