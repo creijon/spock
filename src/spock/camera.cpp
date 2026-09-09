@@ -17,6 +17,7 @@ namespace spock
         float zNear,
         float zFar)
         : m_focus(focus)
+        , m_distance(maxDistance)
         , m_minDistance(minDistance)
         , m_maxDistance(maxDistance)
         , m_fov(fov)

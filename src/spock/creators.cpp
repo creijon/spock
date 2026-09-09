@@ -368,8 +368,6 @@ namespace spock
             stencilOpState,
             stencilOpState);
 
-        vk::ColorComponentFlags colorComponentFlags(
-            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
         vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachment(
             true,
             vk::BlendFactor::eSrcAlpha,
@@ -378,7 +376,7 @@ namespace spock
             vk::BlendFactor::eOne,
             vk::BlendFactor::eZero,
             vk::BlendOp::eAdd,
-            colorComponentFlags);
+            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
         vk::PipelineColorBlendStateCreateInfo colorBlendInfo(
             vk::PipelineColorBlendStateCreateFlags(),
             false,

@@ -58,6 +58,14 @@ namespace spock
         vk::raii::BufferView const* bufferView;
     };
 
+    struct ColorBlend
+    {
+        
+        explicit operator vk::PipelineColorBlendStateCreateInfo() const;
+    };
+
+
+
     // VertexType must provide static method attributes() returning
     // (vk::Format, offset) pairs, where each offset is relative to VertexType.
     template <typename VertexType>
@@ -136,7 +144,7 @@ namespace spock
             assert(sizeof(DataType) <= elementSize);
 
             size_t dataSize = data.size() * elementSize;
-            assert(dataSize <= m_size);
+            assert(dataSize <= size_t(m_size));
 
             BufferWrapper stagingBuffer(
                 physicalDevice,

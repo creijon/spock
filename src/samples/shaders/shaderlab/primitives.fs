@@ -360,8 +360,10 @@ vec2 map( in vec3 pos )
 {
     vec2 res = vec2( pos.y, 0.0 );
 
-    // bounding box
-/*
+    res = opU( res, vec2( sdSphere(    pos-vec3(-2.0,0.25, 0.0), 0.25 ), 26.9 ) );
+
+// bounding box
+
     if( sdBox( pos-vec3(-2.0,0.3,0.25),vec3(0.3,0.3,1.0) )<res.x )
     {
       res = opU( res, vec2( sdSphere(    pos-vec3(-2.0,0.25, 0.0), 0.25 ), 26.9 ) );
@@ -377,7 +379,7 @@ vec2 map( in vec3 pos )
     res = opU( res, vec2( sdCappedCone(  pos-vec3( 0.0,0.25,-2.0), 0.25, 0.25, 0.1 ), 13.67 ) );
     res = opU( res, vec2( sdSolidAngle(  pos-vec3( 0.0,0.00,-3.0), vec2(3,4)/5.0, 0.4 ), 49.13 ) );
     }
-*/
+
     // bounding box
     if( sdBox( pos-vec3(0.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )
     {
@@ -387,7 +389,7 @@ vec2 map( in vec3 pos )
 	res = opU( res, vec2( sdCylinder(    pos-vec3( 0.0,0.25,-2.0), vec2(0.15,0.25) ), 8.0 ) );
     res = opU( res, vec2( sdHexPrism(    pos-vec3( 0.0,0.2,-3.0), vec2(0.2,0.05) ), 18.4 ) );
     }
-/*
+
     // bounding box
     if( sdBox( pos-vec3(-1.0,0.35,-1.0),vec3(0.35,0.35,2.5))<res.x )
     {
@@ -407,7 +409,7 @@ vec2 map( in vec3 pos )
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.15, 0.0), vec3(0.1,0.0,0.0), vec3(-0.1,0.35,0.1), 0.15, 0.05), 51.7 ) );
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.20, 1.0), 0.2, 0.1, 0.3 ), 37.0 ) );
     }
-    */
+
     return res;
 }
 
