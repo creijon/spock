@@ -95,18 +95,21 @@ namespace spock
         , m_propertyFlags(other.m_propertyFlags)
         , m_mapped(other.m_mapped)
     {
+        other.m_mapped = nullptr;
     }
 
     BufferWrapper const& BufferWrapper::operator=(BufferWrapper&& other)
     {
         if (this != &other)
         {
+            unmap();
             m_deviceMemory = std::move(other.m_deviceMemory);
             m_buffer = std::move(other.m_buffer);
             m_size = other.m_size;
             m_usage = other.m_usage;
             m_propertyFlags = other.m_propertyFlags;
             m_mapped = other.m_mapped;
+            other.m_mapped = nullptr;
         }
 
         return *this;
@@ -126,6 +129,15 @@ namespace spock
         }
 
         return nullptr;
+    }
+
+    void BufferWrapper::unmap()
+    {
+        if (m_mapped)
+        {
+            m_mapped = nullptr;
+            return m_deviceMemory.unmapMemory();
+        }
     }
 
     ImageWrapper::ImageWrapper(

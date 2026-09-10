@@ -104,6 +104,7 @@ namespace spock
         }
 
         void* map();
+        void unmap();
 
         template <typename DataType>
         void upload(
