@@ -58,6 +58,7 @@ namespace spock
 
         uint32_t m_frameCount{0};
         uint32_t m_inFlightIndex{0};
+        uint32_t m_framesSinceResize{0};
 
         const vk::ClearColorValue m_clearColor;
         const vk::ClearDepthStencilValue m_clearDepthStencil;

@@ -48,6 +48,7 @@ namespace spock
     {
         m_extents = extents;
         m_inFlightIndex = 0;
+        m_framesSinceResize = 0;
 
         // For resizing we need to clear out the previous framebuffers and command buffers before the swapchain.
         m_frameBuffers.clear();
@@ -150,6 +151,7 @@ namespace spock
 
         m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
         m_frameCount++;
+        m_framesSinceResize++;
 
         return result;
     }
