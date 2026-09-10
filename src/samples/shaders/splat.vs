@@ -92,36 +92,6 @@ mat3 quatToMat3(vec4 q)
         1.0 - 2.0 * q.x * q.x - 2.0 * q.y * q.y);
 }
 
-mat3 buildCovariance3D(vec4 rotation, vec3 scale)
-{
-    vec3 sigma = exp(scale);
-    mat3 rotationMatrix = quatToMat3(rotation);
-    mat3 scaleMatrix = mat3(
-        sigma.x, 0.0, 0.0,
-        0.0, sigma.y, 0.0,
-        0.0, 0.0, sigma.z);
-    mat3 rs = rotationMatrix * scaleMatrix;
-    mat3 covariance = rs * transpose(rs);
-
-    return covariance;
-}
-
-mat3 projectCovarianceToScreen(vec3 centreView, mat3 covariance3D)
-{
-    float focalX = fc.proj[0][0] * fc.viewport.x * 0.5;
-    float focalY = fc.proj[1][1] * fc.viewport.y * 0.5;
-    float z = centreView.z;
-
-    mat3 jacobian = mat3(
-        -focalX / z, 0.0, 0.0,
-        0.0, -focalY / z, 0.0,
-        focalX * centreView.x / (z * z), focalY * centreView.y / (z * z), 0.0);
-
-    mat3 viewLinear = mat3(fc.view);
-    mat3 transform = jacobian * viewLinear;
-    return transform * covariance3D * transpose(transform);
-}
-
 vec3 sphericalHarmonicsToRgb(vec3 viewVec, SplatData s)
 {
     float x = viewVec.x;
@@ -151,26 +121,54 @@ vec3 sphericalHarmonicsToRgb(vec3 viewVec, SplatData s)
     return clamp(rgb + vec3(0.5), 0.0, 1.0);
 }
 
+mat3 projectCovariance(vec3 centreView, vec4 rotation, vec3 scale)
+{
+    // Covariance
+    vec3 sigma = exp(scale);
+    mat3 rotationMatrix = quatToMat3(rotation);
+    mat3 scaleMatrix = mat3(
+        sigma.x, 0.0, 0.0,
+        0.0, sigma.y, 0.0,
+        0.0, 0.0, sigma.z);
+    mat3 rs = rotationMatrix * scaleMatrix;
+
+    // Project covariance
+    float focalX = fc.proj[0][0] * fc.viewport.x * 0.5;
+    float focalY = fc.proj[1][1] * fc.viewport.y * 0.5;
+    float z = centreView.z;
+
+    mat3 jacobian = mat3(
+        -focalX / z, 0.0, 0.0,
+        0.0, -focalY / z, 0.0,
+        focalX * centreView.x / (z * z), focalY * centreView.y / (z * z), 0.0);
+
+    mat3 viewLinear = mat3(fc.view);
+    mat3 transform = jacobian * viewLinear * rs;
+    return transform * transpose(transform);
+}
+
 void main()
 {
     SplatData s = splatBuffer.splats[inSplatIndex];
   
     vec3 pos = floatToVec3(s.position);
     vec4 centreClip = fc.proj * fc.view * vec4(pos, 1.0);
+    vec3 ndc = centreClip.xyz / centreClip.w;
     vec3 centreView = vec3(fc.view * vec4(pos, 1.0));
+    vec3 viewVec = normalize(pos - fc.cameraPos.xyz);
+
+    outCoord = inVertPos;
 
     if (centreClip.w <= 0.0 || centreView.z >= -0.001 ||
         fc.viewport.x <= 0.0 || fc.viewport.y <= 0.0)
     {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-        outCoord = inVertPos;
         outColor = vec3(0.0);
         outOpacity = 0.0;
         return;
     }
 
-    mat3 covariance3D = buildCovariance3D(floatToVec4(s.rotation), floatToVec3(s.scale));
-    mat3 covariance2D = projectCovarianceToScreen(centreView, covariance3D);
+    mat3 covariance2D = projectCovariance(centreView, floatToVec4(s.rotation), floatToVec3(s.scale));
 
     float a = covariance2D[0][0] + 0.3;
     float b = covariance2D[1][0];
@@ -190,13 +188,9 @@ void main()
     vec2 axis1 = SPLAT_EXTENT * sqrt(lambda1) * axisDirection1;
     vec2 axis2 = SPLAT_EXTENT * sqrt(lambda2) * axisDirection2;
 
-    vec3 ndc = centreClip.xyz / centreClip.w;
-
     vec2 pixelOffset = inVertPos.x * axis1 + inVertPos.y * axis2;
     vec2 ndcOffset = pixelOffset / (fc.viewport.xy * 0.5);
 
-    outCoord = inVertPos;
-    vec3 viewVec = normalize(pos - fc.cameraPos.xyz);
     outColor = sphericalHarmonicsToRgb(viewVec, s);
     outOpacity = 1.0 / (1.0 + exp(-s.opacity));
 
