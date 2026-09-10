@@ -421,26 +421,25 @@ namespace spock
         std::vector<vk::DescriptorBufferInfo> bufferInfos;
         bufferInfos.reserve(bufferData.size());
 
+        std::vector<vk::BufferView> bufferViews;
+        bufferViews.reserve(bufferData.size());
+
         std::vector<vk::WriteDescriptorSet> writeDescriptorSets;
         writeDescriptorSets.reserve(bufferData.size() + (textureData.empty() ? 0 : 1));
         uint32_t dstBinding = bindingOffset;
         for (auto const &bd : bufferData)
         {
             bufferInfos.emplace_back(bd.buffer, 0, bd.size);
-            vk::BufferView bufferView{nullptr};
-            if (bd.bufferView)
-            {
-                bufferView = *bd.bufferView;
-            }
+            bufferViews.push_back(bd.bufferView ? vk::BufferView(*bd.bufferView) : vk::BufferView{});
             writeDescriptorSets.emplace_back(
-                descriptorSet, 
+                descriptorSet,
                 dstBinding++,
                 0,
                 1,
                 bd.type,
                 nullptr,
                 &bufferInfos.back(),
-                bd.bufferView ? &bufferView : nullptr);
+                bd.bufferView ? &bufferViews.back() : nullptr);
         }
 
         std::vector<vk::DescriptorImageInfo> imageInfos;
