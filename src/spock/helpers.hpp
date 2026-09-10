@@ -49,7 +49,7 @@ namespace spock
     {
         auto commandBuffers =
             device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1));
-        vk::CommandBuffer commandBuffer = *(commandBuffers.end());
+        vk::CommandBuffer commandBuffer = *(commandBuffers.front());
         commandBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
         func(commandBuffer);
         commandBuffer.end();
