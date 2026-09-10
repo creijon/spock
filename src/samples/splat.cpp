@@ -104,7 +104,8 @@ public:
 
         memcpy(frameData.uniforms.map(), &frameConstants, sizeof(frameConstants));
 
-        if (cameraMoved)
+        // We have to update the sorting data for all the frames in flight or if the camera moves.
+        if (m_frameCount < m_framesInFlight || cameraMoved)
         {
             // Rebuild the sorting data with the new Z distances.
             // Because we sort the vertex buffer it is important to do this on an array on the host
@@ -125,6 +126,9 @@ public:
             using namespace std;
 #endif
 
+            // We should be able to write directly into the mapped buffer, but the sort runs
+            // extremely slowly when I do that. So instead, we sort in a temporary vector
+            // and then copy it to the mapped buffer.
             sort(execution::par, m_sorting.begin(), m_sorting.end(),
                 [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
 
@@ -153,11 +157,6 @@ public:
             vk::BufferUsageFlagBits::eStorageBuffer);
         spock::copyToDevice(m_splatStorage.deviceMemory(), scene.instances.data(), m_splatCount);
 
-        m_descriptorPool = spock::createDescriptorPool(
-            m_device,
-            { {vk::DescriptorType::eUniformBuffer, m_framesInFlight},
-              {vk::DescriptorType::eStorageBuffer, m_framesInFlight} });
-
         // Create a small vertex buffer for the quad rendering.
         m_quadBuffer = spock::BufferWrapper(
             m_physicalDevice,
@@ -165,8 +164,14 @@ public:
             QUAD_VERTEX_COUNT * sizeof(QuadVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
-        vk::MemoryPropertyFlags hostBacked{ vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent
-    };
+        
+
+        m_descriptorPool = spock::createDescriptorPool(
+            m_device,
+            { {vk::DescriptorType::eUniformBuffer, m_framesInFlight},
+              {vk::DescriptorType::eStorageBuffer, m_framesInFlight} });
+
+        vk::MemoryPropertyFlags hostBacked{ vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
 
         for (uint32_t i = 0; i < m_framesInFlight; ++i)
         {
@@ -284,6 +289,15 @@ private:
     };
     std::vector<PerFrameData> m_frameData;
 
+    // Dynamic data
+    struct PerFrameData
+    {
+        vk::raii::DescriptorSet descriptorSet;
+        spock::BufferWrapper uniforms;      // Per-frame constants.
+        spock::BufferWrapper sorting;       // The ordering of the splats for rendering.
+    };
+    std::vector<PerFrameData> m_frameData;
+
     // Constant data.
     spock::BufferWrapper m_splatStorage;    // The splat data.
     spock::BufferWrapper m_quadBuffer;      // The quad that is instanced.
@@ -327,9 +341,7 @@ protected:
         SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
         vk::Offset2D cursor = m_window.cursorPosition();
 
-        // We have to force the camera update for all the frames in flight,
-        // because the renderer is still filling the dynamic buffers.
-        bool cameraMoved = renderer->initialising();
+        bool cameraMoved = false;
 
         if (m_window.scrollWheelOffsetY() != 0.0)
         {
