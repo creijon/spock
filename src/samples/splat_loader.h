@@ -8,6 +8,7 @@
 
 #include "spock/math.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -306,7 +307,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
         };
 
         // SH Degree 1, 2, 3
-        size_t harmonicCount = shRest.size() / SH_CHANNEL_COUNT;
+        int32_t harmonicCount = int32_t(shRest.size()) / SH_CHANNEL_COUNT;
 
         if (harmonicCount >= SH_DEGREE1_COUNT)
         {
@@ -328,7 +329,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
             }
         }
 
-        harmonicCount -= SH_DEGREE1_COUNT;
+        harmonicCount = std::max(harmonicCount - int32_t(SH_DEGREE1_COUNT), 0);
 
         if (harmonicCount >= SH_DEGREE2_COUNT)
         {
@@ -350,7 +351,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
             }
         }
 
-        harmonicCount -= SH_DEGREE2_COUNT;
+        harmonicCount = std::max(harmonicCount - int32_t(SH_DEGREE2_COUNT), 0);
 
         if (harmonicCount >= SH_DEGREE3_COUNT)
         {
