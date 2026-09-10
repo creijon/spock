@@ -47,8 +47,9 @@ namespace spock
         vk::Queue const &queue,
         Func const &func)
     {
-        vk::raii::CommandBuffer commandBuffer =
-            device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1)).front();
+        auto commandBuffers =
+            device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1));
+        vk::CommandBuffer commandBuffer = *(commandBuffers.end());
         commandBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
         func(commandBuffer);
         commandBuffer.end();
