@@ -105,7 +105,7 @@ public:
         memcpy(frameData.uniforms.map(), &frameConstants, sizeof(frameConstants));
 
         // We have to update the sorting data for all the frames in flight or if the camera moves.
-        if (m_frameCount < m_framesInFlight || cameraMoved)
+        if (m_framesSinceResize < m_framesInFlight || cameraMoved)
         {
             // Rebuild the sorting data with the new Z distances.
             // Because we sort the vertex buffer it is important to do this on an array on the host
@@ -125,10 +125,6 @@ public:
 #else
             using namespace std;
 #endif
-
-            // We should be able to write directly into the mapped buffer, but the sort runs
-            // extremely slowly when I do that. So instead, we sort in a temporary vector
-            // and then copy it to the mapped buffer.
             sort(execution::par, m_sorting.begin(), m_sorting.end(),
                 [](const SortingEntry& a, const SortingEntry& b) { return a.zDist < b.zDist; });
 
