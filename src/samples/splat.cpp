@@ -150,8 +150,14 @@ public:
             m_physicalDevice,
             m_device,
             sizeof(SplatInstance) * m_splatCount,
-            vk::BufferUsageFlagBits::eStorageBuffer);
-        spock::copyToDevice(m_splatStorage.deviceMemory(), scene.instances.data(), m_splatCount);
+            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+            vk::MemoryPropertyFlagBits::eDeviceLocal);
+        m_splatStorage.upload(
+            m_physicalDevice,
+            m_device,
+            m_commandPool,
+            m_presenter->graphicsQueue(),
+            scene.instances);
 
         // Create a small vertex buffer for the quad rendering.
         m_quadBuffer = spock::BufferWrapper(

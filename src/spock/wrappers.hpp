@@ -138,16 +138,12 @@ namespace spock
             vk::raii::Device const &device,
             vk::raii::CommandPool const &commandPool,
             vk::raii::Queue const &queue,
-            std::vector<DataType> const &data,
-            size_t stride) const
+            std::vector<DataType> const &data) const
         {
             assert(m_usage & vk::BufferUsageFlagBits::eTransferDst);
             assert(m_propertyFlags & vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-            size_t elementSize = stride ? stride : sizeof(DataType);
-            assert(sizeof(DataType) <= elementSize);
-
-            size_t dataSize = data.size() * elementSize;
+            size_t dataSize = data.size() * sizeof(DataType);
             assert(dataSize <= size_t(m_size));
 
             BufferWrapper stagingBuffer(
@@ -155,12 +151,12 @@ namespace spock
                 device,
                 dataSize,
                 vk::BufferUsageFlagBits::eTransferSrc);
-            copyToDevice(stagingBuffer.m_deviceMemory, data.data(), data.size(), elementSize);
+            copyToDevice(stagingBuffer.m_deviceMemory, data.data(), data.size(), sizeof(DataType));
 
             oneTimeSubmit(device,
                           commandPool,
                           queue,
-                          [&](vk::raii::CommandBuffer const &commandBuffer)
+                          [&](vk::CommandBuffer const &commandBuffer)
                           { commandBuffer.copyBuffer(*stagingBuffer.m_buffer, *m_buffer, vk::BufferCopy(0, 0, dataSize)); });
         }
 
