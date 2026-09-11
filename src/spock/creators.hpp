@@ -77,6 +77,12 @@ namespace spock
         vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eBack,
         bool depthBuffered = true);
 
+    // Create a compute pipeline from a single compute shader stage.
+    vk::raii::Pipeline createComputePipeline(
+        vk::raii::Device const &device,
+        vk::PipelineShaderStageCreateInfo const &shaderStageInfo,
+        vk::raii::PipelineLayout const &pipelineLayout);
+
     // Update a descriptor set with uniform buffer bindings and optional textures.
     void updateDescriptorSets(
         vk::raii::Device const &device,

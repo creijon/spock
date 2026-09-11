@@ -409,6 +409,23 @@ namespace spock
         return vk::raii::Pipeline(device, cache, graphicsPipelineInfo);
     }
 
+    // Create a compute pipeline from a single compute shader stage and pipeline layout.
+    vk::raii::Pipeline createComputePipeline(
+        vk::raii::Device const &device,
+        vk::PipelineShaderStageCreateInfo const &shaderStageInfo,
+        vk::raii::PipelineLayout const &pipelineLayout)
+    {
+        vk::ComputePipelineCreateInfo computePipelineInfo(
+            vk::PipelineCreateFlags(),
+            shaderStageInfo,
+            pipelineLayout);
+
+        // TODO: might need to pass in VkPipelineCacheCreateFlagBits at some stage.
+        vk::raii::PipelineCache cache(device, vk::PipelineCacheCreateInfo());
+
+        return vk::raii::Pipeline(device, cache, computePipelineInfo);
+    }
+
     // Upload buffer and texture bindings into the descriptor set. Buffer data is
     // placed sequentially starting at bindingOffset followed by any textures.
     void updateDescriptorSets(

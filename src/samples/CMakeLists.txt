@@ -39,10 +39,12 @@ add_sample_target(cube ${CMAKE_CURRENT_SOURCE_DIR}/cube.cpp)
 add_sample_target(shaderlab ${CMAKE_CURRENT_SOURCE_DIR}/shaderlab.cpp)
 add_sample_target(splat ${CMAKE_CURRENT_SOURCE_DIR}/splat.cpp)
 add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/instancing.cpp)
+add_sample_target(compute ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp)
 
 set_target_properties(
     cube
     shaderlab
     splat
     instancing
+    compute
     PROPERTIES FOLDER "samples")

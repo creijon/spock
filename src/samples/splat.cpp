@@ -251,7 +251,7 @@ public:
                 m_device,
                 shaderStagesInfo,
                 m_pipelineLayout,
-                m_renderPass,
+                m_renderPass.renderPass(),
                 vertexFormat,
                 vk::PrimitiveTopology::eTriangleStrip,
                 vk::CullModeFlagBits::eNone,
