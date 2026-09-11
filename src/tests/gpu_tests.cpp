@@ -266,7 +266,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
 
     vk::raii::DescriptorSetLayout descriptorSetLayout = spock::createDescriptorSetLayout(
         fixture->device,
-        {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
+        {{0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
     CHECK(*descriptorSetLayout != VK_NULL_HANDLE);
 
     vk::raii::DescriptorPool descriptorPool = spock::createDescriptorPool(
@@ -281,7 +281,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
     spock::BufferWrapper uniformBuffer(
         fixture->physicalDevice, fixture->device, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
 
-    spock::DescriptorSetUpdateData bufferData{
+    std::vector<spock::BufferUpdateData> bufferData{
         {vk::DescriptorType::eUniformBuffer, uniformBuffer.buffer(), sizeof(float) * 16, nullptr}};
 
     CHECK_NOTHROW(spock::updateDescriptorSets(fixture->device, descriptorSet, bufferData, {}));

@@ -34,7 +34,7 @@ TEST_CASE("checked_cast throws on out-of-range values", "[utils_extended]")
     // uint32_t max + 1 can't fit in uint32_t
     CHECK_THROWS_AS(
         spock::checked_cast<uint32_t>(uint64_t{4294967296}),
-        std::exception);
+        std::out_of_range);
 }
 
 TEST_CASE("checked_cast at boundary values", "[utils_extended]")
