@@ -272,9 +272,10 @@ namespace spock
         {
             assert((formatProperties.optimalTilingFeatures & formatFeatureFlags) == formatFeatureFlags);
             m_stagingBuffer = std::move(BufferWrapper(physicalDevice, device, m_extent.width * m_extent.height * 4, vk::BufferUsageFlagBits::eTransferSrc));
-            imageTiling = vk::ImageTiling::eOptimal;
             usageFlags |= vk::ImageUsageFlagBits::eTransferDst;
+            imageTiling = vk::ImageTiling::eOptimal;
             initialLayout = vk::ImageLayout::eUndefined;
+            requirements = vk::MemoryPropertyFlagBits::eDeviceLocal;
         }
         else
         {

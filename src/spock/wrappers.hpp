@@ -324,7 +324,7 @@ namespace spock
     private:
         vk::Format m_format;
         vk::Extent2D m_extent;
-        bool m_needsStaging;
+        bool m_needsStaging{false};
         BufferWrapper m_stagingBuffer;
         ImageWrapper m_image;
         vk::raii::Sampler m_sampler{nullptr};

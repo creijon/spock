@@ -48,7 +48,14 @@ namespace
 #ifdef __APPLE__
         glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 #endif
-        return glfwCreateWindow(extent.width, extent.height, windowName.c_str(), nullptr, nullptr);
+        GLFWwindow* window = glfwCreateWindow(extent.width, extent.height, windowName.c_str(), nullptr, nullptr);
+
+        if (window == nullptr)
+        {
+            throw std::runtime_error("Failed to create GLFW window");
+        }
+
+        return window;
     }
 
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
@@ -77,7 +84,11 @@ Window::~Window()
 vk::raii::SurfaceKHR Window::createSurface(vk::raii::Instance const &instance) const
 {
     VkSurfaceKHR surface;
-    glfwCreateWindowSurface(*instance, m_handle, nullptr, &surface);
+    VkResult result = glfwCreateWindowSurface(*instance, m_handle, nullptr, &surface);
+    if (result != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to create window surface");
+    }
     return vk::raii::SurfaceKHR(instance, surface);
 }
 

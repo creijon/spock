@@ -108,7 +108,7 @@ namespace spock
 
         // If frame acquisition failed, skip rendering and present this frame.
         // The semaphore was not signaled by the swapchain, so we cannot wait on it.
-        if (acquireResult != vk::Result::eSuccess)
+        if (acquireResult != vk::Result::eSuccess && acquireResult != vk::Result::eSuboptimalKHR)
         {
             m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
             return acquireResult;
