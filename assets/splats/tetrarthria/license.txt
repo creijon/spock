@@ -1,0 +1,6 @@
+Title: Tetrarthria spec.
+Author: Fabian Plum (https://superspl.at/user?id=scant3d)
+Source: https://superspl.at/scene/b274dd94
+License: CC Attribution-NonCommercial (Creative Commons Attribution-NonCommercial)
+License URL: http://creativecommons.org/licenses/by-nc/4.0/
+Requirements: Author must be credited. No commercial use.

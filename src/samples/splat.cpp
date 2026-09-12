@@ -72,7 +72,7 @@ static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/src/samples/sh
 static const std::string VERTEX_SHADER = "splat.vs";
 static const std::string FRAGMENT_SHADER = "splat.fs";
 
-static const std::string SPLAT_PATH = std::string(SPOCK_DIR) + "/assets/splats/tomatoes/scene.ply";
+static const std::string SPLAT_PATH = std::string(SPOCK_DIR) + "/assets/splats/tetrarthria/scene.ply";
 
 class SplatRenderer : public spock::Renderer
 {

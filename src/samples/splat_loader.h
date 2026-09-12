@@ -21,6 +21,9 @@ static const uint32_t SH_DEGREE0_COUNT = 1;
 static const uint32_t SH_DEGREE1_COUNT = 3;
 static const uint32_t SH_DEGREE2_COUNT = 5;
 static const uint32_t SH_DEGREE3_COUNT = 7;
+static const uint32_t SH_DEGREE1_OFFSET = 0;
+static const uint32_t SH_DEGREE2_OFFSET = SH_DEGREE1_OFFSET + SH_DEGREE1_COUNT;
+static const uint32_t SH_DEGREE3_OFFSET = SH_DEGREE2_OFFSET + SH_DEGREE2_COUNT;
 
 constexpr uint32_t SH_COUNT = SH_DEGREE0_COUNT + SH_DEGREE1_COUNT + SH_DEGREE2_COUNT + SH_DEGREE3_COUNT;
 constexpr uint32_t SH_CHANNEL_COUNT = 3;
@@ -307,17 +310,22 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
         };
 
         // SH Degree 1, 2, 3
-        int32_t harmonicCount = int32_t(shRest.size()) / SH_CHANNEL_COUNT;
+        // The PLY file contains the higher SH degrees in coefficient-major format, with all the R coefficients first, then G, then B.
+        const uint32_t harmonicCount = uint32_t(shRest.size()) / SH_CHANNEL_COUNT;
+        const uint32_t offsetG = harmonicCount;
+        const uint32_t offsetB = harmonicCount * 2;
 
         if (harmonicCount >= SH_DEGREE1_COUNT)
         {
             for (size_t harmonic = 0; harmonic < SH_DEGREE1_COUNT; ++harmonic)
             {
-                uint32_t offset = harmonic * SH_CHANNEL_COUNT;
+                uint32_t indexR = harmonic;
+                uint32_t indexG = offsetG + harmonic;
+                uint32_t indexB = offsetB + harmonic;
                 splat.sh1[harmonic] = {
-                    plyDetail::readAsFloat(row, *shRest[offset + 0]),
-                    plyDetail::readAsFloat(row, *shRest[offset + 1]),
-                    plyDetail::readAsFloat(row, *shRest[offset + 2])
+                    plyDetail::readAsFloat(row, *shRest[indexR]),
+                    plyDetail::readAsFloat(row, *shRest[indexG]),
+                    plyDetail::readAsFloat(row, *shRest[indexB])
                 };
             }
         }
@@ -329,17 +337,17 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
             }
         }
 
-        harmonicCount = std::max(harmonicCount - int32_t(SH_DEGREE1_COUNT), 0);
-
-        if (harmonicCount >= SH_DEGREE2_COUNT)
+        if (harmonicCount >= SH_DEGREE1_COUNT + SH_DEGREE2_COUNT)
         {
             for (size_t harmonic = 0; harmonic < SH_DEGREE2_COUNT; ++harmonic)
             {
-                uint32_t offset = (harmonic + SH_DEGREE1_COUNT) * SH_CHANNEL_COUNT;
+                uint32_t indexR = SH_DEGREE2_OFFSET + harmonic;
+                uint32_t indexG = SH_DEGREE2_OFFSET + offsetG + harmonic;
+                uint32_t indexB = SH_DEGREE2_OFFSET + offsetB + harmonic;
                 splat.sh2[harmonic] = {
-                    plyDetail::readAsFloat(row, *shRest[offset + 0]),
-                    plyDetail::readAsFloat(row, *shRest[offset + 1]),
-                    plyDetail::readAsFloat(row, *shRest[offset + 2])
+                    plyDetail::readAsFloat(row, *shRest[indexR]),
+                    plyDetail::readAsFloat(row, *shRest[indexG]),
+                    plyDetail::readAsFloat(row, *shRest[indexB])
                 };
             }
         }
@@ -351,17 +359,17 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
             }
         }
 
-        harmonicCount = std::max(harmonicCount - int32_t(SH_DEGREE2_COUNT), 0);
-
-        if (harmonicCount >= SH_DEGREE3_COUNT)
+        if (harmonicCount >= SH_DEGREE1_COUNT + SH_DEGREE2_COUNT + SH_DEGREE3_COUNT)
         {
             for (size_t harmonic = 0; harmonic < SH_DEGREE3_COUNT; ++harmonic)
             {
-                uint32_t offset = (harmonic + SH_DEGREE1_COUNT + SH_DEGREE2_COUNT) * SH_CHANNEL_COUNT;
+                uint32_t indexR = SH_DEGREE3_OFFSET + harmonic;
+                uint32_t indexG = SH_DEGREE3_OFFSET + offsetG + harmonic;
+                uint32_t indexB = SH_DEGREE3_OFFSET + offsetB + harmonic;
                 splat.sh3[harmonic] = {
-                    plyDetail::readAsFloat(row, *shRest[offset + 0]),
-                    plyDetail::readAsFloat(row, *shRest[offset + 1]),
-                    plyDetail::readAsFloat(row, *shRest[offset + 2])
+                    plyDetail::readAsFloat(row, *shRest[indexR]),
+                    plyDetail::readAsFloat(row, *shRest[indexG]),
+                    plyDetail::readAsFloat(row, *shRest[indexB])
                 };
             }
         }
