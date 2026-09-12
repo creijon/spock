@@ -72,12 +72,10 @@ static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/src/samples/sh
 static const std::string VERTEX_SHADER = "splat.vs";
 static const std::string FRAGMENT_SHADER = "splat.fs";
 
-static const std::array<std::string, 6> SPLAT_FILES = {
+static const std::array<std::string, 4> SPLAT_FILES = {
     "amphimallon",
-    "bumblebee",
     "pachnoda",
     "tomatoes",
-    "vegetables",
     "tetrarthria"
 };
 
@@ -328,7 +326,7 @@ protected:
     {
         auto renderer = std::make_unique<SplatRenderer>(instance, std::move(windowSurface), extents);
 
-        const uint32_t sceneIndex = 3;
+        const uint32_t sceneIndex = 2;
         loadScene(SPLAT_PATH + SPLAT_FILES[sceneIndex] + "/scene.ply");
 
         renderer->createResources(m_scene);

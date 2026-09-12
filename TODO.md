@@ -34,7 +34,9 @@
 ### Gaussian Splatting
 
 - Initial CPU-GPU hybrid sample. DONE
-- Extend to compute-based solution.
+- Put in a GPU compute stage to do the sorting, still brute-forced rendering with the vertex shader.
+- Full compute-based rendering, with 16x16 tiles.
+- Spatial partitioning of the splat data.
 - 4DGS.
 
 ## Fixes/Refactoring
