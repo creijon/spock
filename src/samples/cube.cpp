@@ -153,7 +153,7 @@ public:
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
 
-        createGraphicsPipeline();
+        createPipeline();
     }
 
     void setView(glm::vec3 const& view)
@@ -162,7 +162,7 @@ public:
     }
 
 protected:
-    void createGraphicsPipeline()
+    void createPipeline()
     {
         // Create the shaders.
         glslang::InitializeProcess();

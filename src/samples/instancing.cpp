@@ -205,7 +205,7 @@ public:
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_instanceBuffer.deviceMemory(), instances.data(), instances.size());
 
-        createGraphicsPipeline();
+        createPipeline();
     }
 
     void update(spock::OrbitCamera const& camera, vk::Extent2D const& viewExtents)
@@ -217,7 +217,7 @@ public:
     }
 
 protected:
-    void createGraphicsPipeline()
+    void createPipeline()
     {
         // Create the shaders
         glslang::InitializeProcess();

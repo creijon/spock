@@ -48,13 +48,16 @@ static const std::string FRAGMENT_SHADER = "default.fs";
 
 // PushConstants have been defined to be mostly compatible with the ShaderToy interface.
 // The full set is too big for the 42 byte push constant limit, so it'll have to be a uniform buffer.
+// Note: the order of these members is critical to maintain packing on the GLSL side.
+// iMouse and iResolution are aligned to 16 bytes
+// iTime and iFrame have 4-byte alignment on GLSL. 
 struct PushConstants
 {
     glm::vec4 iMouse;       // image/buffer xy = current pixel coords (if LMB is down). zw = click pixel
     glm::vec3 iResolution;  // image/buffer The viewport resolution (z is pixel aspect ratio, usually 1.0)
     float iTime;            // image/sound/buffer Current time in seconds
     int iFrame;             // image/buffer Current frame
-};
+}; // 34 bytes
 
 class ShaderLabRenderer : public spock::Renderer
 {
@@ -67,8 +70,13 @@ public:
             instance,
             std::move(windowSurface),
             extents,
-            {0.2f, 0.2f, 0.3f, 1.0},
-            {1.0f, 0})
+            { 0.2f, 0.2f, 0.3f, 1.0 },
+            { 1.0f, 0 })
+    {
+        createResources();
+    }
+
+    void createResources()
     {
         vk::PushConstantRange pushConstantRange{
             vk::ShaderStageFlagBits::eAllGraphics,
@@ -88,7 +96,7 @@ public:
             SHADERLAB_VERTEX_COUNT);
     }
 
-    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    void createPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         glslang::InitializeProcess();
 
@@ -243,7 +251,7 @@ private:
             {
                 // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
                 renderer->waitIdle();
-                renderer->createGraphicsPipeline(temp);
+                renderer->createPipeline(temp);
             }
         }
 

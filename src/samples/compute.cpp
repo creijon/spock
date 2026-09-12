@@ -68,13 +68,13 @@ public:
             {0.05f, 0.05f, 0.05f, 1.0f},
             {1.0f, 0})
     {
-        createComputeResources();
-        createComputePipeline();
+        createResources();
+        createPipeline();
         runComputePass();
     }
 
 protected:
-    void createComputeResources()
+    void createResources()
     {
         spock::BindingData outputBinding{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute};
         m_descriptorSetLayout = spock::createDescriptorSetLayout(m_device, {outputBinding});
@@ -108,7 +108,7 @@ protected:
             {});
     }
 
-    void createComputePipeline()
+    void createPipeline()
     {
         glslang::InitializeProcess();
         vk::raii::ShaderModule computeShader{nullptr};

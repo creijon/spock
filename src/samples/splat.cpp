@@ -13,7 +13,6 @@
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
-#include "spock/file_watcher.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
@@ -207,10 +206,10 @@ public:
         // This is populated, sorted and uploaded in the Update() function when the camera moves.
         m_sorting.resize(m_splatCount);
 
-        createGraphicsPipeline();
+        createPipeline();
     }
 
-    void createGraphicsPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
+    void createPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         glslang::InitializeProcess();
         vk::raii::ShaderModule vertexShader{ nullptr };
