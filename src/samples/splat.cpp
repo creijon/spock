@@ -72,7 +72,16 @@ static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/src/samples/sh
 static const std::string VERTEX_SHADER = "splat.vs";
 static const std::string FRAGMENT_SHADER = "splat.fs";
 
-static const std::string SPLAT_PATH = std::string(SPOCK_DIR) + "/assets/splats/tetrarthria/scene.ply";
+static const std::array<std::string, 6> SPLAT_FILES = {
+    "amphimallon",
+    "bumblebee",
+    "pachnoda",
+    "tomatoes",
+    "vegetables",
+    "tetrarthria"
+};
+
+static const std::string SPLAT_PATH = std::string(SPOCK_DIR) + "/assets/splats/";
 
 class SplatRenderer : public spock::Renderer
 {
@@ -85,14 +94,14 @@ public:
             instance,
             std::move(windowSurface),
             extents,
-            {0.2f, 0.2f, 0.3f, 1.0},
+            {0.05f, 0.08f, 0.15f, 1.0f},
             {1.0f, 0})
     {
     }
 
     void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
     {
-        PerFrameData& frameData = m_frameData[m_inFlightIndex];
+        PerFrameData& frameData = m_frameData[(m_frameCount + 1) % m_framesInFlight];
 
         FrameConstants frameConstants{
             camera.view(),
@@ -268,7 +277,7 @@ protected:
         if (m_graphicsPipeline == nullptr) return;
 
         // Bind the pipeline and vertex buffers.
-        PerFrameData& frameData = m_frameData[m_inFlightIndex];
+        PerFrameData& frameData = m_frameData[m_frameCount % m_framesInFlight];
 
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {frameData.descriptorSet}, nullptr);
@@ -319,7 +328,8 @@ protected:
     {
         auto renderer = std::make_unique<SplatRenderer>(instance, std::move(windowSurface), extents);
 
-        loadScene(SPLAT_PATH);
+        const uint32_t sceneIndex = 3;
+        loadScene(SPLAT_PATH + SPLAT_FILES[sceneIndex] + "/scene.ply");
 
         renderer->createResources(m_scene);
 

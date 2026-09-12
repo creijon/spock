@@ -310,76 +310,40 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
         };
 
         // SH Degree 1, 2, 3
-        // The PLY file contains the higher SH degrees in coefficient-major format, with all the R coefficients first, then G, then B.
+        // The PLY file stores the higher SH degrees in coefficient-major format:
+        // R coefficients: [0..harmonicCount)
+        // G coefficients: [harmonicCount..2*harmonicCount)
+        // B coefficients: [2*harmonicCount..3*harmonicCount)
         const uint32_t harmonicCount = uint32_t(shRest.size()) / SH_CHANNEL_COUNT;
+        const uint32_t offsetR = 0;
         const uint32_t offsetG = harmonicCount;
         const uint32_t offsetB = harmonicCount * 2;
 
-        if (harmonicCount >= SH_DEGREE1_COUNT)
+        auto readSHDegree = [&](glm::vec3 shDegree[], uint32_t offset, uint32_t count)
         {
-            for (size_t harmonic = 0; harmonic < SH_DEGREE1_COUNT; ++harmonic)
+            if (harmonicCount >= offset + count)
             {
-                uint32_t indexR = harmonic;
-                uint32_t indexG = offsetG + harmonic;
-                uint32_t indexB = offsetB + harmonic;
-                splat.sh1[harmonic] = {
-                    plyDetail::readAsFloat(row, *shRest[indexR]),
-                    plyDetail::readAsFloat(row, *shRest[indexG]),
-                    plyDetail::readAsFloat(row, *shRest[indexB])
-                };
+                for (size_t i = 0; i < count; ++i)
+                {
+                    shDegree[i] = {
+                        plyDetail::readAsFloat(row, *shRest[offsetR + offset + i]),
+                        plyDetail::readAsFloat(row, *shRest[offsetG + offset + i]),
+                        plyDetail::readAsFloat(row, *shRest[offsetB + offset + i])
+                    };
+                }
             }
-        }
-        else
-        {
-            for (size_t harmonic = 0; harmonic < SH_DEGREE1_COUNT; ++harmonic)
+            else
             {
-                splat.sh1[harmonic] = { 0.0f, 0.0f, 0.0f };
+                for (size_t i = 0; i < count; ++i)
+                {
+                    shDegree[i] = { 0.0f, 0.0f, 0.0f };
+                }
             }
-        }
+        };
 
-        if (harmonicCount >= SH_DEGREE1_COUNT + SH_DEGREE2_COUNT)
-        {
-            for (size_t harmonic = 0; harmonic < SH_DEGREE2_COUNT; ++harmonic)
-            {
-                uint32_t indexR = SH_DEGREE2_OFFSET + harmonic;
-                uint32_t indexG = SH_DEGREE2_OFFSET + offsetG + harmonic;
-                uint32_t indexB = SH_DEGREE2_OFFSET + offsetB + harmonic;
-                splat.sh2[harmonic] = {
-                    plyDetail::readAsFloat(row, *shRest[indexR]),
-                    plyDetail::readAsFloat(row, *shRest[indexG]),
-                    plyDetail::readAsFloat(row, *shRest[indexB])
-                };
-            }
-        }
-        else
-        {
-            for (size_t harmonic = 0; harmonic < SH_DEGREE2_COUNT; ++harmonic)
-            {
-                splat.sh2[harmonic] = { 0.0f, 0.0f, 0.0f };
-            }
-        }
-
-        if (harmonicCount >= SH_DEGREE1_COUNT + SH_DEGREE2_COUNT + SH_DEGREE3_COUNT)
-        {
-            for (size_t harmonic = 0; harmonic < SH_DEGREE3_COUNT; ++harmonic)
-            {
-                uint32_t indexR = SH_DEGREE3_OFFSET + harmonic;
-                uint32_t indexG = SH_DEGREE3_OFFSET + offsetG + harmonic;
-                uint32_t indexB = SH_DEGREE3_OFFSET + offsetB + harmonic;
-                splat.sh3[harmonic] = {
-                    plyDetail::readAsFloat(row, *shRest[indexR]),
-                    plyDetail::readAsFloat(row, *shRest[indexG]),
-                    plyDetail::readAsFloat(row, *shRest[indexB])
-                };
-            }
-        }
-        else
-        {
-            for (size_t harmonic = 0; harmonic < SH_DEGREE3_COUNT; ++harmonic)
-            {
-                splat.sh3[harmonic] = { 0.0f, 0.0f, 0.0f };
-            }
-        }
+        readSHDegree(splat.sh1, SH_DEGREE1_OFFSET, SH_DEGREE1_COUNT);
+        readSHDegree(splat.sh2, SH_DEGREE2_OFFSET, SH_DEGREE2_COUNT);
+        readSHDegree(splat.sh3, SH_DEGREE3_OFFSET, SH_DEGREE3_COUNT);
 
         scene.instances.emplace_back(splat);
     }
