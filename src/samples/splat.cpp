@@ -13,6 +13,7 @@
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
+#include "spock/file_watcher.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
@@ -221,34 +222,30 @@ public:
     void createPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         glslang::InitializeProcess();
-        vk::raii::ShaderModule vertexShader{ nullptr };
-        vk::raii::ShaderModule fragmentShader{ nullptr };
         try
         {
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
-                vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
-                fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
         }
         catch (std::exception const& e)
         {
             spock::writeLog(std::string(e.what()));
-            glslang::FinalizeProcess();
-            throw;
         }
         glslang::FinalizeProcess();
 
-        if (vertexShader != nullptr && fragmentShader != nullptr)
+        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
         {
             const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
             std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
             };
 
             spock::VertexFormat vertexFormat;
@@ -291,6 +288,9 @@ private:
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
+
+    vk::raii::ShaderModule m_vertexShader{ nullptr };
+    vk::raii::ShaderModule m_fragmentShader{ nullptr };
 
     // Dynamic data
     struct PerFrameData
@@ -364,6 +364,8 @@ protected:
             cameraMoved = true;
         }
 
+        m_watcher.notifyRenderer(renderer);
+
         renderer->update(m_scene, m_camera, cameraMoved, m_window.extents());
         m_previousCursor = cursor;
     }
@@ -383,11 +385,48 @@ private:
         m_sceneBounds = m_scene.computeBounds();
     }
 
+    class Watcher : public spock::FileWatcher
+    {
+    public:
+        Watcher() : spock::FileWatcher(SHADER_PATH)
+        {}
+
+        void fileModified(std::string const& filename) override
+        {
+            std::unique_lock lock(mutex);
+            if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+            if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
+        }
+
+        void notifyRenderer(SplatRenderer* renderer)
+        {
+            vk::ShaderStageFlags temp;
+            {
+                // Take the lock for the minimum amount of time to avoid blocking the file watcher thread.
+                std::unique_lock lock(mutex);
+                temp = modifiedShaders;
+                modifiedShaders = vk::ShaderStageFlags(0);
+            }
+            if (temp)
+            {
+                // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
+                renderer->waitIdle();
+                renderer->createPipeline(temp);
+            }
+        }
+
+    private:
+        vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
+        std::mutex mutex;
+    };
+
     SplatScene m_scene;
     glm::vec4 m_sceneBounds{};
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f};
+
+    Watcher m_watcher;
 };
 
 int main()
