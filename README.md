@@ -3,10 +3,8 @@
 ## Design Goals
 
 - Allow rapid iteration: minimal setup for new projects, runtime shader compilation.
-- Cross platform: Linux, Windows and MacOS currently supporte (Android to follow).
+- Cross platform: Linux, Windows and MacOS currently supported.
 - Thin abstraction: use Vulkan_Hpp RAII to simplify Vulkan API but not hide it.
-
-Spock is a small C++ Vulkan framework and sample project built around Vulkan-Hpp RAII wrappers, GLFW, GLM, and glslang. The library is organized as a shared core library plus separate executable samples for different rendering demos.
 
 ## Samples
 

@@ -384,7 +384,7 @@ private:
 
     SplatScene m_scene;
     glm::vec4 m_sceneBounds{};
-    uint32_t m_sceneIndex{ 2 };
+    uint32_t m_sceneIndex{ 1 };
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f};

@@ -10,9 +10,9 @@
 
 namespace spock
 {
-    // Find the first queue family whose flags include every flag in `include`
-    // and exclude every flag in `exclude`. Returns queueFamilyProperties.size()
-    // if no family matches.
+    // Find the first queue family whose flags include every flag in `include` and exclude every
+    // flag in `exclude`.
+    // If none are found return an empty optional.
     std::optional<uint32_t> findQueueFamilyIndex(
         std::vector<vk::QueueFamilyProperties> const &queueFamilyProperties,
         vk::QueueFlags include,
@@ -33,10 +33,31 @@ namespace spock
         return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), queueFamilyProperty));
     }
 
+    // Find the first queue family whose flags include every flag in `include` and exclude every
+    // flag in `exclude`.
+    // If this can't be found, then return the first regardless of the `exclude` flags.
+    // If none are found return an empty optional.
+    std::optional<uint32_t> findQueueFamilyIndexFallback(
+        std::vector<vk::QueueFamilyProperties> const& queueFamilyProperties,
+        vk::QueueFlags include,
+        vk::QueueFlags exclude)
+    {
+        auto queueFamily = findQueueFamilyIndex(
+            queueFamilyProperties,
+            include, exclude);
+        if (!queueFamily.has_value())
+        {
+            queueFamily = findQueueFamilyIndex(
+                queueFamilyProperties,
+                include, {});
+        }
 
-    // Find queue family indices for graphics and presentation. If a single
-    // queue family supports both, the same index is returned for both.
-    void Queues::findGraphicsAndPresentQueueFamily(
+        return queueFamily;
+    }
+
+    // Find queue family indices for graphics and presentation. If a single queue family supports
+    // both, the same index is returned for both.
+    std::pair<uint32_t, uint32_t> findGraphicsAndPresentQueueFamily(
         vk::raii::PhysicalDevice const& physicalDevice,
         vk::raii::SurfaceKHR const& surface,
         std::vector<vk::QueueFamilyProperties> const& queueFamilyProperties)
@@ -45,42 +66,40 @@ namespace spock
 
         if (!graphicsQueueFamilyIndex.has_value())
         {
-            throw std::runtime_error("Could not find a queue family that supports graphics -> terminating");
+            throw std::runtime_error("Could not find a queue family that supports graphics, terminating.");
         }
 
-        m_graphicsFamily = graphicsQueueFamilyIndex.value();
+        const uint32_t graphicsFamily = graphicsQueueFamilyIndex.value();
 
-        if (physicalDevice.getSurfaceSupportKHR(m_graphicsFamily, surface))
+        if (physicalDevice.getSurfaceSupportKHR(graphicsFamily, surface))
         {
             // The graphics family also supports present.
-            m_presentFamily = m_graphicsFamily;
-            return;
+            return { graphicsFamily, graphicsFamily };
         }
 
-        // The graphics family doesn't support present, so look for another
-        // family index that supports both graphics and present.
+        // The graphics family doesn't support present, so look for another family index that
+        // supports both graphics and present.
         for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
         {
             if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
                 physicalDevice.getSurfaceSupportKHR(i, surface))
             {
-                m_presentFamily = i;
-                return;
+                return { graphicsFamily, i };
             }
         }
 
-        // There's no single family that supports both graphics and present,
-        // so look for another family index that supports present.
+        // There's no single family that supports both graphics and present, so look for another
+        // family index that supports present.
         for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
         {
             if (physicalDevice.getSurfaceSupportKHR(i, surface))
             {
-                m_presentFamily = i;
-                return;
+                return { graphicsFamily, i };
             }
         }
 
-        throw std::runtime_error("Could not find queues for both graphics or present -> terminating");
+        throw std::runtime_error("Could not find a queue family that supports present, terminating.");
+        return { };
     }
 
     Queues::Queues(
@@ -90,30 +109,21 @@ namespace spock
         auto queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
         assert(queueFamilyProperties.size() < (std::numeric_limits<uint32_t>::max)());
 
-        findGraphicsAndPresentQueueFamily(physicalDevice, surface, queueFamilyProperties);
+        std::tie(m_graphicsFamily, m_presentFamily) = findGraphicsAndPresentQueueFamily(
+            physicalDevice,
+            surface,
+            queueFamilyProperties);
 
-        auto compute = findQueueFamilyIndex(
+        auto computeFamilyIndex = findQueueFamilyIndexFallback(
             queueFamilyProperties,
-            vk::QueueFlagBits::eCompute, vk::QueueFlagBits::eGraphics);
-        if (!compute.has_value())
-        {
-            compute = findQueueFamilyIndex(
-                queueFamilyProperties,
-                vk::QueueFlagBits::eCompute, {});
-        }
+            vk::QueueFlagBits::eCompute,
+            vk::QueueFlagBits::eGraphics);
+        m_computeFamily = (computeFamilyIndex.has_value()) ? computeFamilyIndex.value() : m_graphicsFamily;
 
-        m_computeFamily = (compute.has_value()) ? compute.value() : m_graphicsFamily;
-
-        auto transfer = findQueueFamilyIndex(
+        auto transferFamilyIndex = findQueueFamilyIndexFallback(
             queueFamilyProperties,
-            vk::QueueFlagBits::eTransfer, vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
-        if (!transfer.has_value())
-        {
-            transfer = findQueueFamilyIndex(
-                queueFamilyProperties,
-                vk::QueueFlagBits::eTransfer, {});
-        }
-
-        m_transferFamily = (transfer.has_value()) ? transfer.value() : m_graphicsFamily;
+            vk::QueueFlagBits::eTransfer,
+            vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
+        m_transferFamily = (transferFamilyIndex.has_value()) ? transferFamilyIndex.value() : m_graphicsFamily;
     }
 } // namespace spock

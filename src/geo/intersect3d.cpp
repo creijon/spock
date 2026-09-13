@@ -121,17 +121,22 @@ namespace geo3d
         return true;
     }
 
-    // The standard SAT triangle-box overlap test: 9 axes formed by crossing each triangle edge
-    // with each box face normal, 3 axes for the box's own face normals (an AABB overlap test),
-    // and 1 axis for the triangle's own plane normal. Ordered cheapest-appearing-first to match
-    // the reference implementation (Akenine-Möller, "Fast 3D Triangle-Box Overlap Testing", 2001).
+
+    // Triangle-AABB Test Functions
+
+    // Benchmark summary (release build; see src/tests/geo_intersect3d_tests.cpp)
     //
-    // The 9 edge-cross-axis tests and the plane-normal test are done in double precision. Their
-    // axes come from a cross product of two vector differences, which can shrink to a small
-    // fraction of the input coordinates' own magnitude (e.g. a small triangle sitting near a box
-    // corner, far from the origin); in float this leaves several of the 13 axes simultaneously
-    // within a percent or two of flipping sign, which is not enough margin to be robust to
-    // per-platform floating-point evaluation-order differences.
+    //   Scenario                                  | testAM | testSS | testNoBB | test 
+    //   ------------------------------------------+--------+--------+----------+-----
+    //   Edge crosses the box (the common case)    |  64ns  |  21ns  |   7ns    | 17ns
+    //   Box straddles the interior, no edge touch |  69ns  |  32ns  |   28ns   | 38ns
+    //   Disjoint along the triangle's own normal  |  14ns  |  4ns   |   17ns   | 9ns
+
+    // - testAM: the standard 13-axis SAT reference (Akenine-Möller); a correctness/performance baseline, not intended for production use.
+    // - testSS: adapted from Schwarz-Seidel; fastest when queries are mostly disjoint.
+    // - testNoBB: a novel early-exit algorithm, fastest when queries are mostly intersecting (e.g. SVO generation).
+    // - test: testNoBB with an AABB precheck; a middle ground when disjoint queries are common.
+    
     bool Intersect::testAM(Triangle const& triangle, Aabb const& box)
     {
         glm::dvec3 const v0(triangle.v0), v1(triangle.v1), v2(triangle.v2);
@@ -192,25 +197,6 @@ namespace geo3d
     // This means that it is significantly more efficient when performing a series of hierarchial
     // tests such as with the generation of Sparse Voxel Octrees from triangle meshes.
 
-    // Benchmark summary (release build; see src/tests/geo_intersect3d_tests.cpp). test is the
-    // Aabb-vs-Aabb precheck plus testNoBB; testAM is the standard 13-axis SAT reference, included
-    // as a correctness/performance baseline rather than as a candidate to actually use.
-    //
-    //   Scenario                                  | testSS | testNoBB | test | testAM
-    //   ------------------------------------------+--------+----------+------+-------
-    //   Edge crosses the box (the common case)    |  21ns  |   7ns    | 17ns |  64ns
-    //   Box straddles the interior, no edge touch |  32ns  |   28ns   | 38ns |  69ns
-    //   Disjoint along the triangle's own normal  |  4ns   |   17ns   | 9ns  |  14ns
-    //
-    // testNoBB wins the common case by a wide margin, since testSS and testAM both have to
-    // complete every axis before they can confirm an intersection, while testNoBB can return as
-    // soon as one edge hits. testSS wins the disjoint case, since testNoBB still runs its three
-    // edge tests before reaching the same plane check testSS rejects on immediately; the
-    // Aabb-vs-Aabb precheck in test() closes most of that gap, at some added cost in the other two
-    // rows. testAM is the slowest option in every scenario - none of its 13 axes are ordered for
-    // an early out on these cases - so it exists only to validate testNoBB/testSS's results
-    // against, not for production use.
-
     // Description of the algorithm:
 
     // 1. Intersection between the AABB and the triangle bounds. Exit early if disjoint. (Optional)
@@ -241,11 +227,7 @@ namespace geo3d
 
         auto intersectsDiagonal = [&](glm::vec3 const& start, glm::vec3 const& end)
         {
-            // Deliberately unnormalized: t comes back in [0, 1] parametrizing start -> end,
-            // avoiding a sqrt and a vector divide per diagonal.
             glm::vec3 axis = end - start;
-            if (glm::dot(axis, axis) <= std::numeric_limits<float>::epsilon()) return false;
-
             float t = 0.0f;
             return test(Ray{start, axis}, triangle, t) && t <= 1.0f;
         };

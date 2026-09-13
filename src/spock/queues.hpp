@@ -37,11 +37,6 @@ namespace spock
         }
 
     private:
-        void findGraphicsAndPresentQueueFamily(
-            vk::raii::PhysicalDevice const& physicalDevice,
-            vk::raii::SurfaceKHR const& surface,
-            std::vector<vk::QueueFamilyProperties> const& queueFamilyProperties);
-
         uint32_t m_graphicsFamily{0};
         uint32_t m_presentFamily{0};
         uint32_t m_computeFamily{0};
