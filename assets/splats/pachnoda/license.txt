@@ -1,0 +1,6 @@
+Title: Pachnoda marginata
+Author: Fabian Plum (https://superspl.at/user?id=scant3d)
+Source: https://superspl.at/scene/19b33051
+License: CC Attribution-NonCommercial (Creative Commons Attribution-NonCommercial)
+License URL: http://creativecommons.org/licenses/by-nc/4.0/
+Requirements: Author must be credited. No commercial use.
