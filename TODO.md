@@ -41,6 +41,11 @@
 
 ## Fixes/Refactoring
 
+- Rewrite the queue family logic so that it also supports Compute and Transfer.
+  - Split this out to a separate class that does all the querying etc and stores the queues in `std::optional` parameters.
+  - Modify the Renderer and Presenter to handle this.
+  - Perhaps we should rename the Renderer to Device, Machine or something, because it is generic?
+  - The Presenter already encapsulates the Renderer to Window logic.
 - Split the framework into an app and separate renderer. DONE
   - App is responsible for: window, update loop, asset loading (TBD)
   - Pure virtual function to create the subclassed renderer.

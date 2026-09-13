@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "helpers.hpp"
 #include "presenter.hpp"
+#include "queue.hpp"
 #include "render_pass.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
@@ -41,7 +41,7 @@ namespace spock
         vk::raii::Device m_device{nullptr};
         vk::raii::CommandPool m_commandPool{nullptr};
         RenderPass m_renderPass;
-        QueueIndices m_queueIndices;
+        Queue m_queue;
 
         // Per-frame resources used for double buffering.
         std::vector<vk::raii::CommandBuffer> m_commandBuffers;

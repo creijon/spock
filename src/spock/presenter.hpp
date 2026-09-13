@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "helpers.hpp"
+#include "queue.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -20,7 +20,7 @@ namespace spock
             vk::raii::SurfaceKHR const &surface,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
-            QueueIndices queueIndices,
+            Queue const &queue,
             uint32_t framesInFlight);
         Presenter() = default;
         Presenter(const Presenter &) = delete;
@@ -33,7 +33,7 @@ namespace spock
             vk::raii::SurfaceKHR const &surface,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
-            QueueIndices queueIndices,
+            Queue const &queue,
             uint32_t framesInFlight);
 
         std::vector<vk::raii::ImageView> const& imageViews() const

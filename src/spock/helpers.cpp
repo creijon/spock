@@ -241,61 +241,6 @@ namespace spock
         return pickedMode;
     }
 
-    // Find the first queue family index that supports graphics commands.
-    uint32_t findGraphicsQueueFamilyIndex(
-        std::vector<vk::QueueFamilyProperties> const &queueFamilyProperties)
-    {
-        // Get the first index that supports graphics.
-        auto graphicsQueueFamilyProperty =
-            std::find_if(
-                queueFamilyProperties.begin(),
-                queueFamilyProperties.end(),
-                [](vk::QueueFamilyProperties const &qfp)
-                { return qfp.queueFlags & vk::QueueFlagBits::eGraphics; });
-        assert(graphicsQueueFamilyProperty != queueFamilyProperties.end());
-        return static_cast<uint32_t>(std::distance(queueFamilyProperties.begin(), graphicsQueueFamilyProperty));
-    }
-
-    // Find queue family indices for graphics and presentation. If a single queue
-    // family supports both, return the same index for both graphics and present.
-    QueueIndices findGraphicsAndPresentQueueFamilyIndex(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        vk::raii::SurfaceKHR const &surface)
-    {
-        auto queueFamilyProperties = physicalDevice.getQueueFamilyProperties();
-        assert(queueFamilyProperties.size() < (std::numeric_limits<uint32_t>::max)());
-
-        uint32_t graphicsQueueFamilyIndex = findGraphicsQueueFamilyIndex(queueFamilyProperties);
-        if (physicalDevice.getSurfaceSupportKHR(graphicsQueueFamilyIndex, surface))
-        {
-            // The first graphicsQueueFamilyIndex also supports present.
-            return {graphicsQueueFamilyIndex, graphicsQueueFamilyIndex};
-        }
-
-        // The graphicsQueueFamilyIndex doesn't support present, so look for
-        // another family index that supports both graphics and present.
-        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-        {
-            if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
-                physicalDevice.getSurfaceSupportKHR(i, surface))
-            {
-                return {i,i};
-            }
-        }
-
-        // There's nothing like a single family index that supports both graphics
-        // and present, so look for another family index that supports present.
-        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-        {
-            if (physicalDevice.getSurfaceSupportKHR(i, surface))
-            {
-                return {graphicsQueueFamilyIndex, i};
-            }
-        }
-
-        throw std::runtime_error("Could not find queues for both graphics or present -> terminating");
-    }
-
     // Callback for Vulkan debug utils. Logs messages and filters out some
     // known non-actionable validation warnings in debug builds.
     VKAPI_ATTR vk::Bool32 VKAPI_CALL debugUtilsMessengerCallback(

@@ -4,7 +4,7 @@
 #include "renderer.hpp"
 
 #include "creators.hpp"
-#include "wrappers.hpp"
+#include "helpers.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -27,13 +27,13 @@ namespace spock
         , m_clearDepthStencil(clearDepthStencil)
         , m_framesInFlight(framesInFlight)
     {
-        m_queueIndices = findGraphicsAndPresentQueueFamilyIndex(m_physicalDevice, m_windowSurface);
-        m_device = createDevice(m_physicalDevice, m_queueIndices.graphics, getDefaultDeviceExtensions());
+        m_queue = Queue(m_physicalDevice, m_windowSurface);
+        m_device = createDevice(m_physicalDevice, m_queue.graphicsFamily(), getDefaultDeviceExtensions());
 
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
             vk::CommandPoolCreateFlagBits::eTransient,
-            m_queueIndices.graphics};
+            m_queue.graphicsFamily()};
         m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
 
         resizeWindow(extents);
@@ -61,7 +61,7 @@ namespace spock
             m_windowSurface,
             m_extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-            m_queueIndices,
+            m_queue,
             m_framesInFlight);
 
         vk::Format colorFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_windowSurface)).format;

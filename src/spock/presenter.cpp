@@ -19,7 +19,7 @@ namespace spock
         vk::raii::SurfaceKHR const &surface,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
-        QueueIndices queueIndices,
+        Queue const &queue,
         uint32_t framesInFlight)
     {
         initialise(
@@ -28,7 +28,7 @@ namespace spock
             surface,
             extent,
             usage,
-            queueIndices,
+            queue,
             framesInFlight);
     }
 
@@ -71,7 +71,7 @@ namespace spock
         vk::raii::SurfaceKHR const &surface,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
-        QueueIndices queueIndices,
+        Queue const &queue,
         uint32_t framesInFlight)
     {
         vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
@@ -122,12 +122,12 @@ namespace spock
             presentMode,
             true,
             prevSwapchain);
-        if (queueIndices.graphics != queueIndices.present)
+        if (queue.graphicsFamily() != queue.presentFamily())
         {
             // If the graphics and present queues are from different queue families, we either have to explicitly
             // transfer ownership of images between the queues, or we have to create the swapchain with imageSharingMode
             // as vk::SharingMode::eConcurrent
-            uint32_t queueFamilyIndices[]{queueIndices.graphics, queueIndices.present};
+            uint32_t queueFamilyIndices[]{queue.graphicsFamily(), queue.presentFamily()};
             swapChainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
             swapChainCreateInfo.queueFamilyIndexCount = 2;
             swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -153,8 +153,8 @@ namespace spock
             m_imageViews.emplace_back(device, imageViewCreateInfo);
         }
 
-        m_graphicsQueue = vk::raii::Queue(device, queueIndices.graphics, 0);
-        m_presentQueue = vk::raii::Queue(device, queueIndices.present, 0);
+        m_graphicsQueue = vk::raii::Queue(device, queue.graphicsFamily(), 0);
+        m_presentQueue = vk::raii::Queue(device, queue.presentFamily(), 0);
 
         // Synchronisation primitives.
         // imageSemaphores and frameFences are indexed by frame index (caller's in-flight index).

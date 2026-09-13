@@ -20,6 +20,7 @@ add_executable(spock_tests
     utils_extended_tests.cpp
     helpers_tests.cpp
     helpers_extended_tests.cpp
+    queue_tests.cpp
     shaders_tests.cpp
     gpu_fixture.hpp
     gpu_tests.cpp

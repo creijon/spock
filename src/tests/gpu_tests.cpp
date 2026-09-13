@@ -24,7 +24,7 @@ TEST_CASE("a headless Vulkan device can be created for GPU-backed tests", "[gpu]
     CHECK(*fixture->device != VK_NULL_HANDLE);
 }
 
-TEST_CASE("findGraphicsAndPresentQueueFamilyIndex returns valid queue family indices", "[gpu]")
+TEST_CASE("Queue discovers valid graphics, present, compute, and transfer queue family indices", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -33,9 +33,11 @@ TEST_CASE("findGraphicsAndPresentQueueFamilyIndex returns valid queue family ind
     }
 
     auto queueFamilyProperties = fixture->physicalDevice.getQueueFamilyProperties();
-    CHECK(fixture->queueIndices.graphics < queueFamilyProperties.size());
-    CHECK(fixture->queueIndices.present < queueFamilyProperties.size());
-    CHECK((queueFamilyProperties[fixture->queueIndices.graphics].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics);
+    CHECK(fixture->queue.graphicsFamily() < queueFamilyProperties.size());
+    CHECK(fixture->queue.presentFamily() < queueFamilyProperties.size());
+    CHECK(fixture->queue.computeFamily() < queueFamilyProperties.size());
+    CHECK(fixture->queue.transferFamily() < queueFamilyProperties.size());
+    CHECK((queueFamilyProperties[fixture->queue.graphicsFamily()].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics);
 }
 
 TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", "[gpu]")
@@ -150,9 +152,9 @@ TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu
 
     vk::raii::CommandPool commandPool(
         fixture->device,
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queueIndices.graphics));
+        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queue.graphicsFamily()));
     vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->device, commandPool);
-    vk::raii::Queue graphicsQueue(fixture->device, fixture->queueIndices.graphics, 0);
+    vk::raii::Queue graphicsQueue(fixture->device, fixture->queue.graphicsFamily(), 0);
 
     // setImage() takes a vk::raii::CommandBuffer, so it's recorded and
     // submitted by hand here rather than through spock::oneTimeSubmit (which
@@ -247,7 +249,7 @@ TEST_CASE("createCommandBuffer allocates a primary command buffer", "[gpu]")
 
     vk::raii::CommandPool commandPool(
         fixture->device,
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queueIndices.graphics));
+        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queue.graphicsFamily()));
 
     vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->device, commandPool);
 
@@ -266,7 +268,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
 
     vk::raii::DescriptorSetLayout descriptorSetLayout = spock::createDescriptorSetLayout(
         fixture->device,
-        {{0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
+        {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
     CHECK(*descriptorSetLayout != VK_NULL_HANDLE);
 
     vk::raii::DescriptorPool descriptorPool = spock::createDescriptorPool(
@@ -281,7 +283,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
     spock::BufferWrapper uniformBuffer(
         fixture->physicalDevice, fixture->device, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
 
-    std::vector<spock::BufferUpdateData> bufferData{
+    spock::DescriptorSetUpdateData bufferData{
         {vk::DescriptorType::eUniformBuffer, uniformBuffer.buffer(), sizeof(float) * 16, nullptr}};
 
     CHECK_NOTHROW(spock::updateDescriptorSets(fixture->device, descriptorSet, bufferData, {}));
