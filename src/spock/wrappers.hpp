@@ -153,11 +153,13 @@ namespace spock
                 vk::BufferUsageFlagBits::eTransferSrc);
             copyToDevice(stagingBuffer.m_deviceMemory, data.data(), data.size(), sizeof(DataType));
 
-            oneTimeSubmit(device,
-                          commandPool,
-                          queue,
-                          [&](vk::CommandBuffer const &commandBuffer)
-                          { commandBuffer.copyBuffer(*stagingBuffer.m_buffer, *m_buffer, vk::BufferCopy(0, 0, dataSize)); });
+            oneTimeSubmit(
+                device,
+                commandPool,
+                queue,
+                [&](vk::CommandBuffer const& commandBuffer) {
+                    commandBuffer.copyBuffer(*stagingBuffer.m_buffer, *m_buffer, vk::BufferCopy(0, 0, dataSize));
+                });
         }
 
     protected:

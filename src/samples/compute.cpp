@@ -143,10 +143,12 @@ protected:
         const uint32_t groupCount = (ELEMENT_COUNT + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
         const vk::DeviceSize bufferSize = ELEMENT_COUNT * sizeof(uint32_t);
 
+        vk::raii::Queue computeQueue(m_device, m_queues.computeFamily(), 0);
+
         spock::oneTimeSubmit(
             m_device,
             m_commandPool,
-            m_presenter->graphicsQueue(),
+            computeQueue,
             [&](vk::CommandBuffer const &commandBuffer)
             {
                 commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);

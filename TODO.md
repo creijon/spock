@@ -34,11 +34,20 @@
 ### Gaussian Splatting
 
 - Initial CPU-GPU hybrid sample. DONE
-- Extend to compute-based solution.
+- Put in a GPU compute stage to do the sorting, still brute-forced rendering with the vertex shader.
+- Full compute-based rendering, with 16x16 tiles.
+- Spatial partitioning of the splat data.
 - 4DGS.
 
 ## Fixes/Refactoring
 
+- Rewrite the queue family logic so that it also supports Compute and Transfer.
+  - Split this out to a separate class that does all the querying etc.  DONE
+  - Modify the Renderer and Presenter to handle this. DONE
+  - Perhaps we should rename the Renderer to Device, Machine or something, because it is generic?
+    - This is important, because the renderer currently puts everything on the graphics queue.
+    - Needs some thought.
+    - The Presenter already encapsulates the Renderer to Window logic, so that will make it easier.
 - Split the framework into an app and separate renderer. DONE
   - App is responsible for: window, update loop, asset loading (TBD)
   - Pure virtual function to create the subclassed renderer.

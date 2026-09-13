@@ -1,7 +1,7 @@
 #pragma once
 
 #include "spock/creators.hpp"
-#include "spock/helpers.hpp"
+#include "spock/queues.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -21,7 +21,7 @@ namespace spock_test
         vk::raii::Instance instance{nullptr};
         vk::raii::PhysicalDevice physicalDevice{nullptr};
         vk::raii::SurfaceKHR surface{nullptr};
-        spock::QueueIndices queueIndices{};
+        spock::Queues queue{};
         vk::raii::Device device{nullptr};
     };
 
@@ -40,11 +40,11 @@ namespace spock_test
 
             fixture->surface = vk::raii::SurfaceKHR(fixture->instance, vk::HeadlessSurfaceCreateInfoEXT{});
 
-            fixture->queueIndices = spock::findGraphicsAndPresentQueueFamilyIndex(fixture->physicalDevice, fixture->surface);
+            fixture->queue = spock::Queues(fixture->physicalDevice, fixture->surface);
 
             fixture->device = spock::createDevice(
                 fixture->physicalDevice,
-                fixture->queueIndices.graphics,
+                fixture->queue.graphicsFamily(),
                 spock::getDefaultDeviceExtensions());
         }
         catch (std::exception const &e)

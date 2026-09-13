@@ -79,20 +79,3 @@ TEST_CASE("clampSurfaceImageCount returns value in valid range", "[helpers_exten
     CHECK(spock::clampSurfaceImageCount(5, 2, 10) == 5);
     CHECK(spock::clampSurfaceImageCount(3, 2, 8) == 3);
 }
-
-TEST_CASE("QueueIndices can store graphics and present queue family indices", "[helpers_extended]")
-{
-    spock::QueueIndices indices{0, 1};
-    CHECK(indices.graphics == 0);
-    CHECK(indices.present == 1);
-}
-
-TEST_CASE("QueueIndices can be assigned", "[helpers_extended]")
-{
-    spock::QueueIndices indices1{0, 0};
-    spock::QueueIndices indices2{1, 2};
-    
-    indices1 = indices2;
-    CHECK(indices1.graphics == 1);
-    CHECK(indices1.present == 2);
-}

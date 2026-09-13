@@ -2,20 +2,17 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-// These two helpers are implemented in helpers.cpp as ordinary (non-static)
-// free functions but are intentionally not exposed via helpers.hpp since
-// they're implementation details of findGraphicsAndPresentQueueFamilyIndex /
-// allocateDeviceMemory. They operate purely on plain data, so they're worth
-// unit-testing directly via a matching forward declaration.
+// findMemoryType is implemented in helpers.cpp as an ordinary (non-static)
+// free function but is intentionally not exposed via helpers.hpp since it's
+// an implementation detail of allocateDeviceMemory. It operates purely on
+// plain data, so it's worth unit-testing directly via a matching forward
+// declaration.
 namespace spock
 {
     uint32_t findMemoryType(
         vk::PhysicalDeviceMemoryProperties const &memoryProperties,
         uint32_t typeBits,
         vk::MemoryPropertyFlags requirementsMask);
-
-    uint32_t findGraphicsQueueFamilyIndex(
-        std::vector<vk::QueueFamilyProperties> const &queueFamilyProperties);
 } // namespace spock
 
 TEST_CASE("clampSurfaceImageCount raises the count to at least the minimum", "[helpers]")
@@ -70,16 +67,6 @@ TEST_CASE("findMemoryType only considers memory types allowed by the type mask",
         vk::MemoryPropertyFlagBits::eHostVisible);
 
     CHECK(typeIndex == 1);
-}
-
-TEST_CASE("findGraphicsQueueFamilyIndex returns the first family that supports graphics", "[helpers]")
-{
-    std::vector<vk::QueueFamilyProperties> families(3);
-    families[0].queueFlags = vk::QueueFlagBits::eCompute;
-    families[1].queueFlags = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute;
-    families[2].queueFlags = vk::QueueFlagBits::eGraphics;
-
-    CHECK(spock::findGraphicsQueueFamilyIndex(families) == 1);
 }
 
 TEST_CASE("pickSurfaceFormat maps an undefined single format to a default sRGB format", "[helpers]")
