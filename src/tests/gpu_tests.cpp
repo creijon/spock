@@ -154,7 +154,7 @@ TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu
         fixture->device,
         vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queue.graphicsFamily()));
     vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->device, commandPool);
-    vk::raii::Queues graphicsQueue(fixture->device, fixture->queue.graphicsFamily(), 0);
+    vk::raii::Queue graphicsQueue(fixture->device, fixture->queue.graphicsFamily(), 0);
 
     // setImage() takes a vk::raii::CommandBuffer, so it's recorded and
     // submitted by hand here rather than through spock::oneTimeSubmit (which
@@ -283,7 +283,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
     spock::BufferWrapper uniformBuffer(
         fixture->physicalDevice, fixture->device, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
 
-    spock::DescriptorSetUpdateData bufferData{
+    spock::BufferUpdateData bufferData{
         {vk::DescriptorType::eUniformBuffer, uniformBuffer.buffer(), sizeof(float) * 16, nullptr}};
 
     CHECK_NOTHROW(spock::updateDescriptorSets(fixture->device, descriptorSet, bufferData, {}));

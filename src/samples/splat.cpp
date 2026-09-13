@@ -72,12 +72,10 @@ static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/src/samples/sh
 static const std::string VERTEX_SHADER = "splat.vs";
 static const std::string FRAGMENT_SHADER = "splat.fs";
 
-static const std::array<std::string, 6> SPLAT_FILES = {
+static const std::array<std::string, 4> SPLAT_FILES = {
     "amphimallon",
-    "bumblebee",
     "pachnoda",
     "tomatoes",
-    "vegetables",
     "tetrarthria"
 };
 
@@ -328,9 +326,7 @@ protected:
     {
         auto renderer = std::make_unique<SplatRenderer>(instance, std::move(windowSurface), extents);
 
-        const uint32_t sceneIndex = 3;
-        loadScene(SPLAT_PATH + SPLAT_FILES[sceneIndex] + "/scene.ply");
-
+        loadScene();
         renderer->createResources(m_scene);
 
         m_camera.setFocus(m_sceneBounds);
@@ -343,6 +339,7 @@ protected:
     void update() override
     {
         SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
+
         vk::Offset2D cursor = m_window.cursorPosition();
 
         bool cameraMoved = false;
@@ -369,8 +366,10 @@ protected:
     }
 
 private:
-    void loadScene(const std::string& filename)
+    void loadScene()
     {
+        std::string filename = SPLAT_PATH + SPLAT_FILES[m_sceneIndex] + "/scene.ply";
+
         try
         {
             loadPly(filename, m_scene);
@@ -385,6 +384,7 @@ private:
 
     SplatScene m_scene;
     glm::vec4 m_sceneBounds{};
+    uint32_t m_sceneIndex{ 2 };
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f};

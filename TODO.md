@@ -48,6 +48,8 @@
     - This is important, because the renderer currently puts everything on the graphics queue.
     - Needs some thought.
     - The Presenter already encapsulates the Renderer to Window logic, so that will make it easier.
+- Need to have separate the resources from the renderer.  Have some sort of asset registry.
+  - Has to allow reloading.
 - Split the framework into an app and separate renderer. DONE
   - App is responsible for: window, update loop, asset loading (TBD)
   - Pure virtual function to create the subclassed renderer.
