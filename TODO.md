@@ -27,17 +27,17 @@
 
 ## Larger Scope, Specific Features
 
-- Contree (64tree) structure for voxels of volumetric textures
 - Gaussian splatting (see below)
+- Contree (64tree) structure for voxels of volumetric textures
 - Lighting
 
 ### Gaussian Splatting
 
-- Initial CPU-GPU hybrid sample. DONE
-- Put in a GPU compute stage to do the sorting, still brute-forced rendering with the vertex shader.
-- Full compute-based rendering, with 16x16 tiles.
-- Spatial partitioning of the splat data.
-- 4DGS.
+1. Initial CPU-GPU hybrid sample. DONE
+2. Put in a GPU compute stage to do the sorting, still brute-forced rendering with the vertex shader.
+3. Full compute-based rendering, with 16x16 tiles.
+4. Spatial partitioning of the splat data.
+5. 4DGS.
 
 ## Fixes/Refactoring
 
@@ -60,30 +60,3 @@
   - Try to keep the Renderers stateless
 - Clean up the code in the Framework that handles window resizing. DONE
 - Fences and semaphores aren't stable.  Move all the synchronisation primitives into Presenter. DONE
-
-## Investigations
-
-## Links
-
-- Excellent: https://docs.vulkan.org/tutorial/latest/00_Introduction.html
-- Android: https://developer.android.com/ndk/guides/graphics/getting-started
-
-## Agentic Notes
-
-I used this prompt:
-
-```
-Using the Cube app as an example, write a sample app that renders a grid of 16 x 16 instanced sprites.
-```
-
-And Claude created the instancing example perfectly.  This showed me that if you take the time to
-put in a clear architecture and demonstrate it with practical examples, the AI can produce very
-high quality results.
-
-I've had less success with it handling linear algebra solutions.  It appears to base its answer on
-common solutions such as separating axis theorem, which are sub-optimial.
-
-The issue with the semaphore indexes really confused it.  I had to solve that myself, it kept going
-in circles.
-
-Claude was a lot of help with finding issues with GLFW and alpha blending.
