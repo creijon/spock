@@ -4,6 +4,7 @@
 // This sample is for the compute shader scaffolding.
 
 #include "spock/app.hpp"
+#include "spock/command_recorder.hpp"
 #include "spock/creators.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
@@ -143,12 +144,10 @@ protected:
         const uint32_t groupCount = (ELEMENT_COUNT + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
         const vk::DeviceSize bufferSize = ELEMENT_COUNT * sizeof(uint32_t);
 
-        vk::raii::Queue computeQueue(m_device, m_queues.computeFamily(), 0);
+        spock::CommandRecorder computeRecorder = spock::CommandRecorder(m_device, m_queues.computeFamily());
 
-        spock::oneTimeSubmit(
+        computeRecorder.submit(
             m_device,
-            m_commandPool,
-            computeQueue,
             [&](vk::CommandBuffer const &commandBuffer)
             {
                 commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
@@ -171,6 +170,7 @@ protected:
 
                 commandBuffer.copyBuffer(storageBuffer, readbackBuffer, vk::BufferCopy(0, 0, bufferSize));
             });
+		computeRecorder.waitIdle();
 
         uint32_t const* results = static_cast<uint32_t const*>(m_readbackBuffer.map());
         bool allMatch = true;

@@ -1,5 +1,6 @@
 #include "gpu_fixture.hpp"
 
+#include "spock/command_recorder.hpp"
 #include "spock/creators.hpp"
 #include "spock/helpers.hpp"
 #include "spock/shaders.hpp"
@@ -77,7 +78,8 @@ TEST_CASE("BufferWrapper uploads round-trip through mapped device memory", "[gpu
         fixture->physicalDevice,
         fixture->device,
         sizeof(Uniforms),
-        vk::BufferUsageFlagBits::eUniformBuffer);
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
     Uniforms written{{1.0f, 2.0f, 3.0f, 4.0f}};
     buffer.upload(written);
@@ -258,6 +260,37 @@ TEST_CASE("createCommandBuffer allocates a primary command buffer", "[gpu]")
     CHECK_NOTHROW(commandBuffer.end());
 }
 
+TEST_CASE("CommandRecorder owns a command pool and queue for its family and can submit one-time commands", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    spock::CommandRecorder recorder(fixture->device, fixture->queue.computeFamily());
+    CHECK(*recorder.commandPool() != VK_NULL_HANDLE);
+    CHECK(*recorder.queue() != VK_NULL_HANDLE);
+
+    bool recorded = false;
+    CHECK_NOTHROW(recorder.submit(
+        fixture->device,
+        [&](vk::CommandBuffer const &commandBuffer)
+        {
+            recorded = true;
+            // A no-op barrier is enough to prove a real command buffer was
+            // recorded and submitted through the recorder's own queue.
+            commandBuffer.pipelineBarrier(
+                vk::PipelineStageFlagBits::eTopOfPipe,
+                vk::PipelineStageFlagBits::eBottomOfPipe,
+                vk::DependencyFlags(),
+                nullptr,
+                nullptr,
+                nullptr);
+        }));
+    CHECK(recorded);
+}
+
 TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorSets wire up a uniform buffer binding", "[gpu]")
 {
     auto fixture = createGpuFixture();
@@ -268,7 +301,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
 
     vk::raii::DescriptorSetLayout descriptorSetLayout = spock::createDescriptorSetLayout(
         fixture->device,
-        {{vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
+        {{0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
     CHECK(*descriptorSetLayout != VK_NULL_HANDLE);
 
     vk::raii::DescriptorPool descriptorPool = spock::createDescriptorPool(
@@ -283,7 +316,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
     spock::BufferWrapper uniformBuffer(
         fixture->physicalDevice, fixture->device, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
 
-    spock::BufferUpdateData bufferData{
+    std::vector<spock::BufferUpdateData> bufferData{
         {vk::DescriptorType::eUniformBuffer, uniformBuffer.buffer(), sizeof(float) * 16, nullptr}};
 
     CHECK_NOTHROW(spock::updateDescriptorSets(fixture->device, descriptorSet, bufferData, {}));

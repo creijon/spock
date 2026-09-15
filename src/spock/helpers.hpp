@@ -9,13 +9,6 @@
 
 namespace spock
 {
-    // A simple structure to hold the graphics and present queue family indices.
-    struct QueueIndices
-    {
-        uint32_t graphics;
-        uint32_t present;
-    };
-
     // The timeout used for waiting on frame fences during rendering.
     const uint64_t FenceTimeout = 100000000ull;
 
@@ -56,12 +49,6 @@ namespace spock
         queue.submit(vk::SubmitInfo(0, nullptr, nullptr, 1, &commandBuffer), nullptr);
         queue.waitIdle();
     }
-
-    // Find queue family indices for graphics and present queues.
-    // The returned pair is {graphicsQueueFamilyIndex, presentQueueFamilyIndex}.
-    QueueIndices findGraphicsAndPresentQueueFamilyIndex(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        vk::raii::SurfaceKHR const &surface);
 
     // Choose a surface format from the available list, preferring SRGB color space.
     vk::SurfaceFormatKHR pickSurfaceFormat(

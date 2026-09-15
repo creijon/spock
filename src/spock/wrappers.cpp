@@ -30,17 +30,17 @@ namespace spock
         uint32_t binding,
         vk::VertexInputRate inputRate)
     {
-        // Check to see whether there is already a binding on this slot.
+        // Check to see whether there is already a binding on this slot; if so, reuse it
+        // rather than adding a duplicate, so callers can add attributes to the same
+        // binding across multiple calls.
         auto it = std::find_if(
             m_bindings.begin(), m_bindings.end(),
             [binding](auto desc) { return desc.binding == binding; });
 
-        if (it != m_bindings.end())
+        if (it == m_bindings.end())
         {
-            throw std::runtime_error("VertexFormat: binding " + std::to_string(binding) + " already exists");
+            m_bindings.emplace_back(binding, stride, inputRate);
         }
-
-        m_bindings.emplace_back(binding, stride, inputRate);
 
         // Attributes are sorted, so the last one will have the highest location.
         uint32_t location = (!m_attributes.empty()) ? m_attributes.back().location + 1 : 0;
@@ -63,8 +63,13 @@ namespace spock
         vk::raii::Device const &device,
         vk::DeviceSize size,
         vk::BufferUsageFlags usage,
-        vk::MemoryPropertyFlags propertyFlags)
-        : m_buffer(device, vk::BufferCreateInfo({}, size, usage))
+        vk::MemoryPropertyFlags propertyFlags,
+        std::vector<uint32_t> const &concurrentQueueFamilies)
+        : m_buffer(
+            device,
+            (concurrentQueueFamilies.size() > 1)
+                ? vk::BufferCreateInfo({}, size, usage, vk::SharingMode::eConcurrent, concurrentQueueFamilies)
+                : vk::BufferCreateInfo({}, size, usage))
         , m_size(size)
         , m_usage(usage)
         , m_propertyFlags(propertyFlags)

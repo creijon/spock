@@ -19,25 +19,11 @@ layout (location = 0) out vec4 fragColor;
 
 void main()
 {
-  // Normalise coordinates to 0..1 and correct for window aspect ratio.
-  vec2 xy = fragCoord / pc.iResolution.xy;
-  float aspect = pc.iResolution.x / pc.iResolution.y;
-  xy.x = xy.x * aspect + (1.0 - aspect) * 0.5;
+	vec2 uv = (fragCoord.xy / pc.iResolution.xy) * 2.0 - 1.0;
+	uv.x *= pc.iResolution.x /  pc.iResolution.y;
+	vec3 dir = normalize(vec3(uv, 1.0));
 
-  // Do the same for the mouse position.
-  vec2 mouseXY = pc.iMouse.zw / pc.iResolution.xy;
-  mouseXY.x = mouseXY.x * aspect + (1.0 - aspect) * 0.5;
+  float radius = 0.2;
 
-  // Draw the circle.
-  float radius = 0.2 + sin(pc.iTime) * 0.02; // Animate the radius over time
-  float thickness = radius * 0.1;
-  vec4 lineColor = vec4(0.5, 0.1, 0.2, 1.0);
-  vec4 fillColor = vec4(0.8, 0.6, 0.1, 1.0);
-  vec4 backColor = vec4(0.15, 0.05, 0.05, 1.0);
-
-  float distance = length(xy - mouseXY);
-  float line = (distance < radius) ? 1.0 : 0.0;
-  float fill = (distance < radius - thickness) ? 1.0 : 0.0;
-
-  fragColor = mix(mix(backColor, lineColor, line), fillColor, fill);
+  fragColor = vec4(dir * 0.5 + 0.5, 1.0);
 }

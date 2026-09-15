@@ -81,12 +81,15 @@ namespace spock
     class BufferWrapper
     {
     public:
+        // If concurrentQueueFamilies has 2 or more entries, the buffer is created with
+        // vk::SharingMode::eConcurrent across those families.
         BufferWrapper(
             vk::raii::PhysicalDevice const &physicalDevice,
             vk::raii::Device const &device,
             vk::DeviceSize size,
             vk::BufferUsageFlags usage,
-            vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible);
+            vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible,
+            std::vector<uint32_t> const &concurrentQueueFamilies = {});
         BufferWrapper() = default;
         BufferWrapper(const BufferWrapper &) = delete;
         BufferWrapper(BufferWrapper &&other) noexcept;
