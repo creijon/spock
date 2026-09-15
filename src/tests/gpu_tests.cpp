@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "gpu_fixture.hpp"
 
 #include "spock/command_recorder.hpp"

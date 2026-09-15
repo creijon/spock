@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "spock/camera.hpp"
 
 #include <glm/gtc/matrix_transform.hpp>

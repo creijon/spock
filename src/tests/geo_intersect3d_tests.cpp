@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "geo/geo3d.hpp"
 #include "geo/intersect3d.hpp"
 

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "spock/math.hpp"
 
 #include <catch2/catch_test_macros.hpp>
