@@ -95,7 +95,10 @@ public:
             std::move(windowSurface),
             extents,
             {0.05f, 0.08f, 0.15f, 1.0f},
-            {1.0f, 0})
+            {1.0f, 0},
+            false,
+            extensions(),
+            features())
     {
     }
 
@@ -286,6 +289,34 @@ protected:
     }
 
 private:
+    static std::vector<std::string> extensions()
+    {
+        return {
+            VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+            VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
+            VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME
+        };
+    }
+
+    static void const* features()
+    {
+        static vk::PhysicalDeviceShaderFloat16Int8Features float16Int8{
+            VK_TRUE,
+            VK_FALSE,
+            nullptr
+        };
+
+        static vk::PhysicalDevice16BitStorageFeatures storage16{
+            VK_TRUE,
+            VK_TRUE,
+            VK_FALSE,
+            VK_FALSE,
+            &float16Int8
+        };
+
+        return &storage16;
+    }
+
     vk::raii::DescriptorPool m_descriptorPool{nullptr};
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};

@@ -10,6 +10,7 @@
 #include <vulkan/vulkan_raii.hpp>
 
 #include <chrono>
+#include <string>
 #include <vector>
 
 using namespace std::chrono_literals;
@@ -26,7 +27,8 @@ namespace spock
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,
             bool useDepthBuffer = true,
-            uint32_t framesInFlight = 3);
+            std::vector<std::string> const &extensions = {},
+            void const *features = nullptr);
 
         virtual ~Renderer();
 

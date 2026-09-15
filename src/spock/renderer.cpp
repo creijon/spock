@@ -16,17 +16,18 @@
 
 namespace
 {
-   std::vector<std::string> defaultDeviceExtensions()
+    std::vector<std::string> deviceExtensions(std::vector<std::string> const& extensions)
     {
-        return {
+        std::vector<std::string> defaultExtensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
-            VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
-            VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME,
 #if defined(__APPLE__)
             VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 #endif
         };
+
+        defaultExtensions.insert(defaultExtensions.end(), extensions.begin(), extensions.end());
+
+        return defaultExtensions;
     }
 }
 
@@ -39,16 +40,21 @@ namespace spock
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
         bool useDepthBuffer,
-        uint32_t framesInFlight)
+        std::vector<std::string> const &extensions,
+        void const *features)
         : m_physicalDevice(vk::raii::PhysicalDevices(instance).front())
         , m_windowSurface(std::move(windowSurface))
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
-        , m_framesInFlight(framesInFlight)
     {
         m_queues = Queues(m_physicalDevice, m_windowSurface);
-        m_device = createDevice(m_physicalDevice, m_queues.graphicsFamily(), defaultDeviceExtensions());
+        m_device = createDevice(
+            m_physicalDevice, 
+            m_queues.graphicsFamily(),
+            deviceExtensions(extensions),
+            nullptr,
+            features);
 
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
