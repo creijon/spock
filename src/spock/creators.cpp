@@ -7,10 +7,6 @@
 #include <iostream>
 #include <numeric>
 
-#if defined(__APPLE__)
-#include <vulkan/vulkan_beta.h>
-#endif
-
 namespace spock
 {
     // Convert requested extension names into raw const char* pointers while
@@ -153,12 +149,28 @@ namespace spock
             enabledExtensions.push_back(ext.data());
         }
 
+        // Feature flags for 16 bit support.
+        // TODO: move this up to the renderer's subclass so that it's optional.
+        vk::PhysicalDeviceShaderFloat16Int8Features float16Int8{
+            VK_TRUE,
+            VK_FALSE,
+            nullptr
+        };
+
+        vk::PhysicalDevice16BitStorageFeatures storage16{
+            VK_TRUE,
+            VK_TRUE,
+            VK_FALSE,
+            VK_FALSE,
+            &float16Int8
+        };
+
         float queuePriority = 0.0f;
         vk::DeviceQueueCreateInfo deviceQueueCreateInfo(
             vk::DeviceQueueCreateFlags(), queueFamilyIndex, 1, &queuePriority);
         vk::DeviceCreateInfo deviceCreateInfo(
             vk::DeviceCreateFlags(), deviceQueueCreateInfo, {}, enabledExtensions,
-            physicalDeviceFeatures, pNext);
+            physicalDeviceFeatures, &storage16);
 
         return vk::raii::Device(physicalDevice, deviceCreateInfo);
     }

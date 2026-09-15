@@ -36,7 +36,6 @@ namespace spock
 
     protected:
         virtual void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) = 0;
-        virtual std::vector<std::string> deviceExtensions() const;
 
         vk::raii::PhysicalDevice m_physicalDevice{nullptr};
         vk::raii::Device m_device{nullptr};

@@ -10,12 +10,19 @@
 #include <iostream>
 #include <utility>
 
+#if defined(__APPLE__)
+#include <vulkan/vulkan_beta.h>
+#endif
+
 namespace
 {
-   std::vector<std::string> getDefaultDeviceExtensions()
+   std::vector<std::string> defaultDeviceExtensions()
     {
         return {
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+            VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
+            VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME,
 #if defined(__APPLE__)
             VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 #endif
@@ -40,12 +47,8 @@ namespace spock
         , m_clearDepthStencil(clearDepthStencil)
         , m_framesInFlight(framesInFlight)
     {
-        std::vector<std::string> extensions = getDefaultDeviceExtensions();
-        std::vector<std::string> additional = deviceExtensions();
-        extensions.insert(extensions.end(), additional.begin(), additional.end());
-
         m_queues = Queues(m_physicalDevice, m_windowSurface);
-        m_device = createDevice(m_physicalDevice, m_queues.graphicsFamily(), extensions);
+        m_device = createDevice(m_physicalDevice, m_queues.graphicsFamily(), defaultDeviceExtensions());
 
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
@@ -151,11 +154,6 @@ namespace spock
         m_framesSinceResize++;
 
         return result;
-    }
-
-    std::vector<std::string> Renderer::deviceExtensions() const
-    {
-        return {};
     }
 
 } // namespace spock

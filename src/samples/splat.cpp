@@ -285,15 +285,6 @@ protected:
         commandBuffer.draw(QUAD_VERTEX_COUNT, m_splatCount, 0, 0);
     }
 
-
-    std::vector<std::string> deviceExtensions() const override
-    {
-        return {
-			VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
-    		VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME
-        };
-    }
-
 private:
     vk::raii::DescriptorPool m_descriptorPool{nullptr};
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
@@ -415,7 +406,7 @@ int main(int argc, char** argv)
             {
                 throw std::out_of_range("splat index out of range");
             }
-			parsed = std::clamp(parsed, 0, static_cast<int>(SPLAT_FILES.size() - 1));
+            parsed = std::clamp(parsed, 0, static_cast<int>(SPLAT_FILES.size() - 1));
             sceneIndex = static_cast<uint32_t>(parsed);
         }
         catch (std::exception const&)
