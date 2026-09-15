@@ -22,6 +22,7 @@
 #define GLM_FORCE_RADIANS
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
+#include <glm/gtc/packing.hpp>
 #include <glm/gtc/quaternion.hpp>
 
 #if defined(_MSC_VER)
@@ -30,6 +31,22 @@
 
 namespace spock
 {
+    struct f16
+    {
+        f16() = default;
+        f16(float f)
+            : value(glm::packHalf1x16(f))
+        {
+        }
+
+        operator float() const
+        {
+            return glm::unpackHalf1x16(value);
+        }
+
+        uint16_t value{0};
+    };
+
     class Transform
     {
     public:
@@ -86,6 +103,6 @@ namespace spock
 
         glm::quat orientation{1.0f, 0.0f, 0.0f, 0.0f};
         glm::vec3 translation{0.0f};
-        float scale = 1.0f;
+        float scale{1.0f};
     };
 } // namespace spock

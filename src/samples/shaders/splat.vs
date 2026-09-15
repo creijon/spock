@@ -8,6 +8,8 @@
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
+#extension GL_EXT_shader_16bit_storage : require
+#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require
 
 // Constants
 const float SPLAT_EXTENT = 3.0;
@@ -35,13 +37,14 @@ const float SH_C3_6 = -0.5900435899266435;
 struct SplatData
 {
     float position[3];
-    float rotation[4];
-    float scale[3];
-    float opacity;
-    float sh0[3];
-    float sh1[SH_DEGREE1_COUNT][3];
-    float sh2[SH_DEGREE2_COUNT][3];
-    float sh3[SH_DEGREE3_COUNT][3];
+    float16_t rotation[4];
+    float16_t scale[3];
+    float16_t opacity;
+    float16_t sh0[3];
+    float16_t sh1[SH_DEGREE1_COUNT][3];
+    float16_t sh2[SH_DEGREE2_COUNT][3];
+    float16_t sh3[SH_DEGREE3_COUNT][3];
+    float16_t padding;
 };
 
 // Buffer Bindings
@@ -78,8 +81,19 @@ vec4 floatToVec4(float v[4])
     return vec4(v[0], v[1], v[2], v[3]);
 }
 
+vec3 halfToVec3(float16_t v[3])
+{
+    return vec3(float(v[0]), float(v[1]), float(v[2]));
+}
+
+vec4 halfToVec4(float16_t v[4])
+{
+    return vec4(float(v[0]), float(v[1]), float(v[2]), float(v[3]));
+}
+
 mat3 quatToMat3(vec4 q)
 {
+	// Quaternion is stored in XYZW format.
     return mat3(
         1.0 - 2.0 * q.y * q.y - 2.0 * q.z * q.z,
         2.0 * q.x * q.y + 2.0 * q.w * q.z,
@@ -98,25 +112,25 @@ vec3 sphericalHarmonicsToRgb(vec3 viewVec, SplatData s)
     float y = viewVec.y;
     float z = viewVec.z;
 
-    vec3 rgb = SH_C0 * floatToVec3(s.sh0);
+    vec3 rgb = SH_C0 * halfToVec3(s.sh0);
 
-    rgb += -SH_C1 * y * floatToVec3(s.sh1[0]);
-    rgb += SH_C1 * z * floatToVec3(s.sh1[1]);
-    rgb += -SH_C1 * x * floatToVec3(s.sh1[2]);
+    rgb += -SH_C1 * y * halfToVec3(s.sh1[0]);
+    rgb += SH_C1 * z * halfToVec3(s.sh1[1]);
+    rgb += -SH_C1 * x * halfToVec3(s.sh1[2]);
 
-    rgb += SH_C2_0 * x * y * floatToVec3(s.sh2[0]);
-    rgb += SH_C2_1 * y * z * floatToVec3(s.sh2[1]);
-    rgb += SH_C2_2 * (2.0 * z * z - x * x - y * y) * floatToVec3(s.sh2[2]);
-    rgb += SH_C2_3 * x * z * floatToVec3(s.sh2[3]);
-    rgb += SH_C2_4 * (x * x - y * y) * floatToVec3(s.sh2[4]);
+    rgb += SH_C2_0 * x * y * halfToVec3(s.sh2[0]);
+    rgb += SH_C2_1 * y * z * halfToVec3(s.sh2[1]);
+    rgb += SH_C2_2 * (2.0 * z * z - x * x - y * y) * halfToVec3(s.sh2[2]);
+    rgb += SH_C2_3 * x * z * halfToVec3(s.sh2[3]);
+    rgb += SH_C2_4 * (x * x - y * y) * halfToVec3(s.sh2[4]);
 
-    rgb += SH_C3_0 * y * (3.0 * x * x - y * y) * floatToVec3(s.sh3[0]);
-    rgb += SH_C3_1 * x * y * z * floatToVec3(s.sh3[1]);
-    rgb += SH_C3_2 * y * (4.0 * z * z - x * x - y * y) * floatToVec3(s.sh3[2]);
-    rgb += SH_C3_3 * z * (2.0 * z * z - 3.0 * x * x - 3.0 * y * y) * floatToVec3(s.sh3[3]);
-    rgb += SH_C3_4 * x * (4.0 * z * z - x * x - y * y) * floatToVec3(s.sh3[4]);
-    rgb += SH_C3_5 * z * (x * x - y * y) * floatToVec3(s.sh3[5]);
-    rgb += SH_C3_6 * x * (x * x - 3.0 * y * y) * floatToVec3(s.sh3[6]);
+    rgb += SH_C3_0 * y * (3.0 * x * x - y * y) * halfToVec3(s.sh3[0]);
+    rgb += SH_C3_1 * x * y * z * halfToVec3(s.sh3[1]);
+    rgb += SH_C3_2 * y * (4.0 * z * z - x * x - y * y) * halfToVec3(s.sh3[2]);
+    rgb += SH_C3_3 * z * (2.0 * z * z - 3.0 * x * x - 3.0 * y * y) * halfToVec3(s.sh3[3]);
+    rgb += SH_C3_4 * x * (4.0 * z * z - x * x - y * y) * halfToVec3(s.sh3[4]);
+    rgb += SH_C3_5 * z * (x * x - y * y) * halfToVec3(s.sh3[5]);
+    rgb += SH_C3_6 * x * (x * x - 3.0 * y * y) * halfToVec3(s.sh3[6]);
 
     return clamp(rgb + vec3(0.5), 0.0, 1.0);
 }
@@ -168,7 +182,16 @@ void main()
         return;
     }
 
-    mat3 covariance2D = projectCovariance(centreView, floatToVec4(s.rotation), floatToVec3(s.scale));
+    if (false)
+    {
+        outColor = vec3(1.0);
+        //outColor = sphericalHarmonicsToRgb(viewVec, s);
+        outOpacity = 1.0;
+        gl_Position = vec4(ndc.xy + inVertPos * 0.001, ndc.z, 1.0);
+        return;
+    }
+
+    mat3 covariance2D = projectCovariance(centreView, halfToVec4(s.rotation), halfToVec3(s.scale));
 
     float a = covariance2D[0][0] + 0.3;
     float b = covariance2D[1][0];
@@ -184,6 +207,15 @@ void main()
         abs(b) > 0.00001 ? normalize(vec2(b, lambda1 - a))
                          : (a >= d ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
     vec2 axisDirection2 = vec2(-axisDirection1.y, axisDirection1.x);
+
+	if (false)
+    {
+        outColor = vec3(1.0);
+        //outColor = sphericalHarmonicsToRgb(viewVec, s);
+        outOpacity = 1.0;
+        gl_Position = vec4(ndc.xy + inVertPos * 0.001, ndc.z, 1.0);
+        return;
+    }
 
     vec2 axis1 = SPLAT_EXTENT * sqrt(lambda1) * axisDirection1;
     vec2 axis2 = SPLAT_EXTENT * sqrt(lambda2) * axisDirection2;

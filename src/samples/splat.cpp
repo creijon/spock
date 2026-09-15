@@ -20,7 +20,9 @@
 
 #include "vulkan/vulkan.hpp"
 
+#include <cstdlib>
 #include <execution>
+#include <iostream>
 #include <iterator>
 #include <mutex>
 #include <numeric>
@@ -119,7 +121,7 @@ public:
             // the mapped memory are extremely slow, and the multithreading makes it even worse.
             for (uint32_t i = 0; i < m_splatCount; ++i)
             {
-                glm::vec4 viewPos = frameConstants.view * glm::vec4(scene.instances[i].position, 1.0f);
+                glm::vec4 viewPos = frameConstants.view * glm::vec4(toVec3(scene.instances[i].position), 1.0f);
                 m_sorting[i].zDist = viewPos.z;
                 m_sorting[i].index = i;
             }
@@ -172,8 +174,7 @@ public:
             QUAD_VERTEX_COUNT * sizeof(QuadVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
-        
-
+    
         m_descriptorPool = spock::createDescriptorPool(
             m_device,
             { {vk::DescriptorType::eUniformBuffer, m_framesInFlight},
@@ -284,6 +285,15 @@ protected:
         commandBuffer.draw(QUAD_VERTEX_COUNT, m_splatCount, 0, 0);
     }
 
+
+    std::vector<std::string> deviceExtensions() const override
+    {
+        return {
+			VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+    		VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME
+        };
+    }
+
 private:
     vk::raii::DescriptorPool m_descriptorPool{nullptr};
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
@@ -310,11 +320,12 @@ private:
 class SplatApp : public spock::App
 {
 public:
-    SplatApp(uint32_t windowWidth, uint32_t windowHeight)
+    SplatApp(uint32_t windowWidth, uint32_t windowHeight, uint32_t sceneIndex)
         : spock::App(
             "Splat",
             windowWidth,
             windowHeight)
+        , m_sceneIndex(sceneIndex)
     {
     }
 
@@ -384,13 +395,40 @@ private:
 
     SplatScene m_scene;
     glm::vec4 m_sceneBounds{};
-    uint32_t m_sceneIndex{ 1 };
+    uint32_t m_sceneIndex{ 2 };
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f};
 };
 
-int main()
+int main(int argc, char** argv)
 {
-    return spock::runApp<SplatApp>(500, 500);
+    uint32_t sceneIndex = 2;
+
+    if (argc > 1)
+    {
+        try
+        {
+            size_t parsedChars = 0;
+            int parsed = std::stoi(argv[1], &parsedChars);
+            if (parsedChars != std::string(argv[1]).size())
+            {
+                throw std::out_of_range("splat index out of range");
+            }
+			parsed = std::clamp(parsed, 0, static_cast<int>(SPLAT_FILES.size() - 1));
+            sceneIndex = static_cast<uint32_t>(parsed);
+        }
+        catch (std::exception const&)
+        {
+            std::cerr << "Usage: splat [index]\n";
+            std::cerr << "  index: an integer selecting which splat scene to load:\n";
+            for (size_t i = 0; i < SPLAT_FILES.size(); ++i)
+            {
+                std::cerr << "    " << i << ": " << SPLAT_FILES[i] << "\n";
+            }
+            return -1;
+        }
+    }
+
+    return spock::runApp<SplatApp>(500, 500, sceneIndex);
 }

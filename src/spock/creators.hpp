@@ -14,9 +14,6 @@
 
 namespace spock
 {
-    std::vector<std::string> getDefaultDeviceExtensions();
-    std::vector<std::string> getDefaultInstanceExtensions();
-
     // Create a Vulkan instance with optional validation layers and requested
     // extensions.
     vk::raii::Instance createInstance(

@@ -9,6 +9,7 @@
 #include "spock/math.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -30,19 +31,25 @@ constexpr uint32_t SH_CHANNEL_COUNT = 3;
 constexpr uint32_t SH_REST_COUNT = SH_DEGREE1_COUNT + SH_DEGREE2_COUNT + SH_DEGREE3_COUNT;
 constexpr uint32_t SH_REST_FLOAT_COUNT = SH_REST_COUNT * SH_CHANNEL_COUNT;
 
-// Note: these members will be packed, but on the GLSL side, the shader would expect them to be
-// aligned to vec4 boundaries so all vec3 and quat members should be represented as arrays of floats.
+using float3 = std::array<float, 3>;
+using float4 = std::array<float, 4>;
+using half3 = std::array<spock::f16, 3>;
+using half4 = std::array<spock::f16, 4>;
+
+inline glm::vec3 toVec3(float3 const& v) { return glm::vec3(v[0], v[1], v[2]); }
+
 struct SplatInstance
 {
-    glm::vec3 position;
-    glm::quat rotation; // TODO: Check whether wxyz or xyzw is expected by the shader.
-    glm::vec3 scale;
-    float opacity;
-    glm::vec3 sh0;
-    glm::vec3 sh1[SH_DEGREE1_COUNT]; 
-    glm::vec3 sh2[SH_DEGREE2_COUNT];
-    glm::vec3 sh3[SH_DEGREE3_COUNT];
-};
+    float3 position;
+    half4 rotation; // Note: needs to be stored in xyzw order for the shader.
+    half3 scale;
+    spock::f16 opacity;
+    half3 sh0;
+    half3 sh1[SH_DEGREE1_COUNT];
+    half3 sh2[SH_DEGREE2_COUNT];
+    half3 sh3[SH_DEGREE3_COUNT];
+    spock::f16 padding;
+}; // 6 + 8 + 6 + 2 + 16 * 6 + 2 = 120 bytes
 
 struct SplatScene
 {
@@ -58,7 +65,7 @@ struct SplatScene
 
         for (const auto& instance : instances)
         {
-            sum += instance.position;
+            sum += toVec3(instance.position);
         }
 
         glm::vec3 centre = sum / static_cast<float>(instances.size());
@@ -66,7 +73,7 @@ struct SplatScene
         float maxDistance = 0.0f;
         for (const auto& instance : instances)
         {
-            maxDistance = std::max(maxDistance, glm::length(instance.position - centre));
+            maxDistance = std::max(maxDistance, glm::length(toVec3(instance.position) - centre));
         }
 
         return glm::vec4(centre, maxDistance);
@@ -287,11 +294,11 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
             plyDetail::readAsFloat(row, z),
         };
 
-        splat.rotation = {
-            plyDetail::readAsFloat(row, rot0),
-            plyDetail::readAsFloat(row, rot1),
-            plyDetail::readAsFloat(row, rot2),
-            plyDetail::readAsFloat(row, rot3)
+        splat.rotation = {	
+            plyDetail::readAsFloat(row, rot1),	// x
+            plyDetail::readAsFloat(row, rot2),	// y
+            plyDetail::readAsFloat(row, rot3),	// z
+            plyDetail::readAsFloat(row, rot0),	// w
         };
 
         splat.scale = {
@@ -319,7 +326,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
         const uint32_t offsetG = harmonicCount;
         const uint32_t offsetB = harmonicCount * 2;
 
-        auto readSHDegree = [&](glm::vec3 shDegree[], uint32_t offset, uint32_t count)
+        auto readSHDegree = [&](half3 shDegree[], uint32_t offset, uint32_t count)
         {
             if (harmonicCount >= offset + count)
             {

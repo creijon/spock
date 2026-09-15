@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
 #include "queues.hpp"
 
 #include <algorithm>

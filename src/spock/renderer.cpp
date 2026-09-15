@@ -10,6 +10,19 @@
 #include <iostream>
 #include <utility>
 
+namespace
+{
+   std::vector<std::string> getDefaultDeviceExtensions()
+    {
+        return {
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+#if defined(__APPLE__)
+            VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
+#endif
+        };
+    }
+}
+
 namespace spock
 {
     Renderer::Renderer(
@@ -27,8 +40,12 @@ namespace spock
         , m_clearDepthStencil(clearDepthStencil)
         , m_framesInFlight(framesInFlight)
     {
+        std::vector<std::string> extensions = getDefaultDeviceExtensions();
+        std::vector<std::string> additional = deviceExtensions();
+        extensions.insert(extensions.end(), additional.begin(), additional.end());
+
         m_queues = Queues(m_physicalDevice, m_windowSurface);
-        m_device = createDevice(m_physicalDevice, m_queues.graphicsFamily(), getDefaultDeviceExtensions());
+        m_device = createDevice(m_physicalDevice, m_queues.graphicsFamily(), extensions);
 
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
@@ -135,4 +152,10 @@ namespace spock
 
         return result;
     }
+
+    std::vector<std::string> Renderer::deviceExtensions() const
+    {
+        return {};
+    }
+
 } // namespace spock

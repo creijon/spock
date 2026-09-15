@@ -13,42 +13,6 @@
 
 namespace spock
 {
-    std::vector<std::string> getDefaultInstanceExtensions()
-    {
-        std::vector<std::string> extensions;
-        extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
-#if defined(VK_USE_PLATFORM_ANDROID_KHR)
-        extensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_METAL_EXT)
-        extensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
-        extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
-        extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_VI_NN)
-        extensions.push_back(VK_NN_VI_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
-        extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_WIN32_KHR)
-        extensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_XCB_KHR)
-        extensions.push_back(VK_KHR_XCB_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_XLIB_KHR)
-        extensions.push_back(VK_KHR_XLIB_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_XLIB_XRANDR_EXT)
-        extensions.push_back(VK_EXT_ACQUIRE_XLIB_DISPLAY_EXTENSION_NAME);
-#endif
-        return extensions;
-    }
-
-    std::vector<std::string> getDefaultDeviceExtensions()
-    {
-        return {
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-#if defined(__APPLE__)
-            VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
-#endif
-        };
-    }
-
     // Convert requested extension names into raw const char* pointers while
     // checking that they are available on the target implementation.
     std::vector<char const *> gatherExtensions(
