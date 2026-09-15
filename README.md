@@ -26,23 +26,14 @@ cmake --build build --target splat
 cmake --build build --target shaderlab
 ```
 
+To create an optimized release build:
+
+```bash
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release
+```
+
 The sample targets link against the shared `spock` library so the reusable renderer code is compiled once and reused across demos.
-
-## Core library
-
-The reusable engine code lives under `src/spock` and includes:
-
-- `app.*` — base application class: owns the Vulkan context/instance, a `Window`, and the renderer, and runs the main loop
-- `camera.*` - a simple orbit camera.
-- `creators.*` — helper functions for creating Vulkan resources and pipeline objects
-- `helpers.*` — Vulkan-specific helper routines (queue selection, image layout transitions, memory allocation, surface/present-mode selection, the debug messenger)
-- `math.*` — shared GLM include and compiler warning setup
-- `window.*` — owns the GLFW window handle and creates its rendering surface from an app-provided Vulkan instance
-- `presenter.*` — swapchain and per-frame synchronization primitives, owned by a `Renderer`
-- `renderer.*` — base renderer class: owns the device, command pool, and render pass; subclass it to add your own pipeline and draw calls
-- `shaders.*` — shader compilation support
-- `utils.*` — small non-Vulkan utilities (logging, checked casts)
-- `wrappers.*` — Wrappers around Vulkan objects such as vertex assembly, buffers, images and textures
 
 ## Geometry library
 
@@ -76,25 +67,7 @@ Build and run:
 ```bash
 cmake -S . -B build
 cmake --build build --target spock_tests
-./build/binaries/spock_tests
-```
-
-Or via CTest, which discovers each `TEST_CASE` individually:
-
-```bash
-cd build
-ctest --output-on-failure
-```
-
-Useful Catch2 command-line options (pass directly to `spock_tests`):
-- `./build/binaries/spock_tests "[camera]"` — run only tests tagged `[camera]` (or `[utils]`, `[helpers]`, `[shaders]`, `[gpu]`)
-- `./build/binaries/spock_tests "~[gpu]"` — skip the GPU-backed tests
-- `./build/binaries/spock_tests --list-tests` — list all available test cases
-
-To skip building the test suite entirely (e.g. for a minimal release build), configure with:
-
-```bash
-cmake -S . -B build -DSPOCK_BUILD_TESTS=OFF
+./build/bin/spock_tests
 ```
 
 ## Requirements
@@ -127,69 +100,9 @@ Some of the samples require TBB and OneDPL libraries for parallel sort.  These c
 brew install tbb onedpl
 ```
 
-## Getting started
-
-```bash
-git clone --recursive <repository-url>
-cd spock
-cmake -S . -B build
-cmake --build build
-```
-
-After configuration, the sample binaries are placed under:
-
-```text
-build/binaries/
-```
-
-regardless of generator or build configuration.
-
-
-## Building for Release
-
-To create an optimized release build:
-
-```bash
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --config Release
-```
-
-## Extending Spock
-
-### Adding New Samples
+## Adding New Samples
 
 1. Create a class derived from `spock::Renderer` that overrides `render()` and does whatever pipeline/buffer setup it needs in its constructor.
 2. Create a class derived from `spock::App` that overrides `createRenderer()` (to construct your renderer) and `update()` (called once per frame before rendering).
 3. Give it a `main()` that calls `spock::runApp<YourApp>(...)` with your app's constructor arguments — it constructs the app, runs it, and reports any exception that escapes.
 4. Add a new executable target in `src/samples/CMakeLists.txt` via `add_sample_target(your_sample your_sample.cpp)`.
-
-## Performance Considerations
-
-- **Frames in Flight**: Three frames in flight by default, to overlap GPU and CPU work
-- **RAII Overhead**: Minimal—modern compilers optimize away the abstraction
-- **Shader Compilation**: Occurs at startup; consider pre-compiling shaders for production
-- **Validation Layers**: Disable in release builds for maximum performance
-
-## Troubleshooting
-
-### "Failed to find Vulkan SDK"
-Ensure the Vulkan SDK is installed and the environment variable `VULKAN_SDK` is set.
-
-### "GLFW window creation failed"
-On Linux, ensure X11 or Wayland development libraries are installed:
-```bash
-# Ubuntu/Debian
-sudo apt install libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev
-```
-
-### "Validation layer not found"
-Validation layers are optional. If not installed, they're automatically skipped. Install the Vulkan SDK with validation layers for debugging.
-
-## References
-
-- [Vulkan API Documentation](https://www.khronos.org/vulkan/)
-- [Vulkan-Hpp C++ Bindings](https://github.com/KhronosGroup/Vulkan-Hpp)
-- [GLFW Documentation](https://www.glfw.org/documentation.html)
-- [GLM Mathematics Library](https://github.com/g-truc/glm)
-- [glslang Compiler](https://github.com/KhronosGroup/glslang)
-- [efsw Filesystem watcher](https://github.com/SpartanJ/efsw)
