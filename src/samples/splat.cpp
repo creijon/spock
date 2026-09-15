@@ -363,7 +363,7 @@ protected:
         renderer->createResources(m_scene);
 
         m_camera.setFocus(m_sceneBounds);
-        m_camera.setDistanceRange(m_sceneBounds.w * 2.5f, m_sceneBounds.w * 5.0f);
+        m_camera.setDistanceRange(m_sceneBounds.w * 1.5f, m_sceneBounds.w * 5.0f);
         m_camera.setDistance(m_sceneBounds.w * 4.0f);
 
         return renderer;
@@ -420,7 +420,7 @@ private:
     uint32_t m_sceneIndex{ 2 };
 
     vk::Offset2D m_previousCursor{};
-    spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f};
+    spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f, 45.0f, 0.01f, 100.0f};
 };
 
 int main(int argc, char** argv)
