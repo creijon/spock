@@ -7,6 +7,7 @@
 #include <cassert>
 #include <limits>
 #include <optional>
+#include <set>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -128,5 +129,29 @@ namespace spock
             vk::QueueFlagBits::eTransfer,
             vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
         m_transferFamily = (transferFamilyIndex.has_value()) ? transferFamilyIndex.value() : m_graphicsFamily;
+    }
+
+    std::vector<vk::DeviceQueueCreateInfo> Queues::uniqueCreateInfos() const
+    {
+        float queuePriority = 0.0f;
+        std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+        std::set<uint32_t> uniqueQueueFamilies = {
+            m_graphicsFamily,
+            m_presentFamily,
+            m_computeFamily,
+            m_transferFamily
+        };
+
+        for (uint32_t familyIndex : uniqueQueueFamilies) {
+            queueCreateInfos.emplace_back(
+                vk::DeviceQueueCreateInfo{}
+                .setQueueFamilyIndex(familyIndex)
+                .setQueueCount(1)
+                .setPQueuePriorities(&queuePriority)
+            );
+        }
+
+        return queueCreateInfos;
+
     }
 } // namespace spock

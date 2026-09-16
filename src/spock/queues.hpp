@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <vector>
+
 namespace spock
 {
     // Discovers the queue family indices a renderer needs: graphics, present,
@@ -38,6 +40,8 @@ namespace spock
         {
             return m_transferFamily;
         }
+
+        std::vector<vk::DeviceQueueCreateInfo> uniqueCreateInfos() const;
 
     private:
         uint32_t m_graphicsFamily{0};

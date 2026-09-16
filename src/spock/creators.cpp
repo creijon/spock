@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 #include "creators.hpp"
+#include "queues.hpp"
 #include "utils.hpp"
 
 #include <iostream>
@@ -136,7 +137,7 @@ namespace spock
     // All requested extensions are enabled on the resulting device.
     vk::raii::Device createDevice(
         vk::raii::PhysicalDevice const &physicalDevice,
-        uint32_t queueFamilyIndex,
+        Queues const &queues,
         std::vector<std::string> const &extensions,
         vk::PhysicalDeviceFeatures const *physicalDeviceFeatures,
         void const *pNext)
@@ -149,12 +150,15 @@ namespace spock
             enabledExtensions.push_back(ext.data());
         }
 
-        float queuePriority = 0.0f;
-        vk::DeviceQueueCreateInfo deviceQueueCreateInfo(
-            vk::DeviceQueueCreateFlags(), queueFamilyIndex, 1, &queuePriority);
+        std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{ queues.uniqueCreateInfos() };
+
         vk::DeviceCreateInfo deviceCreateInfo(
-            vk::DeviceCreateFlags(), deviceQueueCreateInfo, {}, enabledExtensions,
-            physicalDeviceFeatures, pNext);
+            vk::DeviceCreateFlags(),
+            queueCreateInfos,
+            {},
+            enabledExtensions,
+            physicalDeviceFeatures,
+            pNext);
 
         return vk::raii::Device(physicalDevice, deviceCreateInfo);
     }

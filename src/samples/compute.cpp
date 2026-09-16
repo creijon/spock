@@ -208,8 +208,9 @@ protected:
             histogramShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eCompute, SHADER_PATH + HISTOGRAM_SHADER);
             sortShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eCompute, SHADER_PATH + RADIXSORT_SHADER);
         }
-        catch (...)
+        catch (std::exception const& e)
         {
+            spock::writeLog(std::string(e.what()));
             glslang::FinalizeProcess();
             throw;
         }

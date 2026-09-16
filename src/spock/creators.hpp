@@ -14,6 +14,8 @@
 
 namespace spock
 {
+    class Queues;
+
     // Create a Vulkan instance with optional validation layers and requested
     // extensions.
     vk::raii::Instance createInstance(
@@ -21,12 +23,12 @@ namespace spock
         std::string const &appName,
         std::vector<std::string> const &layers = {},
         std::vector<std::string> const &extensions = {},
-        uint32_t apiVersion = VK_API_VERSION_1_0);
+        uint32_t apiVersion = VK_API_VERSION_1_4);
 
     // Create a logical Vulkan device and enable the requested device extensions.
     vk::raii::Device createDevice(
         vk::raii::PhysicalDevice const &physicalDevice,
-        uint32_t queueFamilyIndex,
+        Queues const& queues,
         std::vector<std::string> const &extensions = {},
         vk::PhysicalDeviceFeatures const *physicalDeviceFeatures = nullptr,
         void const *pNext = nullptr);

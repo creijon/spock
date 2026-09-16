@@ -51,7 +51,7 @@ namespace spock
         m_queues = Queues(m_physicalDevice, m_windowSurface);
         m_device = createDevice(
             m_physicalDevice, 
-            m_queues.graphicsFamily(),
+            m_queues,
             deviceExtensions(extensions),
             nullptr,
             features);
