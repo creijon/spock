@@ -227,9 +227,8 @@ namespace geo3d
 
         auto intersectsDiagonal = [&](glm::vec3 const& start, glm::vec3 const& end)
         {
-            glm::vec3 axis = end - start;
             float t = 0.0f;
-            return test(Ray{start, axis}, triangle, t) && t <= 1.0f;
+            return test(Ray(start, end - start), triangle, t) && t <= 1.0f;
         };
 
         if (intersectsDiagonal(minimum, maximum)) return true;
