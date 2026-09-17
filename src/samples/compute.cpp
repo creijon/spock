@@ -219,10 +219,17 @@ protected:
         vk::PipelineShaderStageCreateInfo histogramStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *histogramShader, "main");
         vk::PipelineShaderStageCreateInfo sortStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *sortShader, "main");
 
-        // multi_radixsort.comp indexes shared arrays by gl_SubgroupID assuming a fixed subgroup
-        // size, so pin it to REQUIRED_SUBGROUP_SIZE instead of letting the driver vary it.
+        // multi_radixsort.comp indexes shared arrays by gl_SubgroupID with a fixed subgroup size,
+        // so pin it to REQUIRED_SUBGROUP_SIZE, but only when the requiredSubgroupSizeStages.
         vk::PipelineShaderStageRequiredSubgroupSizeCreateInfo requiredSubgroupSize{REQUIRED_SUBGROUP_SIZE};
-        sortStageInfo.pNext = &requiredSubgroupSize;
+        auto subgroupSizeControlProperties =
+            m_physicalDevice
+                .getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceSubgroupSizeControlProperties>()
+                .get<vk::PhysicalDeviceSubgroupSizeControlProperties>();
+        if (subgroupSizeControlProperties.requiredSubgroupSizeStages & vk::ShaderStageFlagBits::eCompute)
+        {
+            sortStageInfo.pNext = &requiredSubgroupSize;
+        }
 
         m_histogramPipeline = spock::createComputePipeline(m_device, histogramStageInfo, m_pipelineLayout);
         m_sortPipeline = spock::createComputePipeline(m_device, sortStageInfo, m_pipelineLayout);
