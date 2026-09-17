@@ -1,7 +1,11 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
-// This sample is for the compute shader scaffolding.
+// This sample generates a buffer of random floating point numbers on the CPU, uploads it to
+// the GPU, and sorts it using the VkRadixSort solution: https://github.com/MircoWerner/VkRadixSort
+// The result is read back and compared against a CPU sort of the same data to verify correctness.
+// You can run the CPU sort in a multithreaded mode to make it a bit more similar to the GPU sort,
+// but that doesn't seem to make much difference to the timings; the GPU sort still beats it.
 
 #include "spock/app.hpp"
 #include "spock/command_recorder.hpp"
@@ -13,46 +17,70 @@
 
 #include "vulkan/vulkan.hpp"
 
+#include <algorithm>
+#include <array>
+#include <chrono>
 #include <cstdint>
+#include <cstring>
+#include <execution>
 #include <iostream>
+#include <random>
 #include <string>
+#include <vector>
+
+// Required for Apple platforms to use parallel execution policy with std::sort.
+#if defined(__APPLE__)
+#include <oneapi/dpl/execution>
+#include <oneapi/dpl/algorithm>
+#endif
 
 namespace
 {
-    constexpr uint32_t ELEMENT_COUNT = 1024;
-    constexpr uint32_t WORKGROUP_SIZE = 64;
+    constexpr uint32_t ELEMENT_COUNT = 1024 * 1024;
+    constexpr uint32_t WORKGROUP_SIZE = 256;   // must match local_size_x in the radix sort shaders
+    constexpr uint32_t RADIX_SORT_BINS = 256;  // must match RADIX_SORT_BINS in the radix sort shaders
+    constexpr uint32_t BLOCKS_PER_WORKGROUP = 32;
+    constexpr uint32_t SHIFT_COUNT = 4; // four 8-bit passes are needed to fully sort a 32-bit key
 
-    const std::string COMPUTE_SHADER_SOURCE = R"(
-#version 450
+    // NOTE: must match the SUBGROUP_SIZE specialization constant default in multi_radixsort.comp.
+    constexpr uint32_t REQUIRED_SUBGROUP_SIZE = 32;
 
-layout(local_size_x = 64) in;
-
-layout(std430, binding = 0) buffer OutputBuffer
-{
-    uint values[];
-};
-
-layout(push_constant) uniform PushConstants
-{
-    uint count;
-} pc;
-
-void main()
-{
-    uint idx = gl_GlobalInvocationID.x;
-    if (idx >= pc.count)
-    {
-        return;
-    }
-
-    values[idx] = idx * idx;
-}
-)";
+    const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/deps/VkRadixSort/multiradixsort/resources/shaders/";
+    const std::string HISTOGRAM_SHADER = "multi_radixsort_histograms.comp";
+    const std::string RADIXSORT_SHADER = "multi_radixsort.comp";
 
     struct PushConstants
     {
-        uint32_t count;
+        uint32_t numElements;
+        uint32_t shift;
+        uint32_t numWorkgroups;
+        uint32_t numBlocksPerWorkgroup;
     };
+
+    uint32_t ceilDiv(uint32_t numerator, uint32_t denominator)
+    {
+        return (numerator + denominator - 1) / denominator;
+    }
+
+    // Maps a float onto a uint32_t whose unsigned ordering matches the float's numeric ordering,
+    // so it can be sorted with an unsigned integer radix sort.
+    uint32_t floatToSortableUint(float value)
+    {
+        uint32_t bits;
+        std::memcpy(&bits, &value, sizeof(bits));
+        uint32_t mask = -static_cast<int32_t>(bits >> 31) | 0x80000000u;
+        return bits ^ mask;
+    }
+
+    // Reverses floatToSortableUint().
+    float sortableUintToFloat(uint32_t bits)
+    {
+        uint32_t mask = ((bits >> 31) - 1u) | 0x80000000u;
+        bits ^= mask;
+        float value;
+        std::memcpy(&value, &bits, sizeof(value));
+        return value;
+    }
 } // namespace
 
 class ComputeRenderer : public spock::Renderer
@@ -61,61 +89,124 @@ public:
     ComputeRenderer(
         vk::raii::Instance const& instance,
         vk::raii::SurfaceKHR windowSurface,
-        vk::Extent2D const& extents)
+        vk::Extent2D const& extents,
+        bool multithreaded)
         : spock::Renderer(
             instance,
             std::move(windowSurface),
             extents,
             {0.05f, 0.05f, 0.05f, 1.0f},
-            {1.0f, 0})
+            {1.0f, 0},
+            true,
+            extensions(),
+            features())
     {
         createResources();
-        createPipeline();
-        runComputePass();
+        createPipelines();
+        runRadixSort(multithreaded);
     }
 
 protected:
+    static std::vector<std::string> extensions()
+    {
+        return {VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME};
+    }
+
+    static void const* features()
+    {
+        static vk::PhysicalDeviceSubgroupSizeControlFeatures subgroupSizeControl{VK_TRUE, VK_TRUE};
+        return &subgroupSizeControl;
+    }
+
     void createResources()
     {
-        spock::BindingData outputBinding{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute};
-        m_descriptorSetLayout = spock::createDescriptorSetLayout(m_device, {outputBinding});
+        uint32_t globalInvocations = ceilDiv(ELEMENT_COUNT, BLOCKS_PER_WORKGROUP);
+        m_numWorkgroups = ceilDiv(globalInvocations, WORKGROUP_SIZE);
 
-        vk::PushConstantRange pushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(PushConstants)};
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, *m_descriptorSetLayout, pushConstantRange}));
+        vk::DeviceSize elementsBytes = vk::DeviceSize(ELEMENT_COUNT) * sizeof(uint32_t);
+        vk::DeviceSize histogramBytes = vk::DeviceSize(m_numWorkgroups) * RADIX_SORT_BINS * sizeof(uint32_t);
 
-        // Written by the compute shader; never touched by the host directly.
-        m_storageBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
-            ELEMENT_COUNT * sizeof(uint32_t),
-            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferSrc,
+        vk::BufferUsageFlags elementsUsage =
+            vk::BufferUsageFlagBits::eStorageBuffer |
+            vk::BufferUsageFlagBits::eTransferSrc |
+            vk::BufferUsageFlagBits::eTransferDst;
+
+        // Ping-pong buffers: each radix sort pass reads one and writes the other.
+        m_elementsA = spock::BufferWrapper(m_physicalDevice, m_device, elementsBytes, elementsUsage, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        m_elementsB = spock::BufferWrapper(m_physicalDevice, m_device, elementsBytes, elementsUsage, vk::MemoryPropertyFlagBits::eDeviceLocal);
+
+        // Fully overwritten by the histogram shader every pass, so it never needs clearing.
+        m_histograms = spock::BufferWrapper(
+            m_physicalDevice, m_device, histogramBytes,
+            vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
-        // Destination for a device-to-host copy so the result can be validated on the CPU.
-        m_readbackBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
-            ELEMENT_COUNT * sizeof(uint32_t),
+        m_readback = spock::BufferWrapper(
+            m_physicalDevice, m_device, elementsBytes,
             vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-        m_descriptorPool = spock::createDescriptorPool(m_device, {{vk::DescriptorType::eStorageBuffer, 1}});
-        m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, {m_descriptorPool, *m_descriptorSetLayout}).front());
+        // multi_radixsort_histograms.comp declares its buffers at set = 0.
+        spock::BindingData histogramElementsInBinding{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute};
+        spock::BindingData histogramsBinding{1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute};
+        m_histogramSetLayout = spock::createDescriptorSetLayout(m_device, {histogramElementsInBinding, histogramsBinding});
+
+        // multi_radixsort.comp declares its buffers at set = 1.
+        spock::BindingData sortElementsInBinding{0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute};
+        spock::BindingData sortElementsOutBinding{1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute};
+        spock::BindingData sortHistogramsBinding{2, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute};
+        m_sortSetLayout = spock::createDescriptorSetLayout(m_device, {sortElementsInBinding, sortElementsOutBinding, sortHistogramsBinding});
+
+        vk::PushConstantRange pushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(PushConstants)};
+        std::array<vk::DescriptorSetLayout, 2> setLayouts{*m_histogramSetLayout, *m_sortSetLayout};
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, setLayouts, pushConstantRange}));
+
+        m_descriptorPool = spock::createDescriptorPool(m_device, {{vk::DescriptorType::eStorageBuffer, 10}});
+
+        std::array<vk::DescriptorSetLayout, 2> histogramLayouts{*m_histogramSetLayout, *m_histogramSetLayout};
+        vk::raii::DescriptorSets histogramSets(m_device, {m_descriptorPool, histogramLayouts});
+        m_histogramSetForA = std::move(histogramSets[0]);
+        m_histogramSetForB = std::move(histogramSets[1]);
+
+        std::array<vk::DescriptorSetLayout, 2> sortLayouts{*m_sortSetLayout, *m_sortSetLayout};
+        vk::raii::DescriptorSets sortSets(m_device, {m_descriptorPool, sortLayouts});
+        m_sortSetAtoB = std::move(sortSets[0]);
+        m_sortSetBtoA = std::move(sortSets[1]);
 
         spock::updateDescriptorSets(
-            m_device,
-            m_descriptorSet,
-            {{vk::DescriptorType::eStorageBuffer, m_storageBuffer.buffer(), VK_WHOLE_SIZE, nullptr}},
+            m_device, m_histogramSetForA,
+            {{vk::DescriptorType::eStorageBuffer, m_elementsA.buffer(), VK_WHOLE_SIZE, nullptr},
+             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
+            {});
+        spock::updateDescriptorSets(
+            m_device, m_histogramSetForB,
+            {{vk::DescriptorType::eStorageBuffer, m_elementsB.buffer(), VK_WHOLE_SIZE, nullptr},
+             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
+            {});
+
+        spock::updateDescriptorSets(
+            m_device, m_sortSetAtoB,
+            {{vk::DescriptorType::eStorageBuffer, m_elementsA.buffer(), VK_WHOLE_SIZE, nullptr},
+             {vk::DescriptorType::eStorageBuffer, m_elementsB.buffer(), VK_WHOLE_SIZE, nullptr},
+             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
+            {});
+        spock::updateDescriptorSets(
+            m_device, m_sortSetBtoA,
+            {{vk::DescriptorType::eStorageBuffer, m_elementsB.buffer(), VK_WHOLE_SIZE, nullptr},
+             {vk::DescriptorType::eStorageBuffer, m_elementsA.buffer(), VK_WHOLE_SIZE, nullptr},
+             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
             {});
     }
 
-    void createPipeline()
+    void createPipelines()
     {
         glslang::InitializeProcess();
-        vk::raii::ShaderModule computeShader{nullptr};
+        vk::raii::ShaderModule histogramShader{nullptr};
+        vk::raii::ShaderModule sortShader{nullptr};
         try
         {
-            computeShader = spock::compileShader(m_device, vk::ShaderStageFlagBits::eCompute, COMPUTE_SHADER_SOURCE);
+            histogramShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eCompute, SHADER_PATH + HISTOGRAM_SHADER);
+            sortShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eCompute, SHADER_PATH + RADIXSORT_SHADER);
         }
         catch (...)
         {
@@ -124,97 +215,185 @@ protected:
         }
         glslang::FinalizeProcess();
 
-        vk::PipelineShaderStageCreateInfo shaderStageInfo(
-            vk::PipelineShaderStageCreateFlags(),
-            vk::ShaderStageFlagBits::eCompute,
-            *computeShader,
-            "main");
+        vk::PipelineShaderStageCreateInfo histogramStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *histogramShader, "main");
+        vk::PipelineShaderStageCreateInfo sortStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *sortShader, "main");
 
-        m_computePipeline = spock::createComputePipeline(m_device, shaderStageInfo, m_pipelineLayout);
+        // multi_radixsort.comp indexes shared arrays by gl_SubgroupID assuming a fixed subgroup
+        // size, so pin it to REQUIRED_SUBGROUP_SIZE instead of letting the driver vary it.
+        vk::PipelineShaderStageRequiredSubgroupSizeCreateInfo requiredSubgroupSize{REQUIRED_SUBGROUP_SIZE};
+        sortStageInfo.pNext = &requiredSubgroupSize;
+
+        m_histogramPipeline = spock::createComputePipeline(m_device, histogramStageInfo, m_pipelineLayout);
+        m_sortPipeline = spock::createComputePipeline(m_device, sortStageInfo, m_pipelineLayout);
     }
 
-    void runComputePass()
+    void runRadixSort(bool multithreaded)
     {
-        vk::DescriptorSet descriptorSet = *m_descriptorSet;
+        // Generate the input data on the CPU and compute the reference result.
+        std::vector<float> cpuValues(ELEMENT_COUNT);
+        std::mt19937 gen(std::random_device{}());
+        std::uniform_real_distribution<float> distrib(-1.0e6f, 1.0e6f);
+        for (auto& value : cpuValues)
+        {
+            value = distrib(gen);
+        }
+
+        std::vector<float> cpuSorted = cpuValues;
+        std::chrono::steady_clock::time_point cpuSortBegin = std::chrono::steady_clock::now();
+
+		if (multithreaded)
+		{
+			// Uses parallel execution policy to make it a bit more similar to the GPU.
+#if defined(__APPLE__)
+            using namespace oneapi::dpl;
+#else
+            using namespace std;
+#endif
+			std::sort(execution::par, cpuSorted.begin(), cpuSorted.end());
+		}
+		else
+		{
+			std::sort(cpuSorted.begin(), cpuSorted.end());
+		}
+        std::chrono::steady_clock::time_point cpuSortEnd = std::chrono::steady_clock::now();
+        double cpuSortMillis = std::chrono::duration<double, std::milli>(cpuSortEnd - cpuSortBegin).count();
+
+        std::vector<uint32_t> sortableKeys(ELEMENT_COUNT);
+        for (uint32_t i = 0; i < ELEMENT_COUNT; ++i)
+        {
+            sortableKeys[i] = floatToSortableUint(cpuValues[i]);
+        }
+
+        // Upload the input buffer to the GPU.
+        spock::CommandRecorder uploadRecorder(m_device, m_queues.computeFamily());
+        m_elementsA.upload(m_physicalDevice, m_device, uploadRecorder.commandPool(), uploadRecorder.queue(), sortableKeys);
+
         vk::PipelineLayout pipelineLayout = *m_pipelineLayout;
-        vk::Pipeline computePipeline = *m_computePipeline;
-        vk::Buffer storageBuffer = *m_storageBuffer.buffer();
-        vk::Buffer readbackBuffer = *m_readbackBuffer.buffer();
+        vk::Pipeline histogramPipeline = *m_histogramPipeline;
+        vk::Pipeline sortPipeline = *m_sortPipeline;
+        vk::DescriptorSet histogramSets[2] = {*m_histogramSetForA, *m_histogramSetForB};
+        vk::DescriptorSet sortSets[2] = {*m_sortSetAtoB, *m_sortSetBtoA};
 
-        const uint32_t groupCount = (ELEMENT_COUNT + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
-        const vk::DeviceSize bufferSize = ELEMENT_COUNT * sizeof(uint32_t);
+        // After an even number of passes, the sorted data ends up back in buffer A.
+        vk::Buffer sortedElements = (SHIFT_COUNT % 2 == 0) ? *m_elementsA.buffer() : *m_elementsB.buffer();
+        vk::Buffer readbackBuffer = *m_readback.buffer();
+        vk::DeviceSize elementsBytes = vk::DeviceSize(ELEMENT_COUNT) * sizeof(uint32_t);
 
-        spock::CommandRecorder computeRecorder = spock::CommandRecorder(m_device, m_queues.computeFamily());
+        spock::CommandRecorder computeRecorder(m_device, m_queues.computeFamily());
+
+        std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
         computeRecorder.submit(
             m_device,
-            [&](vk::CommandBuffer const &commandBuffer)
+            [&](vk::CommandBuffer const& commandBuffer)
             {
-                commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, computePipeline);
-                commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, pipelineLayout, 0, {descriptorSet}, nullptr);
+                vk::MemoryBarrier computeBarrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
 
-                PushConstants pushConstants{ELEMENT_COUNT};
-                commandBuffer.pushConstants<PushConstants>(pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
+                for (uint32_t iteration = 0; iteration < SHIFT_COUNT; ++iteration)
+                {
+                    uint32_t parity = iteration % 2;
+                    PushConstants pushConstants{ELEMENT_COUNT, iteration * 8, m_numWorkgroups, BLOCKS_PER_WORKGROUP};
 
-                commandBuffer.dispatch(groupCount, 1, 1);
+                    // Build a histogram of the current byte over the input buffer for this pass.
+                    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, histogramPipeline);
+                    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, pipelineLayout, 0, {histogramSets[parity]}, nullptr);
+                    commandBuffer.pushConstants<PushConstants>(pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
+                    commandBuffer.dispatch(m_numWorkgroups, 1, 1);
 
-                // The copy below must wait for the compute shader's writes to become visible.
-                vk::MemoryBarrier memoryBarrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eTransferRead);
+                    // The scatter pass below must see the histogram writes above.
+                    commandBuffer.pipelineBarrier(
+                        vk::PipelineStageFlagBits::eComputeShader,
+                        vk::PipelineStageFlagBits::eComputeShader,
+                        vk::DependencyFlags(),
+                        computeBarrier,
+                        nullptr,
+                        nullptr);
+
+                    // Scatter the elements into sorted-by-this-byte order in the other buffer.
+                    commandBuffer.bindPipeline(vk::PipelineBindPoint::eCompute, sortPipeline);
+                    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute, pipelineLayout, 1, {sortSets[parity]}, nullptr);
+                    commandBuffer.pushConstants<PushConstants>(pipelineLayout, vk::ShaderStageFlagBits::eCompute, 0, pushConstants);
+                    commandBuffer.dispatch(m_numWorkgroups, 1, 1);
+
+                    // The next pass's histogram (or the final readback) must see the scatter writes above.
+                    commandBuffer.pipelineBarrier(
+                        vk::PipelineStageFlagBits::eComputeShader,
+                        vk::PipelineStageFlagBits::eComputeShader,
+                        vk::DependencyFlags(),
+                        computeBarrier,
+                        nullptr,
+                        nullptr);
+                }
+
+                vk::MemoryBarrier transferBarrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eTransferRead);
                 commandBuffer.pipelineBarrier(
                     vk::PipelineStageFlagBits::eComputeShader,
                     vk::PipelineStageFlagBits::eTransfer,
                     vk::DependencyFlags(),
-                    memoryBarrier,
+                    transferBarrier,
                     nullptr,
                     nullptr);
 
-                commandBuffer.copyBuffer(storageBuffer, readbackBuffer, vk::BufferCopy(0, 0, bufferSize));
+                commandBuffer.copyBuffer(sortedElements, readbackBuffer, vk::BufferCopy(0, 0, elementsBytes));
             });
-		computeRecorder.waitIdle();
+        computeRecorder.waitIdle();
 
-        uint32_t const* results = static_cast<uint32_t const*>(m_readbackBuffer.map());
-        bool allMatch = true;
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        double gpuSortMillis = std::chrono::duration<double, std::milli>(end - begin).count();
+
+        uint32_t const* sortedKeys = static_cast<uint32_t const*>(m_readback.map());
+        std::vector<float> gpuSorted(ELEMENT_COUNT);
         for (uint32_t i = 0; i < ELEMENT_COUNT; ++i)
         {
-            if (results[i] != i * i)
-            {
-                allMatch = false;
-                break;
-            }
+            gpuSorted[i] = sortableUintToFloat(sortedKeys[i]);
         }
-        m_readbackBuffer.unmap();
+        m_readback.unmap();
 
-        const std::string message = allMatch
-            ? "Compute pass produced expected results for all " + std::to_string(ELEMENT_COUNT) + " elements.\n"
-            : "Compute pass FAILED validation.\n";
+        bool allMatch = (gpuSorted == cpuSorted);
+
+        const std::string timings = "GPU sort: " + std::to_string(gpuSortMillis) + "ms, CPU sort: " + std::to_string(cpuSortMillis) + "ms.\n";
+        const std::string message = (allMatch
+            ? "GPU radix sort of " + std::to_string(ELEMENT_COUNT) + " floats matched the CPU sort. "
+            : "GPU radix sort FAILED validation against the CPU sort. ") + timings;
         spock::writeLog(message);
         std::cout << message;
     }
 
-    // Nothing is drawn; this sample only exercises the compute dispatch path above.
     void render(vk::raii::CommandBuffer const &, std::chrono::microseconds) override
     {
+        // Nothing to render, should make a headless renderer.
     }
 
 private:
-    vk::raii::DescriptorPool m_descriptorPool{nullptr};
-    vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
-    vk::raii::DescriptorSet m_descriptorSet{nullptr};
-    vk::raii::PipelineLayout m_pipelineLayout{nullptr};
-    vk::raii::Pipeline m_computePipeline{nullptr};
+    uint32_t m_numWorkgroups{0};
 
-    spock::BufferWrapper m_storageBuffer;
-    spock::BufferWrapper m_readbackBuffer;
+    spock::BufferWrapper m_elementsA;
+    spock::BufferWrapper m_elementsB;
+    spock::BufferWrapper m_histograms;
+    spock::BufferWrapper m_readback;
+
+    vk::raii::DescriptorPool m_descriptorPool{nullptr};
+    vk::raii::DescriptorSetLayout m_histogramSetLayout{nullptr};
+    vk::raii::DescriptorSetLayout m_sortSetLayout{nullptr};
+    vk::raii::PipelineLayout m_pipelineLayout{nullptr};
+    vk::raii::Pipeline m_histogramPipeline{nullptr};
+    vk::raii::Pipeline m_sortPipeline{nullptr};
+
+    vk::raii::DescriptorSet m_histogramSetForA{nullptr};
+    vk::raii::DescriptorSet m_histogramSetForB{nullptr};
+    vk::raii::DescriptorSet m_sortSetAtoB{nullptr};
+    vk::raii::DescriptorSet m_sortSetBtoA{nullptr};
 };
 
 class ComputeApp : public spock::App
 {
 public:
-    ComputeApp(uint32_t windowWidth, uint32_t windowHeight)
+    ComputeApp(uint32_t windowWidth, uint32_t windowHeight, bool multithreaded)
         : spock::App(
             "Compute",
             windowWidth,
-            windowHeight)
+            windowHeight),
+          m_multithreaded(multithreaded)
     {
     }
 
@@ -224,15 +403,28 @@ protected:
         vk::raii::SurfaceKHR windowSurface,
         vk::Extent2D const& extents) override
     {
-        return std::make_unique<ComputeRenderer>(instance, std::move(windowSurface), extents);
+        return std::make_unique<ComputeRenderer>(instance, std::move(windowSurface), extents, m_multithreaded);
     }
 
     void update() override
     {
     }
+
+private:
+	bool m_multithreaded{false};
 };
 
-int main()
+int main(int argc, char** argv)
 {
-    return spock::runApp<ComputeApp>(400, 300);
+    bool multithreaded = false;
+
+    if (argc > 1)
+    {
+        if (std::string(argv[1]) == "--multithreaded")
+        {
+            multithreaded = true;
+        }
+    }
+
+    return spock::runApp<ComputeApp>(400, 300, multithreaded);
 }

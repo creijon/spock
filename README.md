@@ -29,8 +29,8 @@ cmake --build build --target shaderlab
 To create an optimized release build:
 
 ```bash
-cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --config Release
+cmake -DCMAKE_BUILD_TYPE=Release build
+cmake --build build --config Release
 ```
 
 The sample targets link against the shared `spock` library so the reusable renderer code is compiled once and reused across demos.

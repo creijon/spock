@@ -73,6 +73,11 @@ namespace spock
         glslang::TShader shader(stage);
         shader.setStrings(shaderStrings, 1);
 
+        // Target Vulkan 1.1 / SPIR-V 1.3.
+        shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100);
+        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_1);
+        shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_3);
+
         // Enable SPIR-V and Vulkan rules when parsing GLSL
         EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
 
