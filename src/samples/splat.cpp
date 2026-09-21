@@ -148,8 +148,8 @@ public:
     {
         m_splatCount = uint32_t(scene.instances.size());
 
-        spock::BindingData frameBinding{ 0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex };
-        spock::BindingData splatBinding{ 1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eVertex };
+        spock::UniformBufferBinding frameBinding{ 0, vk::ShaderStageFlagBits::eVertex };
+        spock::StorageBufferBinding splatBinding{ 1, vk::ShaderStageFlagBits::eVertex };
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             m_device,

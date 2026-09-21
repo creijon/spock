@@ -11,9 +11,6 @@
 
 namespace spock
 {
-    // Owns a render pass, the framebuffers built against it (one per swapchain
-    // image), and the depth buffer that backs them when depth is enabled.
-    // Also drives beginning/ending the render pass for a frame.
     class RenderPass
     {
     public:

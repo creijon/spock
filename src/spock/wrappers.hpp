@@ -42,14 +42,33 @@ namespace spock
         std::vector<vk::VertexInputAttributeDescription> m_attributes;
     };
 
-    struct BindingData
+    struct BufferBinding
     {
         uint32_t binding;
         vk::DescriptorType type;
         uint32_t count;
         vk::ShaderStageFlags stageFlags;
     };
-    
+
+	struct UniformBufferBinding : public BufferBinding
+	{
+		UniformBufferBinding(
+			uint32_t binding,
+			vk::ShaderStageFlags stageFlags)
+			: BufferBinding{binding, vk::DescriptorType::eUniformBuffer, 1, stageFlags}
+		{
+		}
+	};
+	struct StorageBufferBinding : public BufferBinding
+	{
+		StorageBufferBinding(
+			uint32_t binding,
+			vk::ShaderStageFlags stageFlags)
+			: BufferBinding{binding, vk::DescriptorType::eStorageBuffer, 1, stageFlags}
+		{
+		}
+	};
+
     struct BufferUpdateData
     {
         vk::DescriptorType type;
@@ -57,14 +76,6 @@ namespace spock
         vk::DeviceSize size;
         vk::raii::BufferView const* bufferView;
     };
-
-    struct ColorBlend
-    {
-        
-        explicit operator vk::PipelineColorBlendStateCreateInfo() const;
-    };
-
-
 
     // VertexType must provide static method attributes() returning
     // (vk::Format, offset) pairs, where each offset is relative to VertexType.

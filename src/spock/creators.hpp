@@ -54,7 +54,7 @@ namespace spock
     // Create a descriptor set layout from a list of binding descriptors.
     vk::raii::DescriptorSetLayout createDescriptorSetLayout(
         vk::raii::Device const &device,
-        std::vector<BindingData> const &bindingDatas,
+        std::vector<BufferBinding> const &bufferBindings,
         vk::DescriptorSetLayoutCreateFlags flags = {});
 
     // Create framebuffer objects for every swapchain image view and optional depth image view.
