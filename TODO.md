@@ -48,6 +48,11 @@
     - This is important, because the renderer currently puts everything on the graphics queue.
     - Needs some thought.
     - The Presenter already encapsulates the Renderer to Window logic, so that will make it easier.
+- Create the concept of a Shader Pass:
+  - A set of GPU commands that all use the same shader loadout.
+  - This could be a compute shader, vert and frag or some combination of all of them.
+  - Simplifies buffer bindings, using SPIV to populate them.
+  - Clean up the interface into creating and managing buffers.\
 - Need to have separate the resources from the renderer.  Have some sort of asset registry.
   - Has to allow reloading.
 - Split the framework into an app and separate renderer. DONE

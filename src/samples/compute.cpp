@@ -3,9 +3,9 @@
 
 // This sample generates a buffer of random floating point numbers on the CPU, uploads it to
 // the GPU, and sorts it using the VkRadixSort solution: https://github.com/MircoWerner/VkRadixSort
-// The result is read back and compared against a CPU sort of the same data to verify correctness.
-// You can run the CPU sort in a multithreaded mode to make it a bit more similar to the GPU sort,
-// but that doesn't seem to make much difference to the timings; the GPU sort still beats it.
+// The result is read back and compared against a CPU sort of the same data to verify correctness
+// and to give relative timings.  You can run the CPU sort in a multithreaded mode to close the gap
+// but the GPU sort still handily beats it.
 
 #include "spock/app.hpp"
 #include "spock/command_recorder.hpp"
@@ -403,12 +403,12 @@ protected:
     }
 
 private:
-    bool m_multithreaded{false};
+	bool m_multithreaded{true};
 };
 
 int main(int argc, char** argv)
 {
-    bool multithreaded = false;
+    bool multithreaded = true;
 
     if (argc > 1)
     {
