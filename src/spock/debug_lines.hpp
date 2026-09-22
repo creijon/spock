@@ -12,6 +12,11 @@
 
 namespace spock
 {
+    // Simple debug line renderer.
+    // TODO: this currently uses a single large vertex buffer to upload the lines to a vertex
+    // shader, but this is inefficient.  There should be a pool of vertex buffers with identical
+    // sizes which are used and recycled once the GPU has finished with them, taking into account
+    // the frames in flight of the renderer.
     class DebugLines
     {
     public:

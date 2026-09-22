@@ -29,6 +29,8 @@
 #pragma warning(pop)
 #endif
 
+#include <random>
+
 namespace spock
 {
     struct f16
@@ -105,4 +107,6 @@ namespace spock
         glm::vec3 translation{0.0f};
         float scale{1.0f};
     };
+
+	glm::vec3 randomUnitVector(std::mt19937& rng);
 } // namespace spock

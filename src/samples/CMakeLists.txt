@@ -40,6 +40,7 @@ add_sample_target(shaderlab ${CMAKE_CURRENT_SOURCE_DIR}/shaderlab.cpp)
 add_sample_target(splat ${CMAKE_CURRENT_SOURCE_DIR}/splat.cpp)
 add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/instancing.cpp)
 add_sample_target(compute ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp)
+add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp)
 
 set_target_properties(
     cube
@@ -47,4 +48,5 @@ set_target_properties(
     splat
     instancing
     compute
+    debug_lines
     PROPERTIES FOLDER "samples")
