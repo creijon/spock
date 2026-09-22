@@ -241,20 +241,20 @@ protected:
         std::vector<float> cpuSorted = cpuValues;
         std::chrono::steady_clock::time_point cpuSortBegin = std::chrono::steady_clock::now();
 
-		if (multithreaded)
-		{
-			// Uses parallel execution policy to make it a bit more similar to the GPU.
+        if (multithreaded)
+        {
+            // Uses parallel execution policy to make it a bit more similar to the GPU.
 #if defined(__APPLE__)
             using namespace oneapi::dpl;
 #else
             using namespace std;
 #endif
-			std::sort(execution::par, cpuSorted.begin(), cpuSorted.end());
-		}
-		else
-		{
-			std::sort(cpuSorted.begin(), cpuSorted.end());
-		}
+            std::sort(execution::par, cpuSorted.begin(), cpuSorted.end());
+        }
+        else
+        {
+            std::sort(cpuSorted.begin(), cpuSorted.end());
+        }
         std::chrono::steady_clock::time_point cpuSortEnd = std::chrono::steady_clock::now();
         double cpuSortMillis = std::chrono::duration<double, std::milli>(cpuSortEnd - cpuSortBegin).count();
 
@@ -411,7 +411,7 @@ protected:
     }
 
 private:
-	bool m_multithreaded{false};
+    bool m_multithreaded{false};
 };
 
 int main(int argc, char** argv)

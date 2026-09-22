@@ -19,9 +19,9 @@ layout (location = 0) out vec4 fragColor;
 
 void main()
 {
-	vec2 uv = (fragCoord.xy / pc.iResolution.xy) * 2.0 - 1.0;
-	uv.x *= pc.iResolution.x /  pc.iResolution.y;
-	vec3 dir = normalize(vec3(uv, 1.0));
+    vec2 uv = (fragCoord.xy / pc.iResolution.xy) * 2.0 - 1.0;
+    uv.x *= pc.iResolution.x /  pc.iResolution.y;
+    vec3 dir = normalize(vec3(uv, 1.0));
 
   float radius = 0.2;
 

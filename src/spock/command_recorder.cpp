@@ -37,8 +37,8 @@ namespace spock
         return *this;
     }
 
-	void CommandRecorder::waitIdle() const
-	{
-		m_queue.waitIdle();
-	}
+    void CommandRecorder::waitIdle() const
+    {
+        m_queue.waitIdle();
+    }
 } // namespace spock

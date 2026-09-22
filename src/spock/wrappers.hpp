@@ -90,6 +90,11 @@ namespace spock
             return m_buffer;
         }
 
+        vk::DeviceSize size() const
+        {
+            return m_size;
+        }
+
         void* map();
         void unmap();
 

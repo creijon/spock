@@ -39,7 +39,7 @@ namespace spock
             oneTimeSubmit(device, m_commandPool, m_queue, func);
         }
 
-		void waitIdle() const;
+        void waitIdle() const;
 
     private:
         vk::raii::CommandPool m_commandPool{nullptr};
