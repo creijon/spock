@@ -146,16 +146,8 @@ protected:
             vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-        // multi_radixsort_histograms.comp declares its buffers at set = 0.
-        spock::StorageBufferBinding histogramElementsInBinding{0, vk::ShaderStageFlagBits::eCompute};
-        spock::StorageBufferBinding histogramsBinding{1, vk::ShaderStageFlagBits::eCompute};
-        m_histogramSetLayout = spock::createDescriptorSetLayout(m_device, {histogramElementsInBinding, histogramsBinding});
-
-        // multi_radixsort.comp declares its buffers at set = 1.
-        spock::StorageBufferBinding sortElementsInBinding{0, vk::ShaderStageFlagBits::eCompute};
-        spock::StorageBufferBinding sortElementsOutBinding{1, vk::ShaderStageFlagBits::eCompute};
-        spock::StorageBufferBinding sortHistogramsBinding{2, vk::ShaderStageFlagBits::eCompute};
-        m_sortSetLayout = spock::createDescriptorSetLayout(m_device, {sortElementsInBinding, sortElementsOutBinding, sortHistogramsBinding});
+        m_histogramSetLayout = spock::createDescriptorSetLayout(m_device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 2);
+        m_sortSetLayout = spock::createDescriptorSetLayout(m_device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 3);
 
         vk::PushConstantRange pushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(PushConstants)};
         std::array<vk::DescriptorSetLayout, 2> setLayouts{*m_histogramSetLayout, *m_sortSetLayout};

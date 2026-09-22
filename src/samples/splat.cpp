@@ -148,12 +148,10 @@ public:
     {
         m_splatCount = uint32_t(scene.instances.size());
 
-        spock::UniformBufferBinding frameBinding{ 0, vk::ShaderStageFlagBits::eVertex };
-        spock::StorageBufferBinding splatBinding{ 1, vk::ShaderStageFlagBits::eVertex };
-
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             m_device,
-            { frameBinding, splatBinding });
+            vk::ShaderStageFlagBits::eVertex,
+            {vk::DescriptorType::eUniformBuffer, vk::DescriptorType::eStorageBuffer});
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, *m_descriptorSetLayout }));
 
         // Upload the splat data into a storage buffer.

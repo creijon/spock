@@ -242,23 +242,34 @@ namespace spock
         return vk::raii::DescriptorPool(device, descriptorPoolCreateInfo);
     }
 
-    // Build a descriptor set layout from binding metadata describing descriptor types,
-    // element counts and shader stage visibility.
     vk::raii::DescriptorSetLayout createDescriptorSetLayout(
-        vk::raii::Device const &device,
-        std::vector<BufferBinding> const &bufferBindings,
+        vk::raii::Device const& device,
+        vk::ShaderStageFlags shaderStage,
+        std::vector<vk::DescriptorType> const& bufferTypes,
         vk::DescriptorSetLayoutCreateFlags flags)
     {
         std::vector<vk::DescriptorSetLayoutBinding> bindings;
 
-        uint32_t index = 0;
-        for (const auto& bufferBinding : bufferBindings)
+        uint32_t binding = 0;
+        for (const auto& bufferType : bufferTypes)
         {
-            bindings.emplace_back(index, bufferBinding.type, bufferBinding.count, bufferBinding.stageFlags);
-            index++;
+            bindings.emplace_back(binding, bufferType, 1, shaderStage);
+            binding++;
         }
         vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo(flags, bindings);
         return vk::raii::DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
+    }
+
+    vk::raii::DescriptorSetLayout createDescriptorSetLayout(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlags shaderStage,
+        vk::DescriptorType bufferType,
+        uint32_t bufferCount,
+        vk::DescriptorSetLayoutCreateFlags flags)
+    {
+        std::vector< vk::DescriptorType> descriptorTypes(bufferCount, bufferType);
+
+        return createDescriptorSetLayout(device, shaderStage, descriptorTypes, flags);
     }
 
     std::vector<vk::raii::Framebuffer> createFramebuffers(

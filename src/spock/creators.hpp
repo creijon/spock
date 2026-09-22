@@ -51,10 +51,24 @@ namespace spock
         vk::raii::Device const &device,
         std::vector<vk::DescriptorPoolSize> const &poolSizes);
 
-    // Create a descriptor set layout from a list of binding descriptors.
+    // Create a descriptor set layout for a given shader stage.
+    // bufferTypes specify the type and number of buffers (eUniformBuffer or eStorageBuffer)
+    // they are created in order with bindings starting at 0.
     vk::raii::DescriptorSetLayout createDescriptorSetLayout(
         vk::raii::Device const &device,
-        std::vector<BufferBinding> const &bufferBindings,
+        vk::ShaderStageFlags shaderStage,
+        std::vector<vk::DescriptorType> const &bufferTypes,
+        vk::DescriptorSetLayoutCreateFlags flags = {});
+
+    // Create a descriptor set layout for a given shader stage.
+    // bufferTypes specifies the type (eg eUniformBuffer or eStorageBuffer)
+    // bufferCount specifies the number of buffers required
+    // they are created with bindings starting at 0.
+    vk::raii::DescriptorSetLayout createDescriptorSetLayout(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlags shaderStage,
+        vk::DescriptorType bufferType,
+        uint32_t bufferCount,
         vk::DescriptorSetLayoutCreateFlags flags = {});
 
     // Create framebuffer objects for every swapchain image view and optional depth image view.
