@@ -42,14 +42,6 @@ namespace spock
         std::vector<vk::VertexInputAttributeDescription> m_attributes;
     };
 
-    struct BufferUpdateData
-    {
-        vk::DescriptorType type;
-        vk::raii::Buffer const& buffer;
-        vk::DeviceSize size;
-        vk::raii::BufferView const* bufferView;
-    };
-
     // VertexType must provide static method attributes() returning
     // (vk::Format, offset) pairs, where each offset is relative to VertexType.
     template <typename VertexType>
@@ -80,6 +72,11 @@ namespace spock
         BufferWrapper const& operator=(BufferWrapper&& other);
         ~BufferWrapper();
 
+        vk::DescriptorType type() const
+        {
+            return m_type;
+        }
+
         vk::raii::DeviceMemory const& deviceMemory() const
         {
             return m_deviceMemory;
@@ -88,6 +85,11 @@ namespace spock
         vk::raii::Buffer const& buffer() const
         {
             return m_buffer;
+        }
+
+        vk::raii::BufferView const& bufferView() const
+        {
+            return m_bufferView;
         }
 
         vk::DeviceSize size() const
@@ -161,7 +163,9 @@ namespace spock
 
         // Declare the buffer SECOND so that it is destroyed first.
         vk::raii::Buffer m_buffer{nullptr};
+        vk::raii::BufferView m_bufferView{nullptr};
 
+        vk::DescriptorType m_type{ vk::DescriptorType::eStorageBuffer };
         vk::DeviceSize m_size{0};
         vk::BufferUsageFlags m_usage{};
         vk::MemoryPropertyFlags m_propertyFlags{};

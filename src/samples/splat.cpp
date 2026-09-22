@@ -156,8 +156,7 @@ public:
 
         // Upload the splat data into a storage buffer.
         m_splatStorage = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
+            m_physicalDevice, m_device,
             sizeof(SplatInstance) * m_splatCount,
             vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
@@ -170,8 +169,7 @@ public:
 
         // Create a small vertex buffer for the quad rendering.
         m_quadBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
+            m_physicalDevice, m_device,
             QUAD_VERTEX_COUNT * sizeof(QuadVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
@@ -183,32 +181,26 @@ public:
 
         vk::MemoryPropertyFlags hostBacked{ vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
 
+        m_frameData.clear();
         for (uint32_t i = 0; i < m_framesInFlight; ++i)
         {
             m_frameData.push_back({
                 std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front()),
                 spock::BufferWrapper(
-                    m_physicalDevice,
-                    m_device,
+                    m_physicalDevice, m_device,
                     sizeof(FrameConstants),
                     vk::BufferUsageFlagBits::eUniformBuffer,
                     hostBacked),
                 spock::BufferWrapper(
-                    m_physicalDevice,
-                    m_device,
+                    m_physicalDevice, m_device,
                     m_splatCount * sizeof(SortingEntry),
                     vk::BufferUsageFlagBits::eVertexBuffer,
                     hostBacked)
                 });
 
             spock::updateDescriptorSets(
-                m_device,
-                m_frameData.back().descriptorSet,
-                {
-                    {vk::DescriptorType::eUniformBuffer, m_frameData.back().uniforms.buffer(), VK_WHOLE_SIZE, nullptr},
-                    {vk::DescriptorType::eStorageBuffer, m_splatStorage.buffer(), VK_WHOLE_SIZE, nullptr}
-                },
-                {});
+                m_device, m_frameData.back().descriptorSet,
+                {m_frameData.back().uniforms, m_splatStorage}, {});
         }
 
         // Create an indirection buffer, which will be used to sort the splats back-to-front.

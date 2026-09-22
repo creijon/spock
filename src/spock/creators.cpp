@@ -404,10 +404,10 @@ namespace spock
     // Upload buffer and texture bindings into the descriptor set. Buffer data is
     // placed sequentially starting at bindingOffset followed by any textures.
     void updateDescriptorSets(
-        vk::raii::Device const &device,
-        vk::raii::DescriptorSet const &descriptorSet,
-        std::vector<BufferUpdateData> const& bufferData,
-        std::vector<TextureWrapper> const &textureData,
+        vk::raii::Device const& device,
+        vk::raii::DescriptorSet const& descriptorSet,
+        std::vector<std::reference_wrapper<BufferWrapper>> const& bufferData,
+        std::vector<std::reference_wrapper<TextureWrapper>> const& textureData,
         uint32_t bindingOffset)
     {
         std::vector<vk::DescriptorBufferInfo> bufferInfos;
@@ -419,26 +419,28 @@ namespace spock
         std::vector<vk::WriteDescriptorSet> writeDescriptorSets;
         writeDescriptorSets.reserve(bufferData.size() + (textureData.empty() ? 0 : 1));
         uint32_t dstBinding = bindingOffset;
-        for (auto const &bd : bufferData)
+        for (BufferWrapper const& bd : bufferData)
         {
-            bufferInfos.emplace_back(bd.buffer, 0, bd.size);
-            bufferViews.push_back(bd.bufferView ? vk::BufferView(*bd.bufferView) : vk::BufferView{});
+            vk::Buffer buffer = bd.buffer();
+            bool hasBufferView = bd.bufferView() != nullptr;
+            bufferInfos.emplace_back(buffer, 0, bd.size());
+            bufferViews.push_back(hasBufferView ? *bd.bufferView() : vk::BufferView{});
             writeDescriptorSets.emplace_back(
                 descriptorSet,
                 dstBinding++,
                 0,
                 1,
-                bd.type,
+                bd.type(),
                 nullptr,
                 &bufferInfos.back(),
-                bd.bufferView ? &bufferViews.back() : nullptr);
+                hasBufferView ? &bufferViews.back() : nullptr);
         }
 
         std::vector<vk::DescriptorImageInfo> imageInfos;
         if (!textureData.empty())
         {
             imageInfos.reserve(textureData.size());
-            for (auto const &thd : textureData)
+            for (TextureWrapper const& thd : textureData)
             {
                 imageInfos.emplace_back(
                     thd.sampler(),

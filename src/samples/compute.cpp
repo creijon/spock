@@ -132,17 +132,27 @@ protected:
             vk::BufferUsageFlagBits::eTransferDst;
 
         // Ping-pong buffers: each radix sort pass reads one and writes the other.
-        m_elementsA = spock::BufferWrapper(m_physicalDevice, m_device, elementsBytes, elementsUsage, vk::MemoryPropertyFlagBits::eDeviceLocal);
-        m_elementsB = spock::BufferWrapper(m_physicalDevice, m_device, elementsBytes, elementsUsage, vk::MemoryPropertyFlagBits::eDeviceLocal);
+        m_elementsA = spock::BufferWrapper(
+            m_physicalDevice, m_device,
+            elementsBytes,
+            elementsUsage,
+            vk::MemoryPropertyFlagBits::eDeviceLocal);
+        m_elementsB = spock::BufferWrapper(
+            m_physicalDevice, m_device,
+            elementsBytes,
+            elementsUsage,
+            vk::MemoryPropertyFlagBits::eDeviceLocal);
 
         // Fully overwritten by the histogram shader every pass, so it never needs clearing.
         m_histograms = spock::BufferWrapper(
-            m_physicalDevice, m_device, histogramBytes,
+            m_physicalDevice, m_device,
+            histogramBytes,
             vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
         m_readback = spock::BufferWrapper(
-            m_physicalDevice, m_device, elementsBytes,
+            m_physicalDevice, m_device,
+            elementsBytes,
             vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
@@ -165,29 +175,11 @@ protected:
         m_sortSetAtoB = std::move(sortSets[0]);
         m_sortSetBtoA = std::move(sortSets[1]);
 
-        spock::updateDescriptorSets(
-            m_device, m_histogramSetForA,
-            {{vk::DescriptorType::eStorageBuffer, m_elementsA.buffer(), VK_WHOLE_SIZE, nullptr},
-             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
-            {});
-        spock::updateDescriptorSets(
-            m_device, m_histogramSetForB,
-            {{vk::DescriptorType::eStorageBuffer, m_elementsB.buffer(), VK_WHOLE_SIZE, nullptr},
-             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
-            {});
+        spock::updateDescriptorSets(m_device, m_histogramSetForA, {m_elementsA, m_histograms}, {});
+        spock::updateDescriptorSets(m_device, m_histogramSetForB, {m_elementsB, m_histograms}, {});
 
-        spock::updateDescriptorSets(
-            m_device, m_sortSetAtoB,
-            {{vk::DescriptorType::eStorageBuffer, m_elementsA.buffer(), VK_WHOLE_SIZE, nullptr},
-             {vk::DescriptorType::eStorageBuffer, m_elementsB.buffer(), VK_WHOLE_SIZE, nullptr},
-             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
-            {});
-        spock::updateDescriptorSets(
-            m_device, m_sortSetBtoA,
-            {{vk::DescriptorType::eStorageBuffer, m_elementsB.buffer(), VK_WHOLE_SIZE, nullptr},
-             {vk::DescriptorType::eStorageBuffer, m_elementsA.buffer(), VK_WHOLE_SIZE, nullptr},
-             {vk::DescriptorType::eStorageBuffer, m_histograms.buffer(), VK_WHOLE_SIZE, nullptr}},
-            {});
+        spock::updateDescriptorSets(m_device, m_sortSetAtoB, {m_elementsA, m_elementsB, m_histograms}, {});
+        spock::updateDescriptorSets(m_device, m_sortSetBtoA, {m_elementsB, m_elementsA, m_histograms}, {});
     }
 
     void createPipelines()

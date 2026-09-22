@@ -81,6 +81,9 @@ namespace spock
             m_buffer.getMemoryRequirements(),
             propertyFlags);
         m_buffer.bindMemory(m_deviceMemory, 0);
+
+        // For now, only check for uniform buffer usage.  As we add support for ray tracing etc, extend this.
+        m_type = (usage & vk::BufferUsageFlagBits::eUniformBuffer) ? vk::DescriptorType::eUniformBuffer : vk::DescriptorType::eStorageBuffer;
     }
 
     BufferWrapper::~BufferWrapper()
@@ -95,6 +98,8 @@ namespace spock
     BufferWrapper::BufferWrapper(BufferWrapper &&other) noexcept
         : m_deviceMemory(std::move(other.m_deviceMemory))
         , m_buffer(std::move(other.m_buffer))
+        , m_bufferView(std::move(other.m_bufferView))
+        , m_type(other.m_type)
         , m_size(other.m_size)
         , m_usage(other.m_usage)
         , m_propertyFlags(other.m_propertyFlags)
@@ -110,6 +115,8 @@ namespace spock
             unmap();
             m_deviceMemory = std::move(other.m_deviceMemory);
             m_buffer = std::move(other.m_buffer);
+            m_bufferView = std::move(other.m_bufferView);
+            m_type = other.m_type;
             m_size = other.m_size;
             m_usage = other.m_usage;
             m_propertyFlags = other.m_propertyFlags;
