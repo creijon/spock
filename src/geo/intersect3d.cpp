@@ -16,6 +16,34 @@ namespace geo3d
         return glm::all(glm::lessThanEqual(glm::abs(point - box.centre), box.extents));
     }
 
+    bool Intersect::test(glm::vec3 const& point, Triangle const& triangle)
+    {
+        glm::vec3 e0 = triangle.v1 - triangle.v0;
+        glm::vec3 e1 = triangle.v2 - triangle.v0;
+        glm::vec3 p = point - triangle.v0;
+        float d00 = glm::dot(e0, e0), d01 = glm::dot(e0, e1), d11 = glm::dot(e1, e1);
+        float u = d11 * glm::dot(e0, p) - d01 * glm::dot(e1, p);
+        float v = d00 * glm::dot(e1, p) - d01 * glm::dot(e0, p);
+        float denominator = d00 * d11 - d01 * d01;
+        return u >= 0.0f && v >= 0.0f && denominator >= u + v;
+    }
+
+	bool Intersect::test(glm::vec3 const& point, Cone const& cone)
+	{
+		glm::vec3 pointToOrigin = point - cone.origin;
+		float distanceAlongAxis = glm::dot(pointToOrigin, cone.axis);
+		if (distanceAlongAxis < 0.0f || distanceAlongAxis > cone.length) return false;
+		float coneRadius = distanceAlongAxis * cone.tanAngle;
+		glm::vec3 offsetFromAxis = pointToOrigin - distanceAlongAxis * cone.axis;
+
+		return glm::dot(offsetFromAxis, offsetFromAxis) <= coneRadius * coneRadius;
+	}
+
+	bool Intersect::test(glm::vec3 const& point, Plane const& plane)
+	{
+		return plane.signedDistance(point) < 0.0f;
+	}
+
     bool Intersect::test(Aabb const& a, Aabb const& b)
     {
         return glm::all(glm::lessThanEqual(glm::abs(a.centre - b.centre), a.extents + b.extents));
@@ -74,18 +102,6 @@ namespace geo3d
         return test(Ray{edge.v0, edge.axis() / length}, triangle, t) && t <= length;
     }
 
-    bool Intersect::test(glm::vec3 const& point, Triangle const& triangle)
-    {
-        glm::vec3 e0 = triangle.v1 - triangle.v0;
-        glm::vec3 e1 = triangle.v2 - triangle.v0;
-        glm::vec3 p = point - triangle.v0;
-        float d00 = glm::dot(e0, e0), d01 = glm::dot(e0, e1), d11 = glm::dot(e1, e1);
-        float u = d11 * glm::dot(e0, p) - d01 * glm::dot(e1, p);
-        float v = d00 * glm::dot(e1, p) - d01 * glm::dot(e0, p);
-        float denominator = d00 * d11 - d01 * d01;
-        return u >= 0.0f && v >= 0.0f && denominator >= u + v;
-    }
-
     bool Intersect::test(Plane const& plane, Aabb const& box)
     {
         float radius = glm::dot(box.extents, glm::abs(plane.normal));
@@ -99,7 +115,8 @@ namespace geo3d
 
     bool Intersect::test(Edge const& edge, Plane const& plane, float& t)
     {
-        float d0 = plane.signedDistance(edge.v0), d1 = plane.signedDistance(edge.v1);
+        float d0 = plane.signedDistance(edge.v0);
+		float d1 = plane.signedDistance(edge.v1);
         t = 0.0f;
         if (d0 * d1 > 0.0f || d0 == d1) return false;
         t = d0 / (d0 - d1);

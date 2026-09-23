@@ -17,7 +17,9 @@ namespace geo3d
         glm::vec3 direction{0.0f, 0.0f, 1.0f};
 
         Ray() = default;
-        Ray(glm::vec3 const& origin, glm::vec3 const& direction) : origin(origin), direction(direction) {}
+        Ray(glm::vec3 const& origin, glm::vec3 const& direction)
+			: origin(origin), direction(direction)
+		{}
 
         glm::vec3 calcPos(float t) const { return origin + direction * t; }
     };
@@ -28,7 +30,9 @@ namespace geo3d
         glm::vec3 v1{0.0f};
 
         Edge() = default;
-        Edge(glm::vec3 const& v0, glm::vec3 const& v1) : v0(v0), v1(v1) {}
+        Edge(glm::vec3 const& v0, glm::vec3 const& v1)
+			: v0(v0), v1(v1)
+		{}
 
         glm::vec3 axis() const { return v1 - v0; }
         glm::vec3 centre() const { return (v0 + v1) * 0.5f; }
@@ -41,7 +45,9 @@ namespace geo3d
         float distance{0.0f};
 
         Plane() = default;
-        Plane(glm::vec3 const& normal, float distance) : normal(normal), distance(distance) {}
+        Plane(glm::vec3 const& normal, float distance)
+			: normal(normal), distance(distance)
+		{}
 
         float signedDistance(glm::vec3 const& point) const { return glm::dot(normal, point) - distance; }
         glm::vec3 project(glm::vec3 const& point) const { return point - signedDistance(point) * normal; }
@@ -53,7 +59,9 @@ namespace geo3d
         glm::vec3 extents{0.0f};
 
         Aabb() = default;
-        Aabb(glm::vec3 const& centre, glm::vec3 const& extents) : centre(centre), extents(extents) {}
+        Aabb(glm::vec3 const& centre, glm::vec3 const& extents)
+			: centre(centre), extents(extents)
+		{}
         Aabb(glm::vec3 const& minimum, glm::vec3 const& maximum, bool)
         {
             setMinMax(minimum, maximum);
@@ -83,7 +91,9 @@ namespace geo3d
         float radius{0.0f};
 
         Sphere() = default;
-        Sphere(glm::vec3 const& centre, float radius) : centre(centre), radius(radius) {}
+        Sphere(glm::vec3 const& centre, float radius)
+			: centre(centre), radius(radius)
+		{}
     };
 
     struct Obb
@@ -91,7 +101,9 @@ namespace geo3d
         glm::mat4 transform{1.0f};
 
         Obb() = default;
-        explicit Obb(glm::mat4 const& transform) : transform(transform) {}
+        explicit Obb(glm::mat4 const& transform)
+			: transform(transform)
+		{}
     };
 
     struct Triangle
@@ -101,7 +113,9 @@ namespace geo3d
         glm::vec3 v2{0.0f};
 
         Triangle() = default;
-        Triangle(glm::vec3 const& v0, glm::vec3 const& v1, glm::vec3 const& v2) : v0(v0), v1(v1), v2(v2) {}
+        Triangle(glm::vec3 const& v0, glm::vec3 const& v1, glm::vec3 const& v2)
+			: v0(v0), v1(v1), v2(v2)
+		{}
 
         Edge edge0() const { return {v0, v1}; }
         Edge edge1() const { return {v1, v2}; }
@@ -128,6 +142,19 @@ namespace geo3d
             return {(d11 * d02 - d01 * d12) * inverse, (d00 * d12 - d01 * d02) * inverse};
         }
     };
+
+	struct Cone
+	{
+        glm::vec3 origin{0.0f};
+        float length{0.0f};
+        glm::vec3 axis{0.0f};
+		float tanAngle{0.0f};
+
+		Cone() = default;
+		Cone(glm::vec3 const& origin, float length, glm::vec3 const& axis, float tanAngle)
+			: origin(origin), length(length), axis(axis), tanAngle(tanAngle)
+		{}
+	};
 
     inline float minCoefficient(glm::vec3 const& value) { return std::min({value.x, value.y, value.z}); }
     inline float maxCoefficient(glm::vec3 const& value) { return std::max({value.x, value.y, value.z}); }
