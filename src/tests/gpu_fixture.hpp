@@ -47,8 +47,7 @@ namespace spock_test
 
             fixture->device = spock::createDevice(
                 fixture->physicalDevice,
-                fixture->queue.graphicsFamily(),
-                spock::getDefaultDeviceExtensions());
+                fixture->queue);
         }
         catch (std::exception const &e)
         {

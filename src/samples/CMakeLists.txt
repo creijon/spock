@@ -12,9 +12,9 @@ endif()
 
 function(add_sample_target target_name source_file)
     if (WIN32)
-        add_executable(${target_name} WIN32 ${source_file})
+        add_executable(${target_name} WIN32 ${source_file} ${ARGN})
     else()
-        add_executable(${target_name} ${source_file})
+        add_executable(${target_name} ${source_file} ${ARGN})
         target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} TBB::tbb)
     endif()
     target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} efsw)
@@ -42,6 +42,12 @@ add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/instancing.cpp)
 add_sample_target(compute ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp)
 add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp)
 
+add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/textured_cube.cpp ${CMAKE_SOURCE_DIR}/deps/lodepng/lodepng.cpp)
+target_include_directories(textured_cube PRIVATE ${CMAKE_SOURCE_DIR}/deps/lodepng)
+
+add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/textured_sphere.cpp ${CMAKE_SOURCE_DIR}/deps/lodepng/lodepng.cpp)
+target_include_directories(textured_sphere PRIVATE ${CMAKE_SOURCE_DIR}/deps/lodepng)
+
 set_target_properties(
     cube
     shaderlab
@@ -49,4 +55,6 @@ set_target_properties(
     instancing
     compute
     debug_lines
+    textured_cube
+    textured_sphere
     PROPERTIES FOLDER "samples")

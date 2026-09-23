@@ -158,24 +158,21 @@ TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu
     vk::raii::CommandPool commandPool(
         fixture->device,
         vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queue.graphicsFamily()));
-    vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->device, commandPool);
     vk::raii::Queue graphicsQueue(fixture->device, fixture->queue.graphicsFamily(), 0);
 
-    // setImage() takes a vk::raii::CommandBuffer, so it's recorded and
-    // submitted by hand here rather than through spock::oneTimeSubmit (which
-    // hands its callback a plain, non-RAII vk::CommandBuffer).
-    commandBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-    texture.setImage(
-        commandBuffer,
-        [](void *data, vk::Extent2D const &extent)
+    CHECK_NOTHROW(spock::oneTimeSubmit(
+        fixture->device,
+        commandPool,
+        graphicsQueue,
+        [&](vk::CommandBuffer commandBuffer)
         {
-            std::memset(data, 0xFF, static_cast<size_t>(extent.width) * extent.height * 4);
-        });
-    commandBuffer.end();
-
-    vk::CommandBuffer rawCommandBuffer = *commandBuffer;
-    graphicsQueue.submit(vk::SubmitInfo(0, nullptr, nullptr, 1, &rawCommandBuffer), nullptr);
-    graphicsQueue.waitIdle();
+            texture.setImage(
+                commandBuffer,
+                [](void *data, vk::Extent2D const &extent)
+                {
+                    std::memset(data, 0xFF, static_cast<size_t>(extent.width) * extent.height * 4);
+                });
+        }));
 }
 
 TEST_CASE("compileShader produces a usable shader module from valid GLSL", "[gpu]")
@@ -304,7 +301,8 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
 
     vk::raii::DescriptorSetLayout descriptorSetLayout = spock::createDescriptorSetLayout(
         fixture->device,
-        {{0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eVertex}});
+        vk::ShaderStageFlagBits::eVertex,
+        {vk::DescriptorType::eUniformBuffer});
     CHECK(*descriptorSetLayout != VK_NULL_HANDLE);
 
     vk::raii::DescriptorPool descriptorPool = spock::createDescriptorPool(
@@ -319,10 +317,7 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
     spock::BufferWrapper uniformBuffer(
         fixture->physicalDevice, fixture->device, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
 
-    std::vector<spock::BufferUpdateData> bufferData{
-        {vk::DescriptorType::eUniformBuffer, uniformBuffer.buffer(), sizeof(float) * 16, nullptr}};
-
-    CHECK_NOTHROW(spock::updateDescriptorSets(fixture->device, descriptorSet, bufferData, {}));
+    CHECK_NOTHROW(spock::updateDescriptorSets(fixture->device, descriptorSet, {uniformBuffer}, {}));
 }
 
 TEST_CASE("createGraphicsPipeline builds a pipeline from compiled shaders and a push-constant layout", "[gpu]")

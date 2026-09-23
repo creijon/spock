@@ -55,8 +55,7 @@ TEST_CASE("Renderer renders and presents frames against a headless surface", "[g
         extent,
         vk::ClearColorValue(std::array<float, 4>{0.1f, 0.2f, 0.3f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0),
-        /*useDepthBuffer=*/true,
-        /*framesInFlight=*/2);
+        /*useDepthBuffer=*/true);
 
     for (int frame = 0; frame < 3; frame++)
     {

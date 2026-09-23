@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include <cassert>
 #include <limits>
+#include <stdexcept>
 #include <string>
 
 namespace spock
@@ -17,7 +17,10 @@ namespace spock
         static_assert(!std::numeric_limits<SourceType>::is_signed, "Only unsigned types supported!");
         static_assert(std::numeric_limits<TargetType>::is_integer, "Only integer types supported!");
         static_assert(!std::numeric_limits<TargetType>::is_signed, "Only unsigned types supported!");
-        assert(value <= (std::numeric_limits<TargetType>::max)());
+        if (value > (std::numeric_limits<TargetType>::max)())
+        {
+            throw std::out_of_range("checked_cast: value out of range for target type");
+        }
         return static_cast<TargetType>(value);
     }
 

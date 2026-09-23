@@ -51,12 +51,12 @@ TEST_CASE("checked_cast at boundary values", "[utils_extended]")
 
 TEST_CASE("checked_cast supports chaining conversions", "[utils_extended]")
 {
-    uint64_t large{256};
+    uint64_t large{200};
     auto medium = spock::checked_cast<uint32_t>(large);
     auto small = spock::checked_cast<uint16_t>(medium);
     auto tiny = spock::checked_cast<uint8_t>(small);
-    
-    CHECK(tiny == 0);
+
+    CHECK(tiny == 200);
 }
 
 TEST_CASE("checked_cast preserves zero", "[utils_extended]")

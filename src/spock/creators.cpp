@@ -417,7 +417,7 @@ namespace spock
         bufferViews.reserve(bufferData.size());
 
         std::vector<vk::WriteDescriptorSet> writeDescriptorSets;
-        writeDescriptorSets.reserve(bufferData.size() + (textureData.empty() ? 0 : 1));
+        writeDescriptorSets.reserve(bufferData.size() + textureData.size());
         uint32_t dstBinding = bindingOffset;
         for (BufferWrapper const& bd : bufferData)
         {
@@ -437,23 +437,20 @@ namespace spock
         }
 
         std::vector<vk::DescriptorImageInfo> imageInfos;
-        if (!textureData.empty())
+        imageInfos.reserve(textureData.size());
+        for (TextureWrapper const& thd : textureData)
         {
-            imageInfos.reserve(textureData.size());
-            for (TextureWrapper const& thd : textureData)
-            {
-                imageInfos.emplace_back(
-                    thd.sampler(),
-                    thd.image().imageView(),
-                    vk::ImageLayout::eShaderReadOnlyOptimal);
-            }
+            imageInfos.emplace_back(
+                thd.sampler(),
+                thd.image().imageView(),
+                vk::ImageLayout::eShaderReadOnlyOptimal);
             writeDescriptorSets.emplace_back(
                 descriptorSet,
-                dstBinding,
+                dstBinding++,
                 0,
-                checked_cast<uint32_t>(imageInfos.size()),
+                1,
                 vk::DescriptorType::eCombinedImageSampler,
-                imageInfos.data(),
+                &imageInfos.back(),
                 nullptr,
                 nullptr);
         }

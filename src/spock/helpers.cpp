@@ -27,7 +27,7 @@ namespace spock
 
     // Record an image memory barrier to transition an image from one layout to another.
     void setImageLayout(
-        vk::raii::CommandBuffer const &commandBuffer,
+        vk::CommandBuffer const &commandBuffer,
         vk::Image image,
         vk::Format format,
         vk::ImageLayout oldImageLayout,

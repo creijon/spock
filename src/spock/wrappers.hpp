@@ -252,7 +252,7 @@ namespace spock
 
         template <typename ImageGenerator>
         void setImage(
-            vk::raii::CommandBuffer const &commandBuffer,
+            vk::CommandBuffer const &commandBuffer,
             ImageGenerator const &imageGenerator)
         {
             if (m_needsStaging)
@@ -276,8 +276,8 @@ namespace spock
                     vk::Offset3D(0, 0, 0),
                     vk::Extent3D(m_extent, 1));
                 commandBuffer.copyBufferToImage(
-                    m_stagingBuffer.buffer(),
-                    m_image.image(),
+                    *m_stagingBuffer.buffer(),
+                    *m_image.image(),
                     vk::ImageLayout::eTransferDstOptimal,
                     copyRegion);
 

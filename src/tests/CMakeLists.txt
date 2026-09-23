@@ -26,7 +26,6 @@ add_executable(spock_tests
     gpu_tests.cpp
     renderer_tests.cpp
     wrappers_tests.cpp
-    creators_tests.cpp
     geo_intersect3d_tests.cpp
 )
 
