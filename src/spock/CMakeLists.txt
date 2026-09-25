@@ -13,6 +13,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/creators.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/loader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presenter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/queues.cpp
@@ -34,6 +35,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_watcher.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/loader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presenter.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/queues.hpp
@@ -45,5 +47,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/wrappers.hpp
     PARENT_SCOPE
 )
+
+target_include_directories(spock PRIVATE ${CMAKE_SOURCE_DIR}/deps/lodepng)
 
 set_target_properties(spock PROPERTIES FOLDER "libs")

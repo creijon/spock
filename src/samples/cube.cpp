@@ -23,59 +23,59 @@ struct CubeVertex
     static spock::VertexFormat::Attributes attributes()
     {
         return {
-            { vk::Format::eR32G32B32A32Sfloat, offsetof(CubeVertex, pos) },
-            { vk::Format::eR32G32B32A32Sfloat, offsetof(CubeVertex, rgba) }
+            { vk::Format::eR32G32B32Sfloat, offsetof(CubeVertex, pos) },
+            { vk::Format::eR32G32B32Sfloat, offsetof(CubeVertex, rgb) }
         };
     }
 
-    glm::vec4 pos;
-    glm::vec4 rgba;
+    glm::vec3 pos;
+    glm::vec3 rgb;
 };
 
 static const CubeVertex CUBE_VERTEX_DATA[] =
 {
     // red face
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{-1.0f,  1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{ 1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{ 1.0f, -1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{-1.0f,  1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}},
+    {{ 1.0f,  1.0f,  1.0f}, {1.0f, 0.0f, 0.0f}},
     // green face
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{ 1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{-1.0f,  1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{-1.0f,  1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{ 1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
+    {{ 1.0f,  1.0f, -1.0f}, {0.0f, 1.0f, 0.0f}},
     // blue face
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 1.0f}},
+    {{-1.0f,  1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f}, {0.0f, 0.0f, 1.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 0.0f, 1.0f}},
     // yellow face
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 1.0f, 0.0f, 1.0f}},
+    {{ 1.0f,  1.0f,  1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{ 1.0f,  1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{ 1.0f, -1.0f,  1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{ 1.0f, -1.0f,  1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{ 1.0f,  1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
+    {{ 1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 0.0f}},
     // magenta face
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f, 1.0f, 1.0f}},
+    {{ 1.0f,  1.0f,  1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f,  1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{ 1.0f,  1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{ 1.0f,  1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f,  1.0f}, {1.0f, 0.0f, 1.0f}},
+    {{-1.0f,  1.0f, -1.0f}, {1.0f, 0.0f, 1.0f}},
     // cyan face
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}},
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f, 1.0f, 1.0f}}
+    {{ 1.0f, -1.0f,  1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{ 1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f,  1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{ 1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}},
+    {{-1.0f, -1.0f, -1.0f}, {0.0f, 1.0f, 1.0f}}
 };
 
 static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
@@ -91,15 +91,15 @@ layout(push_constant) uniform PushConstants {
     mat4 mvp;
 } pc;
 
-layout (location = 0) in vec4 pos;
-layout (location = 1) in vec4 inColor;
+layout (location = 0) in vec3 pos;
+layout (location = 1) in vec3 inColor;
 
-layout (location = 0) out vec4 outColor;
+layout (location = 0) out vec3 outColor;
 
 void main()
 {
   outColor = inColor;
-  gl_Position = pc.mvp * pos;
+  gl_Position = pc.mvp * vec4(pos, 1.0);
 }
 )";
 
@@ -109,13 +109,13 @@ static const std::string FRAGMENT_SHADER_SOURCE = R"(
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout (location = 0) in vec4 color;
+layout (location = 0) in vec3 color;
 
 layout (location = 0) out vec4 outColor;
 
 void main()
 {
-  outColor = color;
+  outColor = vec4(color, 1.0);
 }
 )";
 

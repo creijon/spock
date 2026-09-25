@@ -13,6 +13,7 @@
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/helpers.hpp"
+#include "spock/loader.hpp"
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
@@ -130,9 +131,16 @@ static void generateSphereMesh(
     }
 }
 
-static constexpr uint32_t CUBEMAP_FACE_COUNT{6};
+static const std::string CUBEMAP_PATH = std::string(SPOCK_DIR) + "/assets/textures/";
 
-static const std::array<std::string, CUBEMAP_FACE_COUNT> CUBEMAP_FACES{"xpos.png", "xneg.png", "ypos.png", "yneg.png", "zpos.png", "zneg.png"};
+static const std::array<std::string, spock::CUBEMAP_FACE_COUNT> CUBEMAP_FACES {
+    CUBEMAP_PATH + "xpos.png",
+    CUBEMAP_PATH + "xneg.png",
+    CUBEMAP_PATH + "ypos.png",
+    CUBEMAP_PATH + "yneg.png",
+    CUBEMAP_PATH + "zpos.png",
+    CUBEMAP_PATH + "zneg.png"
+};
 
 static const std::string VERTEX_SHADER_SOURCE = R"(
 #version 450
@@ -176,7 +184,7 @@ void main()
 {
   vec3 lightDir = normalize(vec3(1.0, 1.0, 0.5));
   vec3 lightDif = vec3(1.0);
-  vec3 lightAmb = vec3(0.2);
+  vec3 lightAmb = vec3(0.3);
   vec3 litColor = lightAmb + lightDif * max(dot(normalize(normal), lightDir), 0.0);
   vec3 tex = texture(texSampler, texDir).rgb;
   outColor = vec4(tex * litColor, 1.0);
@@ -189,123 +197,6 @@ struct PushConstants
     glm::mat4x4 itModel;
 };
 
-// A cubemap image (six array layers with a cube view) and the sampler used to read it.
-struct Cubemap
-{
-    spock::ImageWrapper image;
-    vk::raii::Sampler sampler{nullptr};
-};
-
-// Decodes the six face PNGs in CUBEMAP_FACES and uploads them into the layers of a new cubemap
-// image, via a staging buffer and a one-time command buffer submission on the given queue.
-static Cubemap loadCubemap(
-    vk::raii::PhysicalDevice const &physicalDevice,
-    vk::raii::Device const &device,
-    vk::raii::CommandPool const &commandPool,
-    vk::raii::Queue const &queue,
-    std::string const &directory)
-{
-    std::array<std::vector<unsigned char>, CUBEMAP_FACE_COUNT> facePixels;
-    unsigned size = 0;
-    for (uint32_t i = 0; i < CUBEMAP_FACE_COUNT; ++i)
-    {
-        std::string path = directory + CUBEMAP_FACES[i];
-        unsigned width = 0;
-        unsigned height = 0;
-        unsigned error = lodepng::decode(facePixels[i], width, height, path);
-        if (error)
-        {
-            throw std::runtime_error("Failed to load texture '" + path + "': " + lodepng_error_text(error));
-        }
-        if (width != height || (i > 0 && width != size))
-        {
-            throw std::runtime_error("Cubemap face '" + path + "' must be square and the same size as the other faces");
-        }
-        size = width;
-    }
-
-    vk::DeviceSize faceBytes = static_cast<vk::DeviceSize>(size) * size * 4;
-    spock::BufferWrapper stagingBuffer(physicalDevice, device, faceBytes * CUBEMAP_FACE_COUNT, vk::BufferUsageFlagBits::eTransferSrc);
-    uint8_t *staging = static_cast<uint8_t *>(stagingBuffer.deviceMemory().mapMemory(0, faceBytes * CUBEMAP_FACE_COUNT));
-    for (uint32_t i = 0; i < CUBEMAP_FACE_COUNT; ++i)
-    {
-        std::memcpy(staging + i * faceBytes, facePixels[i].data(), faceBytes);
-    }
-    stagingBuffer.deviceMemory().unmapMemory();
-
-    Cubemap cubemap;
-    cubemap.image = spock::ImageWrapper(
-        physicalDevice,
-        device,
-        vk::Format::eR8G8B8A8Unorm,
-        vk::Extent2D(size, size),
-        vk::ImageTiling::eOptimal,
-        vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-        vk::ImageLayout::eUndefined,
-        vk::MemoryPropertyFlagBits::eDeviceLocal,
-        vk::ImageAspectFlagBits::eColor,
-        CUBEMAP_FACE_COUNT,
-        vk::ImageCreateFlagBits::eCubeCompatible,
-        vk::ImageViewType::eCube);
-
-    spock::oneTimeSubmit(
-        device,
-        commandPool,
-        queue,
-        [&](vk::CommandBuffer commandBuffer)
-        {
-            spock::setImageLayout(
-                commandBuffer,
-                cubemap.image.image(),
-                cubemap.image.format(),
-                vk::ImageLayout::eUndefined,
-                vk::ImageLayout::eTransferDstOptimal,
-                CUBEMAP_FACE_COUNT);
-
-            // The faces are tightly packed in the staging buffer, so one copy covers all six layers.
-            vk::BufferImageCopy copyRegion(
-                0,
-                size,
-                size,
-                vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, CUBEMAP_FACE_COUNT),
-                vk::Offset3D(0, 0, 0),
-                vk::Extent3D(size, size, 1));
-            commandBuffer.copyBufferToImage(
-                *stagingBuffer.buffer(),
-                *cubemap.image.image(),
-                vk::ImageLayout::eTransferDstOptimal,
-                copyRegion);
-
-            spock::setImageLayout(
-                commandBuffer,
-                cubemap.image.image(),
-                cubemap.image.format(),
-                vk::ImageLayout::eTransferDstOptimal,
-                vk::ImageLayout::eShaderReadOnlyOptimal,
-                CUBEMAP_FACE_COUNT);
-        });
-
-    cubemap.sampler = vk::raii::Sampler(
-        device,
-        {{},
-        vk::Filter::eLinear,
-        vk::Filter::eLinear,
-        vk::SamplerMipmapMode::eLinear,
-        vk::SamplerAddressMode::eClampToEdge,
-        vk::SamplerAddressMode::eClampToEdge,
-        vk::SamplerAddressMode::eClampToEdge,
-        0.0f,
-        false,
-        16.0f,
-        false,
-        vk::CompareOp::eNever,
-        0.0f,
-        0.0f,
-        vk::BorderColor::eFloatOpaqueBlack});
-
-    return cubemap;
-}
-
 class TexturedSphereRenderer : public spock::Renderer
 {
 public:
@@ -317,7 +208,7 @@ public:
             instance,
             std::move(windowSurface),
             extents,
-            {0.2f, 0.2f, 0.3f, 1.0},
+            {0.0f, 0.0f, 0.0f, 1.0},
             {1.0f, 0},
             true)
     {
@@ -341,12 +232,10 @@ public:
             vk::BufferUsageFlagBits::eIndexBuffer);
         spock::copyToDevice(m_indexBuffer.deviceMemory(), indices.data(), indices.size());
 
-        m_cubemap = loadCubemap(
-            m_physicalDevice,
-            m_device,
-            m_commandPool,
+        m_cubemap = spock::Loader::cubemap(
+            *this,
             m_presenter->graphicsQueue(),
-            std::string(SPOCK_DIR) + "/assets/textures/");
+            CUBEMAP_FACES);
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             m_device,
@@ -447,7 +336,7 @@ private:
     spock::BufferWrapper m_vertexBuffer;
     spock::BufferWrapper m_indexBuffer;
     uint32_t m_indexCount{0};
-    Cubemap m_cubemap;
+    spock::CubemapWrapper m_cubemap;
 
     glm::mat4x4 m_viewProjClip{};
 };

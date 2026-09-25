@@ -8,14 +8,13 @@
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/helpers.hpp"
+#include "spock/loader.hpp"
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/wrappers.hpp"
 
 #include "vulkan/vulkan.hpp"
-
-#include "lodepng.h"
 
 #include <cstring>
 #include <iterator>
@@ -153,43 +152,6 @@ struct PushConstants
     glm::mat4x4 itModel;
 };
 
-// Decodes the PNG at path and uploads it into a new TextureWrapper, using a one-time
-// command buffer submission on the given queue.
-static spock::TextureWrapper loadTexture(
-    vk::raii::PhysicalDevice const &physicalDevice,
-    vk::raii::Device const &device,
-    vk::raii::CommandPool const &commandPool,
-    vk::raii::Queue const &queue,
-    std::string const &path)
-{
-    std::vector<unsigned char> pixels;
-    unsigned width = 0;
-    unsigned height = 0;
-    unsigned error = lodepng::decode(pixels, width, height, path);
-    if (error)
-    {
-        throw std::runtime_error("Failed to load texture '" + path + "': " + lodepng_error_text(error));
-    }
-
-    spock::TextureWrapper texture(physicalDevice, device, vk::Extent2D(width, height));
-
-    spock::oneTimeSubmit(
-        device,
-        commandPool,
-        queue,
-        [&](vk::CommandBuffer commandBuffer)
-        {
-            texture.setImage(
-                commandBuffer,
-                [&pixels](void *data, vk::Extent2D const &extent)
-                {
-                    std::memcpy(data, pixels.data(), static_cast<size_t>(extent.width) * extent.height * 4);
-                });
-        });
-
-    return texture;
-}
-
 class TexturedCubeRenderer : public spock::Renderer
 {
 public:
@@ -213,7 +175,7 @@ public:
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
 
-        m_texture = loadTexture(m_physicalDevice, m_device, m_commandPool, m_presenter->graphicsQueue(), TEXTURE_PATH);
+        m_texture = spock::Loader::texture(*this, m_presenter->graphicsQueue(), TEXTURE_PATH);
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             m_device,

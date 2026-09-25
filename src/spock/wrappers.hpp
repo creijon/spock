@@ -327,4 +327,10 @@ namespace spock
         vk::raii::Sampler m_sampler{nullptr};
     };
 
+    struct CubemapWrapper
+    {
+        ImageWrapper image;
+        vk::raii::Sampler sampler{nullptr};
+    };
+
 } // namespace spock
