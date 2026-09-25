@@ -31,7 +31,8 @@ namespace spock
         vk::Image image,
         vk::Format format,
         vk::ImageLayout oldImageLayout,
-        vk::ImageLayout newImageLayout)
+        vk::ImageLayout newImageLayout,
+        uint32_t layerCount)
     {
         vk::AccessFlags sourceAccessMask;
         switch (oldImageLayout)
@@ -135,7 +136,7 @@ namespace spock
             aspectMask = vk::ImageAspectFlagBits::eColor;
         }
 
-        vk::ImageSubresourceRange imageSubresourceRange(aspectMask, 0, 1, 0, 1);
+        vk::ImageSubresourceRange imageSubresourceRange(aspectMask, 0, 1, 0, layerCount);
         vk::ImageMemoryBarrier imageMemoryBarrier(sourceAccessMask,
                                                   destinationAccessMask,
                                                   oldImageLayout,

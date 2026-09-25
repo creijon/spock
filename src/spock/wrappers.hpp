@@ -184,7 +184,10 @@ namespace spock
             vk::ImageUsageFlags usage,
             vk::ImageLayout initialLayout,
             vk::MemoryPropertyFlags memoryProperties,
-            vk::ImageAspectFlags aspectMask);
+            vk::ImageAspectFlags aspectMask,
+            uint32_t arrayLayers = 1,
+            vk::ImageCreateFlags createFlags = {},
+            vk::ImageViewType viewType = vk::ImageViewType::e2D);
         ImageWrapper() = default;
         ImageWrapper(const ImageWrapper &) = delete;
         ImageWrapper(ImageWrapper&& other) noexcept;

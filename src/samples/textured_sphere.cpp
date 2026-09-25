@@ -5,9 +5,9 @@
 // cube is subdivided into a grid, and every vertex position is normalized onto the unit sphere
 // (a "cubed sphere"). The resulting per-vertex normal is just the normalized position, giving a
 // smoothly shaded sphere. The mesh is drawn with an index buffer since the subdivided grid shares
-// vertices between adjacent triangles within each face. Each of the six faces is textured with
-// its own image (an array of combined image samplers bound to a single descriptor binding), with
-// a per-vertex face index selecting which array element the fragment shader samples from.
+// vertices between adjacent triangles within each face. The sphere is textured with a cubemap
+// built from six face images, sampled in the fragment shader using the object-space normal as the
+// lookup direction, so no texture coordinates or face indices are needed per vertex.
 
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
@@ -22,6 +22,7 @@
 
 #include "lodepng.h"
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <cstring>
@@ -37,16 +38,12 @@ struct SphereVertex
     {
         return {
             { vk::Format::eR32G32B32A32Sfloat, offsetof(SphereVertex, pos) },
-            { vk::Format::eR32G32Sfloat, offsetof(SphereVertex, uv) },
-            { vk::Format::eR32G32B32Sfloat, offsetof(SphereVertex, normal) },
-            { vk::Format::eR32Uint, offsetof(SphereVertex, faceIndex) }
+            { vk::Format::eR32G32B32Sfloat, offsetof(SphereVertex, normal) }
         };
     }
 
     glm::vec4 pos;
-    glm::vec2 uv;
     glm::vec3 normal;
-    uint32_t faceIndex;
 };
 
 static const glm::vec3 xPos{ 1.0f,  0.0f,  0.0f};
@@ -78,8 +75,7 @@ static const CubeFace CUBE_FACES[] = {
 static constexpr uint32_t SPHERE_SUBDIVISIONS{24};
 
 // Subdivides each face of a cube into a subdivisions x subdivisions grid and normalizes every
-// vertex position onto the unit sphere. Each face keeps its own planar [0,1] UV range, the same
-// scheme the flat textured cube uses, so the texture wraps around the sphere as six patches.
+// vertex position onto the unit sphere.
 static void generateSphereMesh(
     uint32_t subdivisions,
     std::vector<SphereVertex>& vertices,
@@ -104,7 +100,7 @@ static void generateSphereMesh(
                 glm::vec3 cubePos = face.normal + face.axisU * (u * 2.0f - 1.0f) + face.axisV * (v * 2.0f - 1.0f);
                 glm::vec3 spherePos = glm::normalize(cubePos);
 
-                vertices.push_back(SphereVertex{glm::vec4(spherePos, 1.0f), glm::vec2(u, v), spherePos, faceIndex});
+                vertices.push_back(SphereVertex{glm::vec4(spherePos, 1.0f), spherePos});
             }
         }
 
@@ -134,12 +130,9 @@ static void generateSphereMesh(
     }
 }
 
-static constexpr uint32_t FACE_TEXTURE_COUNT{6};
+static constexpr uint32_t CUBEMAP_FACE_COUNT{6};
 
-// One texture per cube face, in the same order as CUBE_FACES (zPos, zNeg, xPos, xNeg, yPos, yNeg).
-static const std::array<std::string, FACE_TEXTURE_COUNT> FACE_TEXTURE_FILENAMES{
-    "zpos.png", "zneg.png", "xpos.png", "xneg.png", "ypos.png", "yneg.png"
-};
+static const std::array<std::string, CUBEMAP_FACE_COUNT> CUBEMAP_FACES{"xpos.png", "xneg.png", "ypos.png", "yneg.png", "zpos.png", "zneg.png"};
 
 static const std::string VERTEX_SHADER_SOURCE = R"(
 #version 450
@@ -153,19 +146,15 @@ layout(push_constant) uniform PushConstants {
 } pc;
 
 layout (location = 0) in vec4 pos;
-layout (location = 1) in vec2 uv;
-layout (location = 2) in vec3 normal;
-layout (location = 3) in uint faceIndex;
+layout (location = 1) in vec3 normal;
 
-layout (location = 0) out vec2 outUv;
+layout (location = 0) out vec3 outTexDir;
 layout (location = 1) out vec3 outNormal;
-layout (location = 2) flat out uint outFaceIndex;
 
 void main()
 {
-  outUv = uv;
+  outTexDir = normal;
   outNormal = (pc.itModel * vec4(normal, 0.0)).xyz;
-  outFaceIndex = faceIndex;
   gl_Position = pc.mvp * pos;
 }
 )";
@@ -175,13 +164,11 @@ static const std::string FRAGMENT_SHADER_SOURCE = R"(
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
-#extension GL_EXT_nonuniform_qualifier : enable
 
-layout (binding = 0) uniform sampler2D texSamplers[6];
+layout (binding = 0) uniform samplerCube texSampler;
 
-layout (location = 0) in vec2 uv;
+layout (location = 0) in vec3 texDir;
 layout (location = 1) in vec3 normal;
-layout (location = 2) flat in uint faceIndex;
 
 layout (location = 0) out vec4 outColor;
 
@@ -191,7 +178,7 @@ void main()
   vec3 lightDif = vec3(1.0);
   vec3 lightAmb = vec3(0.2);
   vec3 litColor = lightAmb + lightDif * max(dot(normalize(normal), lightDir), 0.0);
-  vec3 tex = texture(texSamplers[nonuniformEXT(faceIndex)], uv).rgb;
+  vec3 tex = texture(texSampler, texDir).rgb;
   outColor = vec4(tex * litColor, 1.0);
 }
 )";
@@ -202,25 +189,64 @@ struct PushConstants
     glm::mat4x4 itModel;
 };
 
-// Decodes the PNG at path and uploads it into a new TextureWrapper, using a one-time
-// command buffer submission on the given queue.
-static spock::TextureWrapper loadTexture(
+// A cubemap image (six array layers with a cube view) and the sampler used to read it.
+struct Cubemap
+{
+    spock::ImageWrapper image;
+    vk::raii::Sampler sampler{nullptr};
+};
+
+// Decodes the six face PNGs in CUBEMAP_FACES and uploads them into the layers of a new cubemap
+// image, via a staging buffer and a one-time command buffer submission on the given queue.
+static Cubemap loadCubemap(
     vk::raii::PhysicalDevice const &physicalDevice,
     vk::raii::Device const &device,
     vk::raii::CommandPool const &commandPool,
     vk::raii::Queue const &queue,
-    std::string const &path)
+    std::string const &directory)
 {
-    std::vector<unsigned char> pixels;
-    unsigned width = 0;
-    unsigned height = 0;
-    unsigned error = lodepng::decode(pixels, width, height, path);
-    if (error)
+    std::array<std::vector<unsigned char>, CUBEMAP_FACE_COUNT> facePixels;
+    unsigned size = 0;
+    for (uint32_t i = 0; i < CUBEMAP_FACE_COUNT; ++i)
     {
-        throw std::runtime_error("Failed to load texture '" + path + "': " + lodepng_error_text(error));
+        std::string path = directory + CUBEMAP_FACES[i];
+        unsigned width = 0;
+        unsigned height = 0;
+        unsigned error = lodepng::decode(facePixels[i], width, height, path);
+        if (error)
+        {
+            throw std::runtime_error("Failed to load texture '" + path + "': " + lodepng_error_text(error));
+        }
+        if (width != height || (i > 0 && width != size))
+        {
+            throw std::runtime_error("Cubemap face '" + path + "' must be square and the same size as the other faces");
+        }
+        size = width;
     }
 
-    spock::TextureWrapper texture(physicalDevice, device, vk::Extent2D(width, height));
+    vk::DeviceSize faceBytes = static_cast<vk::DeviceSize>(size) * size * 4;
+    spock::BufferWrapper stagingBuffer(physicalDevice, device, faceBytes * CUBEMAP_FACE_COUNT, vk::BufferUsageFlagBits::eTransferSrc);
+    uint8_t *staging = static_cast<uint8_t *>(stagingBuffer.deviceMemory().mapMemory(0, faceBytes * CUBEMAP_FACE_COUNT));
+    for (uint32_t i = 0; i < CUBEMAP_FACE_COUNT; ++i)
+    {
+        std::memcpy(staging + i * faceBytes, facePixels[i].data(), faceBytes);
+    }
+    stagingBuffer.deviceMemory().unmapMemory();
+
+    Cubemap cubemap;
+    cubemap.image = spock::ImageWrapper(
+        physicalDevice,
+        device,
+        vk::Format::eR8G8B8A8Unorm,
+        vk::Extent2D(size, size),
+        vk::ImageTiling::eOptimal,
+        vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+        vk::ImageLayout::eUndefined,
+        vk::MemoryPropertyFlagBits::eDeviceLocal,
+        vk::ImageAspectFlagBits::eColor,
+        CUBEMAP_FACE_COUNT,
+        vk::ImageCreateFlagBits::eCubeCompatible,
+        vk::ImageViewType::eCube);
 
     spock::oneTimeSubmit(
         device,
@@ -228,35 +254,56 @@ static spock::TextureWrapper loadTexture(
         queue,
         [&](vk::CommandBuffer commandBuffer)
         {
-            texture.setImage(
+            spock::setImageLayout(
                 commandBuffer,
-                [&pixels](void *data, vk::Extent2D const &extent)
-                {
-                    std::memcpy(data, pixels.data(), static_cast<size_t>(extent.width) * extent.height * 4);
-                });
+                cubemap.image.image(),
+                cubemap.image.format(),
+                vk::ImageLayout::eUndefined,
+                vk::ImageLayout::eTransferDstOptimal,
+                CUBEMAP_FACE_COUNT);
+
+            // The faces are tightly packed in the staging buffer, so one copy covers all six layers.
+            vk::BufferImageCopy copyRegion(
+                0,
+                size,
+                size,
+                vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, CUBEMAP_FACE_COUNT),
+                vk::Offset3D(0, 0, 0),
+                vk::Extent3D(size, size, 1));
+            commandBuffer.copyBufferToImage(
+                *stagingBuffer.buffer(),
+                *cubemap.image.image(),
+                vk::ImageLayout::eTransferDstOptimal,
+                copyRegion);
+
+            spock::setImageLayout(
+                commandBuffer,
+                cubemap.image.image(),
+                cubemap.image.format(),
+                vk::ImageLayout::eTransferDstOptimal,
+                vk::ImageLayout::eShaderReadOnlyOptimal,
+                CUBEMAP_FACE_COUNT);
         });
 
-    return texture;
-}
+    cubemap.sampler = vk::raii::Sampler(
+        device,
+        {{},
+        vk::Filter::eLinear,
+        vk::Filter::eLinear,
+        vk::SamplerMipmapMode::eLinear,
+        vk::SamplerAddressMode::eClampToEdge,
+        vk::SamplerAddressMode::eClampToEdge,
+        vk::SamplerAddressMode::eClampToEdge,
+        0.0f,
+        false,
+        16.0f,
+        false,
+        vk::CompareOp::eNever,
+        0.0f,
+        0.0f,
+        vk::BorderColor::eFloatOpaqueBlack});
 
-static void const* requiredDeviceFeatures(vk::raii::Instance const& instance)
-{
-	// Check for extensions for sampling the face texture array with a per-fragment index.
-    vk::raii::PhysicalDevice physicalDevice = vk::raii::PhysicalDevices(instance).front();
-
-    auto supported = physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan12Features>();
-    if (!supported.get<vk::PhysicalDeviceFeatures2>().features.shaderSampledImageArrayDynamicIndexing ||
-        !supported.get<vk::PhysicalDeviceVulkan12Features>().shaderSampledImageArrayNonUniformIndexing)
-    {
-        throw std::runtime_error(
-            "This device does not support the sampler array indexing features required by the textured sphere sample.");
-    }
-
-    static vk::StructureChain<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceVulkan12Features> enabledFeatures;
-    enabledFeatures.get<vk::PhysicalDeviceFeatures2>().features.shaderSampledImageArrayDynamicIndexing = true;
-    enabledFeatures.get<vk::PhysicalDeviceVulkan12Features>().shaderSampledImageArrayNonUniformIndexing = true;
-
-    return &enabledFeatures.get<vk::PhysicalDeviceFeatures2>();
+    return cubemap;
 }
 
 class TexturedSphereRenderer : public spock::Renderer
@@ -272,9 +319,7 @@ public:
             extents,
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0},
-            true,
-            {},
-            requiredDeviceFeatures(instance))
+            true)
     {
         // Generate the sphere geometry and upload it into a vertex and index buffer.
         std::vector<SphereVertex> vertices;
@@ -296,23 +341,17 @@ public:
             vk::BufferUsageFlagBits::eIndexBuffer);
         spock::copyToDevice(m_indexBuffer.deviceMemory(), indices.data(), indices.size());
 
-        for (uint32_t i = 0; i < FACE_TEXTURE_COUNT; ++i)
-        {
-            std::string path = std::string(SPOCK_DIR) + "/assets/textures/" + FACE_TEXTURE_FILENAMES[i];
-            m_faceTextures[i] = loadTexture(m_physicalDevice, m_device, m_commandPool, m_presenter->graphicsQueue(), path);
-        }
-
-        // A single binding holding an array of FACE_TEXTURE_COUNT combined image samplers, rather
-        // than createDescriptorSetLayout's usual one-binding-per-entry layout, since the fragment
-        // shader indexes into them as texSamplers[faceIndex].
-        vk::DescriptorSetLayoutBinding textureArrayBinding(
-            0,
-            vk::DescriptorType::eCombinedImageSampler,
-            FACE_TEXTURE_COUNT,
-            vk::ShaderStageFlagBits::eFragment);
-        m_descriptorSetLayout = vk::raii::DescriptorSetLayout(
+        m_cubemap = loadCubemap(
+            m_physicalDevice,
             m_device,
-            vk::DescriptorSetLayoutCreateInfo({}, textureArrayBinding));
+            m_commandPool,
+            m_presenter->graphicsQueue(),
+            std::string(SPOCK_DIR) + "/assets/textures/");
+
+        m_descriptorSetLayout = spock::createDescriptorSetLayout(
+            m_device,
+            vk::ShaderStageFlagBits::eFragment,
+            {vk::DescriptorType::eCombinedImageSampler});
 
         vk::PushConstantRange pushConstantRange{
             vk::ShaderStageFlagBits::eVertex,
@@ -323,24 +362,19 @@ public:
 
         m_descriptorPool = spock::createDescriptorPool(
             m_device,
-            { {vk::DescriptorType::eCombinedImageSampler, FACE_TEXTURE_COUNT} });
+            { {vk::DescriptorType::eCombinedImageSampler, 1} });
         m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front());
 
-        std::array<vk::DescriptorImageInfo, FACE_TEXTURE_COUNT> imageInfos;
-        for (uint32_t i = 0; i < FACE_TEXTURE_COUNT; ++i)
-        {
-            imageInfos[i] = vk::DescriptorImageInfo(
-                m_faceTextures[i].sampler(),
-                m_faceTextures[i].image().imageView(),
-                vk::ImageLayout::eShaderReadOnlyOptimal);
-        }
+        vk::DescriptorImageInfo imageInfo(
+            m_cubemap.sampler,
+            m_cubemap.image.imageView(),
+            vk::ImageLayout::eShaderReadOnlyOptimal);
         vk::WriteDescriptorSet writeDescriptorSet(
             m_descriptorSet,
             0,
             0,
-            FACE_TEXTURE_COUNT,
             vk::DescriptorType::eCombinedImageSampler,
-            imageInfos.data());
+            imageInfo);
         m_device.updateDescriptorSets(writeDescriptorSet, nullptr);
 
         createPipeline();
@@ -413,7 +447,7 @@ private:
     spock::BufferWrapper m_vertexBuffer;
     spock::BufferWrapper m_indexBuffer;
     uint32_t m_indexCount{0};
-    std::array<spock::TextureWrapper, FACE_TEXTURE_COUNT> m_faceTextures;
+    Cubemap m_cubemap;
 
     glm::mat4x4 m_viewProjClip{};
 };

@@ -161,16 +161,19 @@ namespace spock
         vk::ImageUsageFlags usage,
         vk::ImageLayout initialLayout,
         vk::MemoryPropertyFlags memoryProperties,
-        vk::ImageAspectFlags aspectMask)
+        vk::ImageAspectFlags aspectMask,
+        uint32_t arrayLayers,
+        vk::ImageCreateFlags createFlags,
+        vk::ImageViewType viewType)
         : m_format(format)
         , m_image(
             device,
-            {vk::ImageCreateFlags(),
+            {createFlags,
             vk::ImageType::e2D,
             format,
             vk::Extent3D(extent, 1),
             1,
-            1,
+            arrayLayers,
             vk::SampleCountFlagBits::e1,
             tiling,
             usage | vk::ImageUsageFlagBits::eSampled,
@@ -186,7 +189,7 @@ namespace spock
         m_image.bindMemory(m_deviceMemory, 0);
         m_imageView = vk::raii::ImageView(
             device,
-            vk::ImageViewCreateInfo({}, m_image, vk::ImageViewType::e2D, format, {}, {aspectMask, 0, 1, 0, 1}));
+            vk::ImageViewCreateInfo({}, m_image, viewType, format, {}, {aspectMask, 0, 1, 0, arrayLayers}));
     }
 
     ImageWrapper::ImageWrapper(ImageWrapper &&other) noexcept
@@ -261,9 +264,9 @@ namespace spock
             vk::Filter::eLinear,
             vk::Filter::eLinear,
             vk::SamplerMipmapMode::eLinear,
-            vk::SamplerAddressMode::eClampToEdge,
-            vk::SamplerAddressMode::eClampToEdge,
-            vk::SamplerAddressMode::eClampToEdge,
+            vk::SamplerAddressMode::eRepeat,
+            vk::SamplerAddressMode::eRepeat,
+            vk::SamplerAddressMode::eRepeat,
             0.0f,
             anisotropyEnable,
             16.0f,

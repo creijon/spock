@@ -18,13 +18,14 @@ namespace spock
         uint32_t minImageCount,
         uint32_t maxImageCount);
 
-    // Record an image layout transition barrier for a single image.
+    // Record an image layout transition barrier for a single image, covering its first layerCount array layers.
     void setImageLayout(
         vk::CommandBuffer const &commandBuffer,
         vk::Image image,
         vk::Format format,
         vk::ImageLayout oldImageLayout,
-        vk::ImageLayout newImageLayout);
+        vk::ImageLayout newImageLayout,
+        uint32_t layerCount = 1);
 
     vk::raii::DeviceMemory allocateDeviceMemory(
         vk::raii::Device const &device,
