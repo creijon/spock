@@ -41,16 +41,18 @@ namespace spock
 
         friend class Loader;
 
+        // This could go into a separate "context" class.  Then that's what the loader and wrappers use.
         vk::raii::PhysicalDevice m_physicalDevice{nullptr};
+        vk::raii::SurfaceKHR m_windowSurface{nullptr};
         vk::raii::Device m_device{nullptr};
         vk::raii::CommandPool m_commandPool{nullptr};
-        RenderPass m_renderPass;
         Queues m_queues;
+
+        RenderPass m_renderPass;
 
         // Per-frame resources used for double buffering.
         std::vector<vk::raii::CommandBuffer> m_commandBuffers;
 
-        vk::raii::SurfaceKHR m_windowSurface{nullptr};
         vk::Extent2D m_extents;
 
         std::unique_ptr<Presenter> m_presenter{nullptr};
