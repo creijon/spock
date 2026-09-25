@@ -50,47 +50,47 @@ static const glm::vec3 zNeg{ 0.0f,  0.0f, -1.0f};
 static const CubeVertex CUBE_VERTEX_DATA[] =
 {
     // +Z face
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, zPos},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, zPos},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, zPos},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, zPos},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, zPos},
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, zPos},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, zPos},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, zPos},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, zPos},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, zPos},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, zPos},
+    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, zPos},
     // -Z face
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, zNeg},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, zNeg},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, zNeg},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, zNeg},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, zNeg},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, zNeg},
+    {{-1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, zNeg},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, zNeg},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, zNeg},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, zNeg},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, zNeg},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, zNeg},
     // -X face
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, xNeg},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, xNeg},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, xNeg},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, xNeg},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, xNeg},
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, xNeg},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, xNeg},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, xNeg},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, xNeg},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, xNeg},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, xNeg},
+    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, xNeg},
     // +X face
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, xPos},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, xPos},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, xPos},
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, xPos},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, xPos},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, xPos},
+    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, xPos},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, xPos},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, xPos},
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, xPos},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, xPos},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, xPos},
     // +Y face
-    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, yPos},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, yPos},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, yPos},
-    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, yPos},
-    {{-1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, yPos},
-    {{-1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, yPos},
+    {{ 1.0f,  1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, yPos},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, yPos},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, yPos},
+    {{ 1.0f,  1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, yPos},
+    {{-1.0f,  1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, yPos},
+    {{-1.0f,  1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, yPos},
     // -Y face
-    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 1.0f}, yNeg},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, yNeg},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, yNeg},
-    {{-1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 1.0f}, yNeg},
-    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 0.0f}, yNeg},
-    {{-1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 0.0f}, yNeg}
+    {{ 1.0f, -1.0f,  1.0f, 1.0f}, {1.0f, 0.0f}, yNeg},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, yNeg},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, yNeg},
+    {{-1.0f, -1.0f,  1.0f, 1.0f}, {0.0f, 0.0f}, yNeg},
+    {{ 1.0f, -1.0f, -1.0f, 1.0f}, {1.0f, 1.0f}, yNeg},
+    {{-1.0f, -1.0f, -1.0f, 1.0f}, {0.0f, 1.0f}, yNeg}
 };
 
 static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
@@ -139,7 +139,7 @@ layout (location = 0) out vec4 outColor;
 
 void main()
 {
-  vec3 lightDir = normalize(vec3(1.0, -1.0, 0.5));
+  vec3 lightDir = normalize(vec3(1.0, 1.0, 0.5));
   vec3 lightDif = vec3(1.0);
   vec3 lightAmb = vec3(0.2);
   vec3 litColor = lightAmb + lightDif * max(dot(normalize(normal), lightDir), 0.0);
@@ -285,10 +285,10 @@ protected:
 
         // Update the push constants.
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
-        static const glm::vec3 up(0.0f, -1.0f, 0.0f);
+        static const glm::vec3 up(0.0f, 1.0f, 0.0f);
         static const glm::mat4x4 model(1.0f);
         static const glm::mat4x4 invTransModel = glm::transpose(glm::inverse(model));
-        glm::mat4x4 modelViewProj = spock::viewProjClipMatrix(m_extents, m_view, target, up);
+        glm::mat4x4 modelViewProj = spock::viewProjMatrix(m_extents, m_view, target, up);
         PushConstants pushConstants{modelViewProj, invTransModel};
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
 
@@ -338,7 +338,7 @@ protected:
         TexturedCubeRenderer* renderer = static_cast<TexturedCubeRenderer*>(m_renderer.get());
 
         const float radius = 5.0f;
-        renderer->setView(glm::vec3(sinf(angle) * radius, -3.0f, cosf(angle) * radius));
+        renderer->setView(glm::vec3(sinf(angle) * radius, 3.0f, cosf(angle) * radius));
     }
 };
 

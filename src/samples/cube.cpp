@@ -203,8 +203,8 @@ protected:
 
         // Update the push constants.
         static const glm::vec3 target(0.0f, 0.0f, 0.0f);
-        static const glm::vec3 up(0.0f, -1.0f, 0.0f);
-        PushConstants pushConstants{spock::viewProjClipMatrix(m_extents, m_view, target, up)};
+        static const glm::vec3 up(0.0f, 1.0f, 0.0f);
+        PushConstants pushConstants{spock::viewProjMatrix(m_extents, m_view, target, up)};
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
         
         // Draw all the scene, but for this example it's just a single cube.
@@ -248,7 +248,7 @@ protected:
         CubeRenderer* renderer = static_cast<CubeRenderer*>(m_renderer.get());
 
         const float radius = 5.0f;
-        renderer->setView(glm::vec3(sinf(angle) * radius, -3.0f, cosf(angle) * radius));
+        renderer->setView(glm::vec3(sinf(angle) * radius, 3.0f, cosf(angle) * radius));
     }
 };
 

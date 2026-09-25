@@ -185,8 +185,8 @@ protected:
             std::sin(cameraAngle) * CAMERA_DISTANCE,
             CAMERA_HEIGHT,
             std::cos(cameraAngle) * CAMERA_DISTANCE);
-        glm::mat4x4 viewProjection = spock::viewProjClipMatrix(
-            m_extents, eye, glm::vec3(0.0f), glm::vec3(0.0f, -1.0f, 0.0f));
+        glm::mat4x4 viewProjection = spock::viewProjMatrix(
+            m_extents, eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
         m_debugLines.draw(commandBuffer, viewProjection);
     }

@@ -63,24 +63,18 @@ namespace spock
             ? static_cast<float>(extent.width) / static_cast<float>(extent.height)
             : 1.0f;
 
-        return glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
+        glm::mat4x4 projection = glm::perspective(glm::radians(m_fov), aspect, m_zNear, m_zFar);
+        projection[1][1] *= -1.0f;
+
+        return projection;
     }
 
-    glm::mat4x4 OrbitCamera::viewProjClipMatrix(vk::Extent2D const &extent) const
+    glm::mat4x4 OrbitCamera::viewProjMatrix(vk::Extent2D const &extent) const
     {
-        // clang-format off
-        // Vulkan clip space has inverted y and half z.
-        static constexpr glm::mat4x4 clip{
-            1.0f,  0.0f, 0.0f, 0.0f,
-            0.0f, -1.0f, 0.0f, 0.0f,
-            0.0f,  0.0f, 0.5f, 0.0f,
-            0.0f,  0.0f, 0.5f, 1.0f};
-        // clang-format on 
-
-        return clip * projection(extent) * view();
+        return projection(extent) * view();
     }
 
-    glm::mat4x4 viewProjClipMatrix(
+    glm::mat4x4 viewProjMatrix(
         vk::Extent2D const &extent,
         glm::vec3 const &eye,
         glm::vec3 const &center,
@@ -95,16 +89,8 @@ namespace spock
 
         glm::mat4x4 view = glm::lookAt(eye, center, up);
         glm::mat4x4 projection = glm::perspective(glm::radians(fov), aspect, zNear, zFar);
+        projection[1][1] *= -1.0f;
 
-        // clang-format off
-        // Vulkan clip space has inverted y and half z.
-        static constexpr glm::mat4x4 clip{
-            1.0f,  0.0f, 0.0f, 0.0f,
-            0.0f, -1.0f, 0.0f, 0.0f,
-            0.0f,  0.0f, 0.5f, 0.0f,
-            0.0f,  0.0f, 0.5f, 1.0f};
-        // clang-format on 
-
-        return clip * projection * view;
+        return projection * view;
     }
 } // namespace spock

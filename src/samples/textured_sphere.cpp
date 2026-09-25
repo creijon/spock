@@ -67,12 +67,12 @@ struct CubeFace
 };
 
 static const CubeFace CUBE_FACES[] = {
-    {zPos, xPos, yPos},
-    {zNeg, yPos, xPos},
-    {xPos, yPos, zPos},
-    {xNeg, zPos, yPos},
-    {yPos, zPos, xPos},
-    {yNeg, xPos, zPos},
+    {zPos, xPos, yNeg},
+    {zNeg, xNeg, yNeg},
+    {xPos, zNeg, yNeg},
+    {xNeg, zPos, yNeg},
+    {yPos, xNeg, zNeg},
+    {yNeg, xNeg, zPos},
 };
 
 static constexpr uint32_t SPHERE_SUBDIVISIONS{24};
@@ -104,7 +104,7 @@ static void generateSphereMesh(
                 glm::vec3 cubePos = face.normal + face.axisU * (u * 2.0f - 1.0f) + face.axisV * (v * 2.0f - 1.0f);
                 glm::vec3 spherePos = glm::normalize(cubePos);
 
-                vertices.push_back(SphereVertex{glm::vec4(spherePos, 1.0f), glm::vec2(1.0f - u, v), spherePos, faceIndex});
+                vertices.push_back(SphereVertex{glm::vec4(spherePos, 1.0f), glm::vec2(u, v), spherePos, faceIndex});
             }
         }
 
@@ -123,12 +123,12 @@ static void generateSphereMesh(
                 uint32_t d = vertexIndex(row + 1, col + 1);
 
                 indices.push_back(a);
-                indices.push_back(b);
                 indices.push_back(c);
+                indices.push_back(b);
 
-                indices.push_back(c);
-                indices.push_back(b);
                 indices.push_back(d);
+                indices.push_back(b);
+                indices.push_back(c);
             }
         }
     }
@@ -138,7 +138,7 @@ static constexpr uint32_t FACE_TEXTURE_COUNT{6};
 
 // One texture per cube face, in the same order as CUBE_FACES (zPos, zNeg, xPos, xNeg, yPos, yNeg).
 static const std::array<std::string, FACE_TEXTURE_COUNT> FACE_TEXTURE_FILENAMES{
-    "posz.png", "negz.png", "posx.png", "negx.png", "posy.png", "negy.png"
+    "zpos.png", "zneg.png", "xpos.png", "xneg.png", "ypos.png", "yneg.png"
 };
 
 static const std::string VERTEX_SHADER_SOURCE = R"(
@@ -187,11 +187,12 @@ layout (location = 0) out vec4 outColor;
 
 void main()
 {
-  vec3 lightDir = normalize(vec3(1.0, -1.0, 0.5));
+  vec3 lightDir = normalize(vec3(1.0, 1.0, 0.5));
   vec3 lightDif = vec3(1.0);
   vec3 lightAmb = vec3(0.2);
   vec3 litColor = lightAmb + lightDif * max(dot(normalize(normal), lightDir), 0.0);
-  outColor = vec4(texture(texSamplers[nonuniformEXT(faceIndex)], uv).rgb * litColor, 1.0);
+  vec3 tex = texture(texSamplers[nonuniformEXT(faceIndex)], uv).rgb;
+  outColor = vec4(tex * litColor, 1.0);
 }
 )";
 
@@ -345,9 +346,9 @@ public:
         createPipeline();
     }
 
-    void setTransform(glm::mat4x4 const &transform)
+    void update(glm::mat4x4 const& viewProjClip)
     {
-        m_world = transform;
+        m_viewProjClip = viewProjClip;
     }
 
 protected:
@@ -393,12 +394,8 @@ protected:
         commandBuffer.bindIndexBuffer(m_indexBuffer.buffer(), 0, vk::IndexType::eUint32);
 
         // Update the push constants.
-        static const glm::vec3 target(0.0f, 0.0f, 0.0f);
-        static const glm::vec3 view(-4.0f, 0.0f, 4.0f);
-        static const glm::vec3 up(0.0f, -1.0f, 0.0f);
-        static const glm::mat4x4 invTransModel = glm::transpose(glm::inverse(m_world));
-        glm::mat4x4 modelViewProj = spock::viewProjClipMatrix(m_extents, view, target, up) * m_world;
-        PushConstants pushConstants{modelViewProj, invTransModel};
+        static const glm::mat4x4 invTransModel{ 1.0f };
+        PushConstants pushConstants{ m_viewProjClip, invTransModel};
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
 
         // Draw all the scene, but for this example it's just a single sphere.
@@ -418,7 +415,7 @@ private:
     uint32_t m_indexCount{0};
     std::array<spock::TextureWrapper, FACE_TEXTURE_COUNT> m_faceTextures;
 
-    glm::mat4x4 m_world{};
+    glm::mat4x4 m_viewProjClip{};
 };
 
 class TexturedSphereApp : public spock::App
@@ -443,18 +440,22 @@ protected:
 
     void update() override
     {
-        using Seconds = std::chrono::duration<double>;
-        double angle = std::chrono::duration_cast<Seconds>(m_time).count();
-
         TexturedSphereRenderer* renderer = static_cast<TexturedSphereRenderer*>(m_renderer.get());
 
-        const float radius = 5.0f;
-        glm::mat4x4 world{ 1.0f };
-
-        world = glm::rotate(world, float(angle), glm::vec3(0.0f, 1.0f, 0.0f));
-
-        renderer->setTransform(world);
+        vk::Offset2D cursor = m_window.cursorPosition();
+        if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
+        {
+            static const float sensitivity = 0.005f;
+            m_camera.update(glm::vec2(
+                static_cast<float>(m_previousCursor.x - cursor.x) * sensitivity,
+                static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
+        }
+        m_previousCursor = cursor;
+        renderer->update(m_camera.viewProjMatrix(m_window.extents()));
     }
+
+    vk::Offset2D m_previousCursor{};
+    spock::OrbitCamera m_camera{ glm::vec3(0.0f), 5.0f, 5.0f };
 };
 
 int main()

@@ -13,6 +13,7 @@
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
+#include "spock/file_watcher.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
@@ -83,6 +84,9 @@ static const std::array<std::string, 4> SPLAT_FILES = {
 
 static const std::string SPLAT_PATH = std::string(SPOCK_DIR) + "/assets/splats/";
 
+// Splat scenes use the OpenCV convention (+Y down, +Z forward), rotate 180 degrees about X to get to our Y-up world.
+static const glm::mat4 SPLAT_TO_WORLD = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, -1.0f));
+
 class SplatRenderer : public spock::Renderer
 {
 public:
@@ -107,9 +111,9 @@ public:
         PerFrameData& frameData = m_frameData[(m_frameCount + 1) % m_framesInFlight];
 
         FrameConstants frameConstants{
-            camera.view(),
+            camera.view() * SPLAT_TO_WORLD,
             camera.projection(viewExtents),
-            glm::vec4(camera.position(), 1.0f),
+            SPLAT_TO_WORLD * glm::vec4(camera.position(), 1.0f), // Camera position in splat space (the transform is its own inverse).
             glm::vec4(viewExtents.width, viewExtents.height, 0.0f, 0.0f)
         };
 
@@ -129,7 +133,7 @@ public:
                 m_sorting[i].index = i;
             }
 
-            // Sort the splats, back to front.
+            // Sort the splats, back to front.  All view-space Z values are negative, so lowest is furthest away.
             // Uses parallel execution policy to speed up sorting on large splat counts.
 #if defined(__APPLE__)
             using namespace oneapi::dpl;
@@ -213,34 +217,30 @@ public:
     void createPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
         glslang::InitializeProcess();
-        vk::raii::ShaderModule vertexShader{ nullptr };
-        vk::raii::ShaderModule fragmentShader{ nullptr };
         try
         {
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
-                vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
-                fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
         }
         catch (std::exception const& e)
         {
             spock::writeLog(std::string(e.what()));
-            glslang::FinalizeProcess();
-            throw;
         }
         glslang::FinalizeProcess();
 
-        if (vertexShader != nullptr && fragmentShader != nullptr)
+        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
         {
             const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
             std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
             };
 
             spock::VertexFormat vertexFormat;
@@ -312,6 +312,9 @@ private:
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
 
+    vk::raii::ShaderModule m_vertexShader{ nullptr };
+    vk::raii::ShaderModule m_fragmentShader{ nullptr };
+
     // Dynamic data
     struct PerFrameData
     {
@@ -352,7 +355,7 @@ protected:
         loadScene();
         renderer->createResources(m_scene);
 
-        m_camera.setFocus(m_sceneBounds);
+        m_camera.setFocus(glm::vec3(SPLAT_TO_WORLD * glm::vec4(glm::vec3(m_sceneBounds), 1.0f)));
         m_camera.setDistanceRange(m_sceneBounds.w * 1.5f, m_sceneBounds.w * 5.0f);
         m_camera.setDistance(m_sceneBounds.w * 4.0f);
 
@@ -384,6 +387,8 @@ protected:
             cameraMoved = true;
         }
 
+        m_watcher.notifyRenderer(renderer);
+
         renderer->update(m_scene, m_camera, cameraMoved, m_window.extents());
         m_previousCursor = cursor;
     }
@@ -405,12 +410,49 @@ private:
         m_sceneBounds = m_scene.computeBounds();
     }
 
+    class Watcher : public spock::FileWatcher
+    {
+    public:
+        Watcher() : spock::FileWatcher(SHADER_PATH)
+        {}
+
+        void fileModified(std::string const& filename) override
+        {
+            std::unique_lock lock(mutex);
+            if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+            if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
+        }
+
+        void notifyRenderer(SplatRenderer* renderer)
+        {
+            vk::ShaderStageFlags temp;
+            {
+                // Take the lock for the minimum amount of time to avoid blocking the file watcher thread.
+                std::unique_lock lock(mutex);
+                temp = modifiedShaders;
+                modifiedShaders = vk::ShaderStageFlags(0);
+            }
+            if (temp)
+            {
+                // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
+                renderer->waitIdle();
+                renderer->createPipeline(temp);
+            }
+        }
+
+    private:
+        vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
+        std::mutex mutex;
+    };
+
     SplatScene m_scene;
     glm::vec4 m_sceneBounds{};
-    uint32_t m_sceneIndex{ 2 };
+    uint32_t m_sceneIndex{ 1 };
 
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f, 45.0f, 0.01f, 100.0f};
+
+    Watcher m_watcher;
 };
 
 int main(int argc, char** argv)

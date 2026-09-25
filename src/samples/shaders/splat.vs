@@ -173,7 +173,7 @@ void main()
 
     outCoord = inVertPos;
 
-    if (centreClip.w <= 0.0 || centreView.z >= -0.001 ||
+    if (centreClip.w <= 0.0 || centreView.z >= 0.0 ||
         fc.viewport.x <= 0.0 || fc.viewport.y <= 0.0)
     {
         gl_Position = vec4(2.0, 2.0, 2.0, 1.0);

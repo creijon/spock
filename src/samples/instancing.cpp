@@ -303,9 +303,6 @@ protected:
 
     void update() override
     {
-        using Seconds = std::chrono::duration<double>;
-        double angle = std::chrono::duration_cast<Seconds>(m_time).count();
-
         InstancingRenderer* renderer = static_cast<InstancingRenderer*>(m_renderer.get());
 
         vk::Offset2D cursor = m_window.cursorPosition();

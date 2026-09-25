@@ -23,7 +23,7 @@ namespace spock
         glm::vec3 position() const;
         glm::mat4x4 view() const;
         glm::mat4x4 projection(vk::Extent2D const &extent) const;
-        glm::mat4x4 viewProjClipMatrix(vk::Extent2D const &extent) const;
+        glm::mat4x4 viewProjMatrix(vk::Extent2D const &extent) const;
 
         glm::vec3 const &focus() const
         {
@@ -64,7 +64,7 @@ namespace spock
         float m_pitch = 0.0f;
     };
 
-    glm::mat4x4 viewProjClipMatrix(
+    glm::mat4x4 viewProjMatrix(
         vk::Extent2D const &extent,
         glm::vec3 const &eye,
         glm::vec3 const &center,
