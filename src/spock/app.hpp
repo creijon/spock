@@ -16,6 +16,7 @@ using namespace std::chrono_literals;
 
 namespace spock
 {
+    class Foundry;
     class Renderer;
 
     class App
@@ -32,10 +33,8 @@ namespace spock
         void run();
 
     protected:
-        virtual std::unique_ptr<spock::Renderer> createRenderer(
-            vk::raii::Instance const& instance,
-            vk::raii::SurfaceKHR windowSurface,
-            vk::Extent2D const& extents) = 0;
+        virtual std::shared_ptr<Foundry> createFoundry() const;
+        virtual std::unique_ptr<Renderer> createRenderer() = 0;
 
         // Called once per frame before rendering.
         virtual void update() = 0;
@@ -44,7 +43,7 @@ namespace spock
         vk::raii::Instance m_instance{nullptr};
 
         Window m_window;
-
+        std::shared_ptr<Foundry> m_foundry;
         std::unique_ptr<Renderer> m_renderer;
 
         std::chrono::microseconds m_time{};

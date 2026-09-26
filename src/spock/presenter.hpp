@@ -27,15 +27,6 @@ namespace spock
         Presenter(Presenter && other) noexcept;
         Presenter const& operator=(Presenter && other);
 
-        void initialise(
-            vk::raii::PhysicalDevice const &physicalDevice,
-            vk::raii::Device const &device,
-            vk::raii::SurfaceKHR const &surface,
-            vk::Extent2D const &extent,
-            vk::ImageUsageFlags usage,
-            Queues const &queues,
-            uint32_t framesInFlight);
-
         std::vector<vk::raii::ImageView> const& imageViews() const
         {
             return m_imageViews;
@@ -61,11 +52,10 @@ namespace spock
         vk::Result presentFrame(uint32_t frameIndex);
 
     private:
-        vk::Format m_colorFormat;
-    
         vk::raii::SwapchainKHR m_swapchain{nullptr};
         vk::raii::Queue m_graphicsQueue{nullptr};
         vk::raii::Queue m_presentQueue{nullptr};
+        vk::Format m_colorFormat;
     
         std::vector<vk::Image> m_images;
         std::vector<vk::raii::ImageView> m_imageViews;

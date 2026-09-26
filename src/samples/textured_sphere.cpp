@@ -2,12 +2,8 @@
 // SPDX-License-Identifier: MIT
 
 // This sample extends the textured cube sample by generating a sphere instead: each face of a
-// cube is subdivided into a grid, and every vertex position is normalized onto the unit sphere
-// (a "cubed sphere"). The resulting per-vertex normal is just the normalized position, giving a
-// smoothly shaded sphere. The mesh is drawn with an index buffer since the subdivided grid shares
-// vertices between adjacent triangles within each face. The sphere is textured with a cubemap
-// built from six face images, sampled in the fragment shader using the object-space normal as the
-// lookup direction, so no texture coordinates or face indices are needed per vertex.
+// cube is subdivided into a grid and the vertices normalised.
+// A cubemap is projected onto the surface using the normals.
 
 #include "spock/app.hpp"
 #include "spock/camera.hpp"
@@ -203,12 +199,10 @@ class TexturedSphereRenderer : public spock::Renderer
 {
 public:
     TexturedSphereRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
+        std::shared_ptr<const spock::Foundry> const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
-            instance,
-            std::move(windowSurface),
+            foundry,
             extents,
             {0.0f, 0.0f, 0.0f, 1.0},
             {1.0f, 0},
@@ -221,26 +215,24 @@ public:
         m_indexCount = static_cast<uint32_t>(indices.size());
 
         m_vertexBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
+            foundry,
             vertices.size() * sizeof(SphereVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), vertices.data(), vertices.size());
 
         m_indexBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
+            foundry,
             indices.size() * sizeof(uint32_t),
             vk::BufferUsageFlagBits::eIndexBuffer);
         spock::copyToDevice(m_indexBuffer.deviceMemory(), indices.data(), indices.size());
 
         m_cubemap = spock::Loader::cubemap(
-            *this,
+            foundry,
             m_presenter->graphicsQueue(),
             CUBEMAP_FACES);
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
-            m_device,
+            foundry->device(),
             vk::ShaderStageFlagBits::eFragment,
             {vk::DescriptorType::eCombinedImageSampler});
 
@@ -249,12 +241,12 @@ public:
             0,
             sizeof(PushConstants)};
 
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, *m_descriptorSetLayout, pushConstantRange }));
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(foundry->device(), { {}, *m_descriptorSetLayout, pushConstantRange }));
 
         m_descriptorPool = spock::createDescriptorPool(
-            m_device,
+            foundry->device(),
             { {vk::DescriptorType::eCombinedImageSampler, 1} });
-        m_descriptorSet = std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front());
+        m_descriptorSet = std::move(vk::raii::DescriptorSets(foundry->device(), { m_descriptorPool, *m_descriptorSetLayout }).front());
 
         vk::DescriptorImageInfo imageInfo(
             m_cubemap.sampler,
@@ -266,9 +258,9 @@ public:
             0,
             vk::DescriptorType::eCombinedImageSampler,
             imageInfo);
-        m_device.updateDescriptorSets(writeDescriptorSet, nullptr);
+        foundry->device().updateDescriptorSets(writeDescriptorSet, nullptr);
 
-        createPipeline();
+        createPipeline(foundry->device());
     }
 
     void update(glm::mat4x4 const& viewProjClip)
@@ -277,7 +269,7 @@ public:
     }
 
 protected:
-    void createPipeline()
+    void createPipeline(vk::raii::Device const& device)
     {
         // Create the shaders.
         glslang::InitializeProcess();
@@ -285,8 +277,8 @@ protected:
         vk::raii::ShaderModule fragmentShader{nullptr};
         try
         {
-            vertexShader = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-            fragmentShader = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+            vertexShader = spock::compileShader(device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
+            fragmentShader = spock::compileShader(device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
         }
         catch (...)
         {
@@ -303,7 +295,7 @@ protected:
 
         // Finally create the graphics pipeline.
         m_graphicsPipeline = spock::createGraphicsPipeline(
-            m_device,
+            device,
             shaderStagesInfo,
             m_pipelineLayout,
             m_renderPass.renderPass(),
@@ -357,12 +349,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
-        vk::Extent2D const& extents) override
+    std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<TexturedSphereRenderer>(instance, std::move(windowSurface), extents);
+        return std::make_unique<TexturedSphereRenderer>(m_foundry, m_window.extents());
     }
 
     void update() override

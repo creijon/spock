@@ -4,6 +4,7 @@
 #include "debug_lines.hpp"
 
 #include "creators.hpp"
+#include "foundry.hpp"
 #include "shaders.hpp"
 
 #include <glslang/Public/ShaderLang.h>
@@ -58,13 +59,11 @@ void main()
     }
 
     DebugLines::DebugLines(
-        vk::raii::PhysicalDevice const& physicalDevice,
-        vk::raii::Device const& device,
+        std::shared_ptr<const Foundry> const &foundry,
         vk::raii::RenderPass const& renderPass,
         size_t maxLineCount)
         : m_vertexBuffer(
-            physicalDevice,
-            device,
+            foundry,
             maxLineCount * 2 * sizeof(Vertex),
             vk::BufferUsageFlagBits::eVertexBuffer)
     {
@@ -75,7 +74,7 @@ void main()
             0,
             sizeof(PushConstants)};
         m_pipelineLayout = vk::raii::PipelineLayout(
-            device,
+            foundry->device(),
             vk::PipelineLayoutCreateInfo({}, {}, pushConstantRange));
 
         glslang::InitializeProcess();
@@ -84,9 +83,9 @@ void main()
         try
         {
             vertexShader = compileShader(
-                device, vk::ShaderStageFlagBits::eVertex, vertexShaderSource);
+                foundry->device(), vk::ShaderStageFlagBits::eVertex, vertexShaderSource);
             fragmentShader = compileShader(
-                device, vk::ShaderStageFlagBits::eFragment, fragmentShaderSource);
+                foundry->device(), vk::ShaderStageFlagBits::eFragment, fragmentShaderSource);
         }
         catch (...)
         {
@@ -100,7 +99,7 @@ void main()
             {{}, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"}};
 
         m_pipeline = createGraphicsPipeline(
-            device,
+            foundry->device(),
             shaderStages,
             m_pipelineLayout,
             renderPass,

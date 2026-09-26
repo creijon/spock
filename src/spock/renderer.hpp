@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "foundry.hpp"
 #include "presenter.hpp"
 #include "queues.hpp"
 #include "render_pass.hpp"
@@ -17,18 +18,17 @@ using namespace std::chrono_literals;
 
 namespace spock
 {
+    class Foundry;
+
     class Renderer
     {
     public:
         Renderer(
-            vk::raii::Instance const &instance,
-            vk::raii::SurfaceKHR windowSurface,
+            std::shared_ptr<const Foundry> const &foundry,
             vk::Extent2D const &extents,
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,
-            bool useDepthBuffer = true,
-            std::vector<std::string> const &extensions = {},
-            void const *features = nullptr);
+            bool useDepthBuffer = true);
 
         virtual ~Renderer();
 
@@ -41,13 +41,7 @@ namespace spock
 
         friend class Loader;
 
-        // This could go into a separate "context" class.  Then that's what the loader and wrappers use.
-        vk::raii::PhysicalDevice m_physicalDevice{nullptr};
-        vk::raii::SurfaceKHR m_windowSurface{nullptr};
-        vk::raii::Device m_device{nullptr};
-        vk::raii::CommandPool m_commandPool{nullptr};
-        Queues m_queues;
-
+        std::shared_ptr<const Foundry> m_foundry;
         RenderPass m_renderPass;
 
         // Per-frame resources used for double buffering.

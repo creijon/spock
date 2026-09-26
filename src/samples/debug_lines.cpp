@@ -133,16 +133,14 @@ class DebugLinesRenderer : public spock::Renderer
 {
 public:
     DebugLinesRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
+        std::shared_ptr<const spock::Foundry> const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
-            instance,
-            std::move(windowSurface),
+            foundry,
             extents,
             {0.02f, 0.02f, 0.05f, 1.0f},
             {1.0f, 0})
-        , m_debugLines(m_physicalDevice, m_device, m_renderPass.renderPass())
+        , m_debugLines(foundry, m_renderPass.renderPass())
         , m_cubes(makeOrbitingCubes(CUBE_COUNT))
         , m_sphereLines(makeSphereLines(ORBIT_RADIUS, SPHERE_SEGMENTS))
     {
@@ -206,12 +204,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
-        vk::Extent2D const& extents) override
+    std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<DebugLinesRenderer>(instance, std::move(windowSurface), extents);
+        return std::make_unique<DebugLinesRenderer>(m_foundry, m_window.extents());
     }
 
     void update() override

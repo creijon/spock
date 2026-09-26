@@ -10,8 +10,7 @@
 namespace spock
 {
     RenderPass::RenderPass(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        vk::raii::Device const &device,
+        std::shared_ptr<const Foundry> const& foundry,
         std::vector<vk::raii::ImageView> const& imageViews,
         vk::Format colorFormat,
         vk::Extent2D const &extent,
@@ -23,10 +22,10 @@ namespace spock
     {
         if (useDepthBuffer)
         {
-            m_depthBuffer = DepthBufferWrapper(physicalDevice, device, vk::Format::eD16Unorm, extent);
-            m_renderPass = createRenderPass(device, colorFormat, m_depthBuffer.format());
+            m_depthBuffer = DepthBufferWrapper(foundry, vk::Format::eD16Unorm, extent);
+            m_renderPass = createRenderPass(foundry->device(), colorFormat, m_depthBuffer.format());
             m_frameBuffers = createFramebuffers(
-                device,
+                foundry->device(),
                 m_renderPass,
                 imageViews,
                 &m_depthBuffer.imageView(),
@@ -34,9 +33,9 @@ namespace spock
         }
         else
         {
-            m_renderPass = createRenderPass(device, colorFormat, vk::Format::eUndefined);
+            m_renderPass = createRenderPass(foundry->device(), colorFormat, vk::Format::eUndefined);
             m_frameBuffers = createFramebuffers(
-                device,
+                foundry->device(),
                 m_renderPass,
                 imageViews,
                 nullptr,

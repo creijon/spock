@@ -10,64 +10,25 @@
 #include <iostream>
 #include <utility>
 
-#if defined(__APPLE__)
-#include <vulkan/vulkan_beta.h>
-#endif
-
-namespace
-{
-    std::vector<std::string> deviceExtensions(std::vector<std::string> const& extensions)
-    {
-        std::vector<std::string> defaultExtensions{
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-#if defined(__APPLE__)
-            VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
-#endif
-        };
-
-        defaultExtensions.insert(defaultExtensions.end(), extensions.begin(), extensions.end());
-
-        return defaultExtensions;
-    }
-}
-
 namespace spock
 {
     Renderer::Renderer(
-        vk::raii::Instance const &instance,
-        vk::raii::SurfaceKHR windowSurface,
+        std::shared_ptr<const Foundry> const &foundry,
         vk::Extent2D const &extents,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
-        bool useDepthBuffer,
-        std::vector<std::string> const &extensions,
-        void const *features)
-        : m_physicalDevice(vk::raii::PhysicalDevices(instance).front())
-        , m_windowSurface(std::move(windowSurface))
+        bool useDepthBuffer)
+        : m_foundry(foundry)
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
     {
-        m_queues = Queues(m_physicalDevice, m_windowSurface);
-        m_device = createDevice(
-            m_physicalDevice, 
-            m_queues,
-            deviceExtensions(extensions),
-            nullptr,
-            features);
-
-        vk::CommandPoolCreateInfo poolInfo{
-            vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
-            vk::CommandPoolCreateFlagBits::eTransient,
-            m_queues.graphicsFamily()};
-        m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
-
         resizeWindow(extents);
     }
 
     Renderer::~Renderer()
     {
-        m_device.waitIdle();
+        waitIdle();
     }
 
     void Renderer::resizeWindow(vk::Extent2D const &extents)
@@ -82,17 +43,16 @@ namespace spock
         m_presenter.reset();
 
         m_presenter = std::make_unique<Presenter>(
-            m_physicalDevice,
-            m_device,
-            m_windowSurface,
-            m_extents,
+            m_foundry->physicalDevice(),
+            m_foundry->device(),
+            m_foundry->windowSurface(),
+            extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-            m_queues,
+            m_foundry->queues(),
             m_framesInFlight);
 
         m_renderPass = RenderPass(
-            m_physicalDevice,
-            m_device,
+            m_foundry,
             m_presenter->imageViews(),
             m_presenter->colorFormat(),
             m_extents,
@@ -104,18 +64,18 @@ namespace spock
 
         for (size_t i = 0; i < m_framesInFlight; i++)
         {
-            m_commandBuffers.emplace_back(createCommandBuffer(m_device, m_commandPool));
+            m_commandBuffers.emplace_back(createCommandBuffer(m_foundry->device(), m_foundry->commandPool()));
         }
     }
 
     void Renderer::waitIdle() const
     {
-        m_device.waitIdle();
+        m_foundry->waitIdle();
     }
 
     vk::Result Renderer::renderFrame(std::chrono::microseconds time)
     {
-        vk::Result acquireResult = m_presenter->acquireFrame(m_device, m_inFlightIndex);
+        vk::Result acquireResult = m_presenter->acquireFrame(m_foundry->device(), m_inFlightIndex);
 
         // If frame acquisition failed, skip rendering and present this frame.
         // The semaphore was not signaled by the swapchain, so we cannot wait on it.

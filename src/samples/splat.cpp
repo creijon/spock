@@ -91,18 +91,14 @@ class SplatRenderer : public spock::Renderer
 {
 public:
     SplatRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
+        std::shared_ptr<const spock::Foundry> const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
-            instance,
-            std::move(windowSurface),
+            foundry,
             extents,
             {0.05f, 0.08f, 0.15f, 1.0f},
             {1.0f, 0},
-            false,
-            extensions(),
-            features())
+            false)
     {
     }
 
@@ -153,33 +149,32 @@ public:
         m_splatCount = uint32_t(scene.instances.size());
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
-            m_device,
+            m_foundry->device(),
             vk::ShaderStageFlagBits::eVertex,
             {vk::DescriptorType::eUniformBuffer, vk::DescriptorType::eStorageBuffer});
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, { {}, *m_descriptorSetLayout }));
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_foundry->device(), { {}, *m_descriptorSetLayout }));
 
         // Upload the splat data into a storage buffer.
         m_splatStorage = spock::BufferWrapper(
-            m_physicalDevice, m_device,
+            m_foundry,
             sizeof(SplatInstance) * m_splatCount,
             vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
         m_splatStorage.upload(
-            m_physicalDevice,
-            m_device,
-            m_commandPool,
+            m_foundry,
+            m_foundry->commandPool(),
             m_presenter->graphicsQueue(),
             scene.instances);
 
         // Create a small vertex buffer for the quad rendering.
         m_quadBuffer = spock::BufferWrapper(
-            m_physicalDevice, m_device,
+            m_foundry,
             QUAD_VERTEX_COUNT * sizeof(QuadVertex),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_quadBuffer.deviceMemory(), quadCorners, QUAD_VERTEX_COUNT);
     
         m_descriptorPool = spock::createDescriptorPool(
-            m_device,
+            m_foundry->device(),
             { {vk::DescriptorType::eUniformBuffer, m_framesInFlight},
               {vk::DescriptorType::eStorageBuffer, m_framesInFlight} });
 
@@ -189,21 +184,21 @@ public:
         for (uint32_t i = 0; i < m_framesInFlight; ++i)
         {
             m_frameData.push_back({
-                std::move(vk::raii::DescriptorSets(m_device, { m_descriptorPool, *m_descriptorSetLayout }).front()),
+                std::move(vk::raii::DescriptorSets(m_foundry->device(), { m_descriptorPool, *m_descriptorSetLayout }).front()),
                 spock::BufferWrapper(
-                    m_physicalDevice, m_device,
+                    m_foundry,
                     sizeof(FrameConstants),
                     vk::BufferUsageFlagBits::eUniformBuffer,
                     hostBacked),
                 spock::BufferWrapper(
-                    m_physicalDevice, m_device,
+                    m_foundry,
                     m_splatCount * sizeof(SortingEntry),
                     vk::BufferUsageFlagBits::eVertexBuffer,
                     hostBacked)
                 });
 
             spock::updateDescriptorSets(
-                m_device, m_frameData.back().descriptorSet,
+                m_foundry->device(), m_frameData.back().descriptorSet,
                 {m_frameData.back().uniforms, m_splatStorage}, {});
         }
 
@@ -216,17 +211,19 @@ public:
 
     void createPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
+        auto foundry = m_foundry;
+
         glslang::InitializeProcess();
         try
         {
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
-                m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                m_vertexShader = spock::loadShader(foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
-                m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                m_fragmentShader = spock::loadShader(foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
         }
         catch (std::exception const& e)
@@ -248,7 +245,7 @@ public:
             vertexFormat.addAttributes<SortingEntry>(1, vk::VertexInputRate::eInstance);
 
             m_graphicsPipeline = spock::createGraphicsPipeline(
-                m_device,
+                foundry->device(),
                 shaderStagesInfo,
                 m_pipelineLayout,
                 m_renderPass.renderPass(),
@@ -279,34 +276,6 @@ protected:
     }
 
 private:
-    static std::vector<std::string> extensions()
-    {
-        return {
-            VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
-            VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
-            VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME
-        };
-    }
-
-    static void const* features()
-    {
-        static vk::PhysicalDeviceShaderFloat16Int8Features float16Int8{
-            VK_TRUE,
-            VK_FALSE,
-            nullptr
-        };
-
-        static vk::PhysicalDevice16BitStorageFeatures storage16{
-            VK_TRUE,
-            VK_TRUE,
-            VK_FALSE,
-            VK_FALSE,
-            &float16Int8
-        };
-
-        return &storage16;
-    }
-
     vk::raii::DescriptorPool m_descriptorPool{nullptr};
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
@@ -345,12 +314,38 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
-        vk::Extent2D const& extents) override
+    std::shared_ptr<spock::Foundry> createFoundry() const override
     {
-        auto renderer = std::make_unique<SplatRenderer>(instance, std::move(windowSurface), extents);
+        std::vector<std::string> extensions{
+            VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
+            VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
+            VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME
+        };
+
+        vk::PhysicalDeviceShaderFloat16Int8Features float16Int8{
+            VK_TRUE,
+            VK_FALSE,
+            nullptr
+        };
+
+        vk::PhysicalDevice16BitStorageFeatures storage16{
+            VK_TRUE,
+            VK_TRUE,
+            VK_FALSE,
+            VK_FALSE,
+            &float16Int8
+        };
+
+        return std::make_shared<spock::Foundry>(
+            m_instance,
+            m_window.createSurface(m_instance),
+            extensions,
+            &storage16);
+    }
+
+    std::unique_ptr<spock::Renderer> createRenderer() override
+    {
+        auto renderer = std::make_unique<SplatRenderer>(m_foundry, m_window.extents());
 
         loadScene();
         renderer->createResources(m_scene);

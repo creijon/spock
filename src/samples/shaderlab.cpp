@@ -63,31 +63,28 @@ class ShaderLabRenderer : public spock::Renderer
 {
 public:
     ShaderLabRenderer(
-        vk::raii::Instance const &instance,
-        vk::raii::SurfaceKHR windowSurface,
+        std::shared_ptr<const spock::Foundry> const &foundry,
         vk::Extent2D const &extents)
         : spock::Renderer(
-            instance,
-            std::move(windowSurface),
+            foundry,
             extents,
             { 0.2f, 0.2f, 0.3f, 1.0 },
             { 1.0f, 0 })
     {
-        createResources();
+        createResources(foundry);
     }
 
-    void createResources()
+    void createResources(std::shared_ptr<const spock::Foundry> const &foundry)
     {
         vk::PushConstantRange pushConstantRange{
             vk::ShaderStageFlagBits::eAllGraphics,
             0,
             sizeof(PushConstants) };
 
-        m_pipelineLayout = vk::raii::PipelineLayout(m_device, { {}, {}, pushConstantRange });
+        m_pipelineLayout = vk::raii::PipelineLayout(foundry->device(), {{}, {}, pushConstantRange});
 
         m_vertexBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
+            foundry,
             SHADERLAB_VERTEX_BUFFER_SIZE,
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(
@@ -104,12 +101,12 @@ public:
         {
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
-                m_vertexShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                m_vertexShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
-                m_fragmentShader = spock::loadShader(m_device, vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                m_fragmentShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
         }
         catch (std::exception const& e)
@@ -129,7 +126,7 @@ public:
 
             m_graphicsPipeline =
                 spock::createGraphicsPipeline(
-                    m_device,
+                    m_foundry->device(),
                     shaderStagesInfo,
                     m_pipelineLayout,
                     m_renderPass.renderPass(),
@@ -199,12 +196,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
-        vk::Extent2D const& extents) override
+    std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<ShaderLabRenderer>(instance, std::move(windowSurface), extents);
+        return std::make_unique<ShaderLabRenderer>(m_foundry, m_window.extents());
     }
 
     void update() override

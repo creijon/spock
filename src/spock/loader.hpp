@@ -11,7 +11,7 @@
 
 namespace spock
 {   
-    class Renderer;
+    class Foundry;
     
     static constexpr uint32_t CUBEMAP_FACE_COUNT{6};
 
@@ -19,12 +19,12 @@ namespace spock
     {
     public:
         static TextureWrapper texture(
-            Renderer const &renderer,
+            std::shared_ptr<const Foundry> const &foundry,
             vk::raii::Queue queue,
             std::string const &path);
 
         static CubemapWrapper cubemap(
-            Renderer const& renderer,
+            std::shared_ptr<const Foundry> const &foundry,
             vk::raii::Queue const& queue,
             std::array<std::string, CUBEMAP_FACE_COUNT> const& paths);
     };

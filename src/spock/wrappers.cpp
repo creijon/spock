@@ -59,14 +59,13 @@ namespace spock
     }
 
     BufferWrapper::BufferWrapper(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        vk::raii::Device const &device,
+        std::shared_ptr<const Foundry> const &foundry,
         vk::DeviceSize size,
         vk::BufferUsageFlags usage,
         vk::MemoryPropertyFlags propertyFlags,
         std::vector<uint32_t> const &concurrentQueueFamilies)
         : m_buffer(
-            device,
+            foundry->device(),
             (concurrentQueueFamilies.size() > 1)
                 ? vk::BufferCreateInfo({}, size, usage, vk::SharingMode::eConcurrent, concurrentQueueFamilies)
                 : vk::BufferCreateInfo({}, size, usage))
@@ -76,8 +75,8 @@ namespace spock
         , m_mapped(nullptr)
     {
         m_deviceMemory = allocateDeviceMemory(
-            device,
-            physicalDevice.getMemoryProperties(),
+            foundry->device(),
+            foundry->physicalDevice().getMemoryProperties(),
             m_buffer.getMemoryRequirements(),
             propertyFlags);
         m_buffer.bindMemory(m_deviceMemory, 0);
@@ -153,8 +152,7 @@ namespace spock
     }
 
     ImageWrapper::ImageWrapper(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        vk::raii::Device const &device,
+        std::shared_ptr<const Foundry> const &foundry,
         vk::Format format,
         vk::Extent2D extent,
         vk::ImageTiling tiling,
@@ -167,7 +165,7 @@ namespace spock
         vk::ImageViewType viewType)
         : m_format(format)
         , m_image(
-            device,
+            foundry->device(),
             {createFlags,
             vk::ImageType::e2D,
             format,
@@ -182,13 +180,13 @@ namespace spock
             initialLayout})
     {
         m_deviceMemory = allocateDeviceMemory(
-            device,
-            physicalDevice.getMemoryProperties(),
+            foundry->device(),
+            foundry->physicalDevice().getMemoryProperties(),
             m_image.getMemoryRequirements(),
             memoryProperties);
         m_image.bindMemory(m_deviceMemory, 0);
         m_imageView = vk::raii::ImageView(
-            device,
+            foundry->device(),
             vk::ImageViewCreateInfo({}, m_image, viewType, format, {}, {aspectMask, 0, 1, 0, arrayLayers}));
     }
 
@@ -213,13 +211,12 @@ namespace spock
         return *this;
     }
 
-    DepthBufferWrapper::DepthBufferWrapper(vk::raii::PhysicalDevice const &physicalDevice,
-                                           vk::raii::Device const &device,
-                                           vk::Format format,
-                                           vk::Extent2D const &extent)
+    DepthBufferWrapper::DepthBufferWrapper(
+        std::shared_ptr<const Foundry> const &foundry,
+        vk::Format format,
+        vk::Extent2D const &extent)
         : ImageWrapper(
-            physicalDevice,
-            device,
+            foundry,
             format,
             extent,
             vk::ImageTiling::eOptimal,
@@ -249,8 +246,7 @@ namespace spock
     }
 
     TextureWrapper::TextureWrapper(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        vk::raii::Device const &device,
+        std::shared_ptr<const Foundry> const &foundry,
         vk::Extent2D extent,
         vk::ImageUsageFlags usageFlags,
         vk::FormatFeatureFlags formatFeatureFlags,
@@ -259,7 +255,7 @@ namespace spock
         : m_format(vk::Format::eR8G8B8A8Unorm)
         , m_extent(extent)
         , m_sampler(
-            device,
+            foundry->device(),
             {{},
             vk::Filter::eLinear,
             vk::Filter::eLinear,
@@ -276,7 +272,7 @@ namespace spock
             0.0f,
             vk::BorderColor::eFloatOpaqueBlack})
     {
-        vk::FormatProperties formatProperties = physicalDevice.getFormatProperties(m_format);
+        vk::FormatProperties formatProperties = foundry->physicalDevice().getFormatProperties(m_format);
 
         formatFeatureFlags |= vk::FormatFeatureFlagBits::eSampledImage;
         m_needsStaging = forceStaging || ((formatProperties.linearTilingFeatures & formatFeatureFlags) != formatFeatureFlags);
@@ -286,7 +282,10 @@ namespace spock
         if (m_needsStaging)
         {
             assert((formatProperties.optimalTilingFeatures & formatFeatureFlags) == formatFeatureFlags);
-            m_stagingBuffer = std::move(BufferWrapper(physicalDevice, device, m_extent.width * m_extent.height * 4, vk::BufferUsageFlagBits::eTransferSrc));
+            m_stagingBuffer = std::move(BufferWrapper(
+                foundry,
+                m_extent.width * m_extent.height * 4,
+                vk::BufferUsageFlagBits::eTransferSrc));
             usageFlags |= vk::ImageUsageFlagBits::eTransferDst;
             imageTiling = vk::ImageTiling::eOptimal;
             initialLayout = vk::ImageLayout::eUndefined;
@@ -299,8 +298,7 @@ namespace spock
             requirements = vk::MemoryPropertyFlagBits::eHostCoherent | vk::MemoryPropertyFlagBits::eHostVisible;
         }
         m_image = std::move(ImageWrapper(
-            physicalDevice,
-            device,
+            foundry,
             m_format,
             m_extent,
             imageTiling,

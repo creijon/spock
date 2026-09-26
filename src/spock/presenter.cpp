@@ -22,58 +22,6 @@ namespace spock
         Queues const & queues,
         uint32_t framesInFlight)
     {
-        initialise(
-            physicalDevice,
-            device,
-            surface,
-            extent,
-            usage,
-            queues,
-            framesInFlight);
-    }
-
-    Presenter::Presenter(Presenter&&other) noexcept
-        : m_colorFormat(other.m_colorFormat)
-        , m_swapchain(std::move(other.m_swapchain))
-        , m_graphicsQueue(std::move(other.m_graphicsQueue))
-        , m_presentQueue(std::move(other.m_presentQueue))
-        , m_images(std::move(other.m_images))
-        , m_imageViews(std::move(other.m_imageViews))
-        , m_imageIndex(other.m_imageIndex)
-        , m_imageSemaphores(std::move(other.m_imageSemaphores))
-        , m_renderSemaphores(std::move(other.m_renderSemaphores))
-        , m_frameFences(std::move(other.m_frameFences))
-    {
-    }
-
-    Presenter const& Presenter::operator=(Presenter&& other)
-    {
-        if (this != &other)
-        {
-            m_colorFormat = other.m_colorFormat;
-            m_swapchain = std::move(other.m_swapchain);
-            m_graphicsQueue = std::move(other.m_graphicsQueue);
-            m_presentQueue = std::move(other.m_presentQueue);
-            m_images = std::move(other.m_images);
-            m_imageViews = std::move(other.m_imageViews);
-            m_imageIndex = other.m_imageIndex;
-            m_imageSemaphores = std::move(other.m_imageSemaphores);
-            m_renderSemaphores = std::move(other.m_renderSemaphores);
-            m_frameFences = std::move(other.m_frameFences);
-        }
-
-        return *this;
-    }
-
-    void Presenter::initialise(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        vk::raii::Device const &device,
-        vk::raii::SurfaceKHR const &surface,
-        vk::Extent2D const &extent,
-        vk::ImageUsageFlags usage,
-        Queues const &queues,
-        uint32_t framesInFlight)
-    {
         vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
         m_colorFormat = surfaceFormat.format;
 
@@ -180,6 +128,39 @@ namespace spock
         {
             m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
         }
+    }
+
+    Presenter::Presenter(Presenter&&other) noexcept
+        : m_colorFormat(other.m_colorFormat)
+        , m_swapchain(std::move(other.m_swapchain))
+        , m_graphicsQueue(std::move(other.m_graphicsQueue))
+        , m_presentQueue(std::move(other.m_presentQueue))
+        , m_images(std::move(other.m_images))
+        , m_imageViews(std::move(other.m_imageViews))
+        , m_imageIndex(other.m_imageIndex)
+        , m_imageSemaphores(std::move(other.m_imageSemaphores))
+        , m_renderSemaphores(std::move(other.m_renderSemaphores))
+        , m_frameFences(std::move(other.m_frameFences))
+    {
+    }
+
+    Presenter const& Presenter::operator=(Presenter&& other)
+    {
+        if (this != &other)
+        {
+            m_colorFormat = other.m_colorFormat;
+            m_swapchain = std::move(other.m_swapchain);
+            m_graphicsQueue = std::move(other.m_graphicsQueue);
+            m_presentQueue = std::move(other.m_presentQueue);
+            m_images = std::move(other.m_images);
+            m_imageViews = std::move(other.m_imageViews);
+            m_imageIndex = other.m_imageIndex;
+            m_imageSemaphores = std::move(other.m_imageSemaphores);
+            m_renderSemaphores = std::move(other.m_renderSemaphores);
+            m_frameFences = std::move(other.m_frameFences);
+        }
+
+        return *this;
     }
 
     vk::Result Presenter::acquireFrame(vk::raii::Device const &device, uint32_t frameIndex)

@@ -11,12 +11,13 @@
 
 namespace spock
 {
+    class Foundry;
+
     class RenderPass
     {
     public:
         RenderPass(
-            vk::raii::PhysicalDevice const &physicalDevice,
-            vk::raii::Device const &device,
+            std::shared_ptr<const Foundry> const &foundry,
             std::vector<vk::raii::ImageView> const& imageViews,
             vk::Format colorFormat,
             vk::Extent2D const &extent,

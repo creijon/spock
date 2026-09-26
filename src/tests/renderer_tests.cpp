@@ -29,14 +29,6 @@ namespace
         {
         }
     };
-
-    // Renderer's constructor takes ownership of the vk::raii::SurfaceKHR it's
-    // given, so each test needs its own freshly created headless surface
-    // rather than sharing GpuFixture::surface.
-    vk::raii::SurfaceKHR createHeadlessSurface(vk::raii::Instance const &instance)
-    {
-        return vk::raii::SurfaceKHR(instance, vk::HeadlessSurfaceCreateInfoEXT{});
-    }
 } // namespace
 
 TEST_CASE("Renderer renders and presents frames against a headless surface", "[gpu]")
@@ -50,8 +42,7 @@ TEST_CASE("Renderer renders and presents frames against a headless surface", "[g
     vk::Extent2D extent(64, 64);
 
     NoOpRenderer renderer(
-        fixture->instance,
-        createHeadlessSurface(fixture->instance),
+        fixture->foundry,
         extent,
         vk::ClearColorValue(std::array<float, 4>{0.1f, 0.2f, 0.3f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0),
@@ -73,8 +64,7 @@ TEST_CASE("Renderer::resizeWindow rebuilds the swapchain and framebuffers at a n
     }
 
     NoOpRenderer renderer(
-        fixture->instance,
-        createHeadlessSurface(fixture->instance),
+        fixture->foundry,
         vk::Extent2D(64, 64),
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0));
@@ -97,8 +87,7 @@ TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
     }
 
     NoOpRenderer renderer(
-        fixture->instance,
-        createHeadlessSurface(fixture->instance),
+        fixture->foundry,
         vk::Extent2D(32, 32),
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0),

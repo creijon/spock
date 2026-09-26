@@ -12,6 +12,8 @@
 
 namespace spock
 {
+    class Foundry;
+
     // Simple debug line renderer.
     // TODO: this currently uses a single large vertex buffer to upload the lines to a vertex
     // shader, but this is inefficient.  There should be a pool of vertex buffers with identical
@@ -34,8 +36,7 @@ namespace spock
         };
 
         DebugLines(
-            vk::raii::PhysicalDevice const& physicalDevice,
-            vk::raii::Device const& device,
+            std::shared_ptr<const Foundry> const &foundry,
             vk::raii::RenderPass const& renderPass,
             size_t maxLineCount = 1024);
 

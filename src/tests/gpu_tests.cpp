@@ -25,7 +25,7 @@ TEST_CASE("a headless Vulkan device can be created for GPU-backed tests", "[gpu]
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    CHECK(*fixture->device != VK_NULL_HANDLE);
+    CHECK(*fixture->foundry->device() != VK_NULL_HANDLE);
 }
 
 TEST_CASE("Queues discovers valid graphics, present, compute, and transfer queue family indices", "[gpu]")
@@ -36,12 +36,12 @@ TEST_CASE("Queues discovers valid graphics, present, compute, and transfer queue
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    auto queueFamilyProperties = fixture->physicalDevice.getQueueFamilyProperties();
-    CHECK(fixture->queue.graphicsFamily() < queueFamilyProperties.size());
-    CHECK(fixture->queue.presentFamily() < queueFamilyProperties.size());
-    CHECK(fixture->queue.computeFamily() < queueFamilyProperties.size());
-    CHECK(fixture->queue.transferFamily() < queueFamilyProperties.size());
-    CHECK((queueFamilyProperties[fixture->queue.graphicsFamily()].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics);
+    auto queueFamilyProperties = fixture->foundry->physicalDevice().getQueueFamilyProperties();
+    CHECK(fixture->foundry->queues().graphicsFamily() < queueFamilyProperties.size());
+    CHECK(fixture->foundry->queues().presentFamily() < queueFamilyProperties.size());
+    CHECK(fixture->foundry->queues().computeFamily() < queueFamilyProperties.size());
+    CHECK(fixture->foundry->queues().transferFamily() < queueFamilyProperties.size());
+    CHECK((queueFamilyProperties[fixture->foundry->queues().graphicsFamily()].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics);
 }
 
 TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", "[gpu]")
@@ -52,11 +52,11 @@ TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", 
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    vk::raii::Buffer buffer(fixture->device, vk::BufferCreateInfo({}, 256, vk::BufferUsageFlagBits::eUniformBuffer));
+    vk::raii::Buffer buffer(fixture->foundry->device(), vk::BufferCreateInfo({}, 256, vk::BufferUsageFlagBits::eUniformBuffer));
 
     vk::raii::DeviceMemory memory = spock::allocateDeviceMemory(
-        fixture->device,
-        fixture->physicalDevice.getMemoryProperties(),
+        fixture->foundry->device(),
+        fixture->foundry->physicalDevice().getMemoryProperties(),
         buffer.getMemoryRequirements(),
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
@@ -78,8 +78,7 @@ TEST_CASE("BufferWrapper uploads round-trip through mapped device memory", "[gpu
     };
 
     spock::BufferWrapper buffer(
-        fixture->physicalDevice,
-        fixture->device,
+        fixture->foundry,
         sizeof(Uniforms),
         vk::BufferUsageFlagBits::eUniformBuffer,
         vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
@@ -109,8 +108,7 @@ TEST_CASE("BufferWrapper uploads a vector of elements", "[gpu]")
     std::vector<uint32_t> written{10, 20, 30, 40, 50};
 
     spock::BufferWrapper buffer(
-        fixture->physicalDevice,
-        fixture->device,
+        fixture->foundry,
         written.size() * sizeof(uint32_t),
         vk::BufferUsageFlagBits::eStorageBuffer);
 
@@ -133,8 +131,7 @@ TEST_CASE("DepthBufferWrapper creates a bound image, memory and image view", "[g
     }
 
     spock::DepthBufferWrapper depthBuffer(
-        fixture->physicalDevice,
-        fixture->device,
+        fixture->foundry,
         vk::Format::eD16Unorm,
         vk::Extent2D(64, 64));
 
@@ -152,16 +149,16 @@ TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    spock::TextureWrapper texture(fixture->physicalDevice, fixture->device, vk::Extent2D(4, 4));
+    spock::TextureWrapper texture(fixture->foundry, vk::Extent2D(4, 4));
     CHECK(*texture.sampler() != VK_NULL_HANDLE);
 
     vk::raii::CommandPool commandPool(
-        fixture->device,
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queue.graphicsFamily()));
-    vk::raii::Queue graphicsQueue(fixture->device, fixture->queue.graphicsFamily(), 0);
+        fixture->foundry->device(),
+        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->queues().graphicsFamily()));
+    vk::raii::Queue graphicsQueue(fixture->foundry->device(), fixture->foundry->queues().graphicsFamily(), 0);
 
     CHECK_NOTHROW(spock::oneTimeSubmit(
-        fixture->device,
+        fixture->foundry->device(),
         commandPool,
         graphicsQueue,
         [&](vk::CommandBuffer commandBuffer)
@@ -189,7 +186,7 @@ layout(location = 0) in vec4 pos;
 void main() { gl_Position = pos; }
 )";
 
-    vk::raii::ShaderModule module = spock::compileShader(fixture->device, vk::ShaderStageFlagBits::eVertex, vertexSource);
+    vk::raii::ShaderModule module = spock::compileShader(fixture->foundry->device(), vk::ShaderStageFlagBits::eVertex, vertexSource);
 
     CHECK(*module != VK_NULL_HANDLE);
 }
@@ -206,7 +203,7 @@ TEST_CASE("createRenderPass and createFramebuffers build a color+depth render ta
     vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
 
     vk::raii::Image colorImage(
-        fixture->device,
+        fixture->foundry->device(),
         vk::ImageCreateInfo(
             {},
             vk::ImageType::e2D,
@@ -218,24 +215,24 @@ TEST_CASE("createRenderPass and createFramebuffers build a color+depth render ta
             vk::ImageTiling::eOptimal,
             vk::ImageUsageFlagBits::eColorAttachment));
     vk::raii::DeviceMemory colorMemory = spock::allocateDeviceMemory(
-        fixture->device,
-        fixture->physicalDevice.getMemoryProperties(),
+        fixture->foundry->device(),
+        fixture->foundry->physicalDevice().getMemoryProperties(),
         colorImage.getMemoryRequirements(),
         vk::MemoryPropertyFlagBits::eDeviceLocal);
     colorImage.bindMemory(colorMemory, 0);
 
     std::vector<vk::raii::ImageView> colorImageViews;
     colorImageViews.emplace_back(
-        fixture->device,
+        fixture->foundry->device(),
         vk::ImageViewCreateInfo({}, colorImage, vk::ImageViewType::e2D, colorFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}));
 
-    spock::DepthBufferWrapper depthBuffer(fixture->physicalDevice, fixture->device, vk::Format::eD16Unorm, extent);
+    spock::DepthBufferWrapper depthBuffer(fixture->foundry, vk::Format::eD16Unorm, extent);
 
-    vk::raii::RenderPass renderPass = spock::createRenderPass(fixture->device, colorFormat, depthBuffer.format());
+    vk::raii::RenderPass renderPass = spock::createRenderPass(fixture->foundry->device(), colorFormat, depthBuffer.format());
     CHECK(*renderPass != VK_NULL_HANDLE);
 
     std::vector<vk::raii::Framebuffer> framebuffers = spock::createFramebuffers(
-        fixture->device, renderPass, colorImageViews, &depthBuffer.imageView(), extent);
+        fixture->foundry->device(), renderPass, colorImageViews, &depthBuffer.imageView(), extent);
 
     REQUIRE(framebuffers.size() == 1);
     CHECK(*framebuffers[0] != VK_NULL_HANDLE);
@@ -250,10 +247,10 @@ TEST_CASE("createCommandBuffer allocates a primary command buffer", "[gpu]")
     }
 
     vk::raii::CommandPool commandPool(
-        fixture->device,
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->queue.graphicsFamily()));
+        fixture->foundry->device(),
+        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->queues().graphicsFamily()));
 
-    vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->device, commandPool);
+    vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->foundry->device(), commandPool);
 
     CHECK(*commandBuffer != VK_NULL_HANDLE);
     CHECK_NOTHROW(commandBuffer.begin(vk::CommandBufferBeginInfo()));
@@ -268,13 +265,13 @@ TEST_CASE("CommandRecorder owns a command pool and queue for its family and can 
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    spock::CommandRecorder recorder(fixture->device, fixture->queue.computeFamily());
+    spock::CommandRecorder recorder(fixture->foundry->device(), fixture->foundry->queues().computeFamily());
     CHECK(*recorder.commandPool() != VK_NULL_HANDLE);
     CHECK(*recorder.queue() != VK_NULL_HANDLE);
 
     bool recorded = false;
     CHECK_NOTHROW(recorder.submit(
-        fixture->device,
+        fixture->foundry->device(),
         [&](vk::CommandBuffer const &commandBuffer)
         {
             recorded = true;
@@ -300,24 +297,24 @@ TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorS
     }
 
     vk::raii::DescriptorSetLayout descriptorSetLayout = spock::createDescriptorSetLayout(
-        fixture->device,
+        fixture->foundry->device(),
         vk::ShaderStageFlagBits::eVertex,
         {vk::DescriptorType::eUniformBuffer});
     CHECK(*descriptorSetLayout != VK_NULL_HANDLE);
 
     vk::raii::DescriptorPool descriptorPool = spock::createDescriptorPool(
-        fixture->device,
+        fixture->foundry->device(),
         {{vk::DescriptorType::eUniformBuffer, 1}});
     CHECK(*descriptorPool != VK_NULL_HANDLE);
 
     vk::raii::DescriptorSets descriptorSets(
-        fixture->device, vk::DescriptorSetAllocateInfo(descriptorPool, *descriptorSetLayout));
+        fixture->foundry->device(), vk::DescriptorSetAllocateInfo(descriptorPool, *descriptorSetLayout));
     vk::raii::DescriptorSet descriptorSet = std::move(descriptorSets.front());
 
     spock::BufferWrapper uniformBuffer(
-        fixture->physicalDevice, fixture->device, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
+        fixture->foundry, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
 
-    CHECK_NOTHROW(spock::updateDescriptorSets(fixture->device, descriptorSet, {uniformBuffer}, {}));
+    CHECK_NOTHROW(spock::updateDescriptorSets(fixture->foundry->device(), descriptorSet, {uniformBuffer}, {}));
 }
 
 TEST_CASE("createGraphicsPipeline builds a pipeline from compiled shaders and a push-constant layout", "[gpu]")
@@ -340,14 +337,14 @@ layout(location = 0) out vec4 outColor;
 void main() { outColor = vec4(1.0); }
 )";
 
-    vk::raii::ShaderModule vertexModule = spock::compileShader(fixture->device, vk::ShaderStageFlagBits::eVertex, vertexSource);
-    vk::raii::ShaderModule fragmentModule = spock::compileShader(fixture->device, vk::ShaderStageFlagBits::eFragment, fragmentSource);
+    vk::raii::ShaderModule vertexModule = spock::compileShader(fixture->foundry->device(), vk::ShaderStageFlagBits::eVertex, vertexSource);
+    vk::raii::ShaderModule fragmentModule = spock::compileShader(fixture->foundry->device(), vk::ShaderStageFlagBits::eFragment, fragmentSource);
 
     vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
-    vk::raii::RenderPass renderPass = spock::createRenderPass(fixture->device, colorFormat, vk::Format::eUndefined);
+    vk::raii::RenderPass renderPass = spock::createRenderPass(fixture->foundry->device(), colorFormat, vk::Format::eUndefined);
 
     vk::PushConstantRange pushConstantRange(vk::ShaderStageFlagBits::eVertex, 0, sizeof(float) * 16);
-    vk::raii::PipelineLayout pipelineLayout(fixture->device, vk::PipelineLayoutCreateInfo({}, {}, pushConstantRange));
+    vk::raii::PipelineLayout pipelineLayout(fixture->foundry->device(), vk::PipelineLayoutCreateInfo({}, {}, pushConstantRange));
 
     std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo = {
             {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexModule, "main"},
@@ -356,7 +353,7 @@ void main() { outColor = vec4(1.0); }
     spock::VertexFormat vertexFormat{{ { vk::Format::eR32G32B32A32Sfloat, 0 } }, sizeof(float) * 4};
 
     vk::raii::Pipeline pipeline = spock::createGraphicsPipeline(
-        fixture->device,
+        fixture->foundry->device(),
         shaderStagesInfo,
         pipelineLayout,
         renderPass,

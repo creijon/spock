@@ -4,7 +4,7 @@
 #include "loader.hpp"
 
 #include "helpers.hpp"
-#include "renderer.hpp"
+#include "foundry.hpp"
 
 #include "lodepng.h"
 
@@ -12,7 +12,7 @@ namespace spock
 {
 
 TextureWrapper Loader::texture(
-    Renderer const &renderer,
+    std::shared_ptr<const Foundry> const &foundry,
     vk::raii::Queue queue,
     std::string const &path)
 {
@@ -25,11 +25,11 @@ TextureWrapper Loader::texture(
         throw std::runtime_error("Failed to load texture '" + path + "': " + lodepng_error_text(error));
     }
 
-    TextureWrapper texture(renderer.m_physicalDevice, renderer.m_device, vk::Extent2D(width, height));
+    TextureWrapper texture(foundry, vk::Extent2D(width, height));
 
     oneTimeSubmit(
-        renderer.m_device,
-        renderer.m_commandPool,
+        foundry->device(),
+        foundry->commandPool(),
         queue,
         [&](vk::CommandBuffer commandBuffer)
         {
@@ -45,7 +45,7 @@ TextureWrapper Loader::texture(
 }
 
 CubemapWrapper Loader::cubemap(
-    Renderer const &renderer,
+    std::shared_ptr<const Foundry> const &foundry,
     vk::raii::Queue const &queue,
     std::array<std::string, CUBEMAP_FACE_COUNT> const &paths)
 {
@@ -70,8 +70,7 @@ CubemapWrapper Loader::cubemap(
 
     vk::DeviceSize faceBytes = static_cast<vk::DeviceSize>(size) * size * 4;
     BufferWrapper stagingBuffer(
-        renderer.m_physicalDevice, 
-        renderer.m_device,
+        foundry,
         faceBytes * CUBEMAP_FACE_COUNT,
         vk::BufferUsageFlagBits::eTransferSrc);
     uint8_t *staging = static_cast<uint8_t *>(stagingBuffer.deviceMemory().mapMemory(0, faceBytes * CUBEMAP_FACE_COUNT));
@@ -83,8 +82,7 @@ CubemapWrapper Loader::cubemap(
 
     CubemapWrapper cubemap;
     cubemap.image = ImageWrapper(
-        renderer.m_physicalDevice,
-        renderer.m_device,
+        foundry,
         vk::Format::eR8G8B8A8Unorm,
         vk::Extent2D(size, size),
         vk::ImageTiling::eOptimal,
@@ -97,8 +95,8 @@ CubemapWrapper Loader::cubemap(
         vk::ImageViewType::eCube);
 
     oneTimeSubmit(
-        renderer.m_device,
-        renderer.m_commandPool,
+        foundry->device(),
+        foundry->commandPool(),
         queue,
         [&](vk::CommandBuffer commandBuffer)
         {
@@ -134,7 +132,7 @@ CubemapWrapper Loader::cubemap(
         });
 
     cubemap.sampler = vk::raii::Sampler(
-        renderer.m_device,
+        foundry->device(),
         {{},
         vk::Filter::eLinear,
         vk::Filter::eLinear,

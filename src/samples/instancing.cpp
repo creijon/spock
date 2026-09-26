@@ -169,12 +169,10 @@ class InstancingRenderer : public spock::Renderer
 {
 public:
     InstancingRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
+        std::shared_ptr<const spock::Foundry> const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
-            instance,
-            std::move(windowSurface),
+            foundry,
             extents,
             {0.2f, 0.2f, 0.35f, 1.0},
             {1.0f, 0})
@@ -185,12 +183,11 @@ public:
             0,
             sizeof(PushConstants)};
 
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_device, {{}, {}, pushConstantRange}));
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(foundry->device(), {{}, {}, pushConstantRange}));
 
         // Create vertex buffer for quad geometry
         m_vertexBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
+            foundry,
             QUAD_VERTEX_BUFFER_SIZE,
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), QUAD_VERTICES, QUAD_VERTEX_COUNT);
@@ -199,13 +196,12 @@ public:
         auto instances = createSpriteGrid();
         m_instanceCount = instances.size();
         m_instanceBuffer = spock::BufferWrapper(
-            m_physicalDevice,
-            m_device,
+            foundry,
             instances.size() * sizeof(SpriteInstance),
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_instanceBuffer.deviceMemory(), instances.data(), instances.size());
 
-        createPipeline();
+        createPipeline(foundry->device());
     }
 
     void update(spock::OrbitCamera const& camera, vk::Extent2D const& viewExtents)
@@ -217,7 +213,7 @@ public:
     }
 
 protected:
-    void createPipeline()
+    void createPipeline(vk::raii::Device const& device)
     {
         // Create the shaders
         glslang::InitializeProcess();
@@ -225,8 +221,8 @@ protected:
         vk::raii::ShaderModule fragmentShader{nullptr};
         try
         {
-            vertexShader = spock::compileShader(m_device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-            fragmentShader = spock::compileShader(m_device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+            vertexShader = spock::compileShader(device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
+            fragmentShader = spock::compileShader(device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
         }
         catch (...)
         {
@@ -248,7 +244,7 @@ protected:
 
         // Create the graphics pipeline
         m_graphicsPipeline = spock::createGraphicsPipeline(
-            m_device,
+            device,
             shaderStagesInfo,
             m_pipelineLayout,
             m_renderPass.renderPass(),
@@ -293,12 +289,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer(
-        vk::raii::Instance const& instance,
-        vk::raii::SurfaceKHR windowSurface,
-        vk::Extent2D const& extents) override
+    std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<InstancingRenderer>(instance, std::move(windowSurface), extents);
+        return std::make_unique<InstancingRenderer>(m_foundry, m_window.extents());
     }
 
     void update() override

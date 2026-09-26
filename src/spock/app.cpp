@@ -4,6 +4,7 @@
 #include "app.hpp"
 
 #include "creators.hpp"
+#include "foundry.hpp"
 #include "renderer.hpp"
 
 #include <thread>
@@ -48,16 +49,22 @@ App::App(
     std::chrono::microseconds frameDuration)
     : m_context()
     , m_instance(createInstance(m_context, name, {}, getDefaultInstanceExtensions()))
-    , m_window(name, vk::Extent2D(windowWidth, windowHeight))
+    , m_window(name, {windowWidth, windowHeight})
     , m_frameDuration(frameDuration)
 {
+    // m_instance = createInstance(m_context, name, {}, getDefaultInstanceExtensions());
+    // m_window = createWindow(name, {windowWidth, windowHeight});
+}
+
+std::shared_ptr<Foundry> App::createFoundry() const
+{
+    return std::make_shared<Foundry>(m_instance, m_window.createSurface(m_instance));
 }
 
 void App::run()
 {
-    vk::raii::SurfaceKHR windowSurface = m_window.createSurface(m_instance);
-
-    m_renderer = createRenderer(m_instance, std::move(windowSurface), m_window.extents());
+    m_foundry = createFoundry();
+    m_renderer = createRenderer();
 
     auto startTime{std::chrono::steady_clock::now()};
     m_time = std::chrono::microseconds(0);
