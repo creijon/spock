@@ -13,7 +13,7 @@ namespace spock
 
 TextureWrapper Loader::texture(
     std::shared_ptr<const Foundry> const &foundry,
-    vk::raii::Queue queue,
+    vk::raii::Queue const &queue,
     std::string const &path)
 {
     std::vector<unsigned char> pixels;

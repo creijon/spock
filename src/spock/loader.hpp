@@ -20,7 +20,7 @@ namespace spock
     public:
         static TextureWrapper texture(
             std::shared_ptr<const Foundry> const &foundry,
-            vk::raii::Queue queue,
+            vk::raii::Queue const& queue,
             std::string const &path);
 
         static CubemapWrapper cubemap(

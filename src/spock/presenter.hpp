@@ -11,16 +11,15 @@
 
 namespace spock
 {
+    class Foundry;
+
     class Presenter
     {
     public:
         Presenter(
-            vk::raii::PhysicalDevice const &physicalDevice,
-            vk::raii::Device const &device,
-            vk::raii::SurfaceKHR const &surface,
+            std::shared_ptr<const Foundry> const &foundry,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
-            Queues const &queues,
             uint32_t framesInFlight);
         Presenter() = default;
         Presenter(const Presenter &) = delete;

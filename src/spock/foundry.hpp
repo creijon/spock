@@ -32,6 +32,21 @@ namespace spock
         vk::raii::CommandPool const &commandPool() const { return m_commandPool; }
         Queues const &queues() const { return m_queues; }
 
+        std::vector<vk::SurfaceFormatKHR> getSurfaceFormatsKHR() const
+        {
+            return m_physicalDevice.getSurfaceFormatsKHR(m_windowSurface);
+        }
+
+        vk::SurfaceCapabilitiesKHR getSurfaceCapabilitiesKHR() const
+        {
+            return m_physicalDevice.getSurfaceCapabilitiesKHR(m_windowSurface);
+        }
+
+        std::vector<vk::PresentModeKHR> getSurfacePresentModesKHR() const
+        {
+            return m_physicalDevice.getSurfacePresentModesKHR(m_windowSurface);
+        }
+
         void waitIdle() const;
 
     private:

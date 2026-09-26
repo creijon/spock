@@ -43,12 +43,9 @@ namespace spock
         m_presenter.reset();
 
         m_presenter = std::make_unique<Presenter>(
-            m_foundry->physicalDevice(),
-            m_foundry->device(),
-            m_foundry->windowSurface(),
+            m_foundry,
             extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-            m_foundry->queues(),
             m_framesInFlight);
 
         m_renderPass = RenderPass(
