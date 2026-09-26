@@ -90,13 +90,11 @@ namespace spock
             m_queues,
             m_framesInFlight);
 
-        vk::Format colorFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_windowSurface)).format;
-
         m_renderPass = RenderPass(
             m_physicalDevice,
             m_device,
             m_presenter->imageViews(),
-            colorFormat,
+            m_presenter->colorFormat(),
             m_extents,
             m_clearColor,
             m_clearDepthStencil,

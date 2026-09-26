@@ -38,12 +38,10 @@ struct SphereVertex
     static spock::VertexFormat::Attributes attributes()
     {
         return {
-            { vk::Format::eR32G32B32A32Sfloat, offsetof(SphereVertex, pos) },
             { vk::Format::eR32G32B32Sfloat, offsetof(SphereVertex, normal) }
         };
     }
 
-    glm::vec4 pos;
     glm::vec3 normal;
 };
 
@@ -93,15 +91,14 @@ static void generateSphereMesh(
 
         for (uint32_t row = 0; row < verticesPerEdge; ++row)
         {
-            float v = static_cast<float>(row) / subdivisions;
+            const float v = (static_cast<float>(row) / subdivisions) * 2.0f - 1.0f;
             for (uint32_t col = 0; col < verticesPerEdge; ++col)
             {
-                float u = static_cast<float>(col) / subdivisions;
+                const float u = (static_cast<float>(col) / subdivisions) * 2.0f - 1.0f;
 
-                glm::vec3 cubePos = face.normal + face.axisU * (u * 2.0f - 1.0f) + face.axisV * (v * 2.0f - 1.0f);
-                glm::vec3 spherePos = glm::normalize(cubePos);
+                glm::vec3 cubePos = face.normal + face.axisU * u + face.axisV * v;
 
-                vertices.push_back(SphereVertex{glm::vec4(spherePos, 1.0f), spherePos});
+                vertices.push_back(SphereVertex{cubePos});
             }
         }
 
@@ -151,19 +148,22 @@ static const std::string VERTEX_SHADER_SOURCE = R"(
 layout(push_constant) uniform PushConstants {
     mat4 mvp;
     mat4 itModel;
+    float radius;
+    float spherical;
 } pc;
 
-layout (location = 0) in vec4 pos;
-layout (location = 1) in vec3 normal;
+layout (location = 0) in vec3 cubePos;
 
 layout (location = 0) out vec3 outTexDir;
 layout (location = 1) out vec3 outNormal;
 
 void main()
 {
+  vec3 normal = normalize(cubePos);
+  vec3 pos = mix(cubePos, normal, pc.spherical);
   outTexDir = normal;
-  outNormal = (pc.itModel * vec4(normal, 0.0)).xyz;
-  gl_Position = pc.mvp * pos;
+  outNormal = (pc.itModel * vec4(pos, 0.0)).xyz;
+  gl_Position = pc.mvp * (vec4(pos, 1.0) * pc.radius);
 }
 )";
 
@@ -195,6 +195,8 @@ struct PushConstants
 {
     glm::mat4x4 mvp;
     glm::mat4x4 itModel;
+    float radius;
+    float spherical;
 };
 
 class TexturedSphereRenderer : public spock::Renderer
@@ -318,7 +320,9 @@ protected:
 
         // Update the push constants.
         static const glm::mat4x4 invTransModel{ 1.0f };
-        PushConstants pushConstants{ m_viewProjClip, invTransModel};
+        static const float radius = 1.0f;
+        static const float spherical = 1.0f;
+        PushConstants pushConstants{ m_viewProjClip, invTransModel, radius, spherical };
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, pushConstants);
 
         // Draw all the scene, but for this example it's just a single sphere.
