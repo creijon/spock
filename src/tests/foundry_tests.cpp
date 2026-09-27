@@ -7,9 +7,9 @@
 
 #include <optional>
 
-// These helpers are implemented in queues.cpp as ordinary (non-static) free
-// functions but are intentionally not exposed via queues.hpp since they're
-// implementation details of Queues's family discovery. They operate purely on
+// These helpers are implemented in foundry.cpp as ordinary (non-static) free
+// functions but are intentionally not exposed via foundry.hpp since they're
+// implementation details of the Foundry's queue family discovery. They operate purely on
 // plain data, so they're worth unit-testing directly via a matching forward
 // declaration -- same convention used for findMemoryType in helpers_tests.cpp.
 namespace spock

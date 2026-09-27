@@ -228,7 +228,6 @@ public:
 
         m_cubemap = spock::Loader::cubemap(
             foundry,
-            m_presenter->graphicsQueue(),
             CUBEMAP_FACES);
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(

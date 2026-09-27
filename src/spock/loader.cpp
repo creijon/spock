@@ -13,7 +13,6 @@ namespace spock
 
 TextureWrapper Loader::texture(
     std::shared_ptr<const Foundry> const &foundry,
-    vk::raii::Queue const &queue,
     std::string const &path)
 {
     std::vector<unsigned char> pixels;
@@ -27,10 +26,7 @@ TextureWrapper Loader::texture(
 
     TextureWrapper texture(foundry, vk::Extent2D(width, height));
 
-    oneTimeSubmit(
-        foundry->device(),
-        foundry->commandPool(),
-        queue,
+    foundry->submit(
         [&](vk::CommandBuffer commandBuffer)
         {
             texture.setImage(
@@ -46,7 +42,6 @@ TextureWrapper Loader::texture(
 
 CubemapWrapper Loader::cubemap(
     std::shared_ptr<const Foundry> const &foundry,
-    vk::raii::Queue const &queue,
     std::array<std::string, CUBEMAP_FACE_COUNT> const &paths)
 {
     std::array<std::vector<unsigned char>, CUBEMAP_FACE_COUNT> facePixels;
@@ -94,10 +89,7 @@ CubemapWrapper Loader::cubemap(
         vk::ImageCreateFlagBits::eCubeCompatible,
         vk::ImageViewType::eCube);
 
-    oneTimeSubmit(
-        foundry->device(),
-        foundry->commandPool(),
-        queue,
+    foundry->submit(
         [&](vk::CommandBuffer commandBuffer)
         {
             setImageLayout(

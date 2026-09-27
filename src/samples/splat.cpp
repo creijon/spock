@@ -160,11 +160,7 @@ public:
             sizeof(SplatInstance) * m_splatCount,
             vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
-        m_splatStorage.upload(
-            m_foundry,
-            m_foundry->commandPool(),
-            m_presenter->graphicsQueue(),
-            scene.instances);
+        m_splatStorage.upload(m_foundry, scene.instances);
 
         // Create a small vertex buffer for the quad rendering.
         m_quadBuffer = spock::BufferWrapper(

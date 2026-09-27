@@ -130,6 +130,14 @@ namespace spock
         template <typename DataType>
         void upload(
             std::shared_ptr<const Foundry> const &foundry,
+            std::vector<DataType> const &data) const
+        {
+            upload(foundry, foundry->commandPool(), foundry->graphicsQueue(), data);
+        }
+
+        template <typename DataType>
+        void upload(
+            std::shared_ptr<const Foundry> const &foundry,
             vk::raii::CommandPool const& commandPool,
             vk::raii::Queue const &queue,
             std::vector<DataType> const &data) const

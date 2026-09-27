@@ -155,6 +155,8 @@ namespace spock
             features);
 
         m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
+        m_graphicsQueue = vk::raii::Queue(m_device, m_graphicsFamily, 0);
+        m_presentQueue = vk::raii::Queue(m_device, m_presentFamily, 0);
 
         // Create the command pool.
         vk::CommandPoolCreateInfo poolInfo{

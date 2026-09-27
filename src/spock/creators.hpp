@@ -14,8 +14,6 @@
 
 namespace spock
 {
-    class Queues;
-
     // Create a Vulkan instance with optional validation layers and requested
     // extensions.
     vk::raii::Instance createInstance(

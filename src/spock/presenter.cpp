@@ -19,6 +19,7 @@ namespace spock
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
         uint32_t framesInFlight)
+        : m_foundry(foundry)
     {
         vk::raii::Device const& device = foundry->device();
 
@@ -107,9 +108,6 @@ namespace spock
             m_imageViews.emplace_back(device, imageViewCreateInfo);
         }
 
-        m_graphicsQueue = vk::raii::Queue(device, foundry->graphicsFamily(), 0);
-        m_presentQueue = vk::raii::Queue(device, foundry->presentFamily(), 0);
-
         // Synchronisation primitives.
         // imageSemaphores and frameFences are indexed by frame index (caller's in-flight index).
         // renderSemaphores must be indexed by swapchain image index.
@@ -137,10 +135,9 @@ namespace spock
     }
 
     Presenter::Presenter(Presenter&&other) noexcept
-        : m_colorFormat(other.m_colorFormat)
+        : m_foundry(std::move(other.m_foundry))
         , m_swapchain(std::move(other.m_swapchain))
-        , m_graphicsQueue(std::move(other.m_graphicsQueue))
-        , m_presentQueue(std::move(other.m_presentQueue))
+        , m_colorFormat(other.m_colorFormat)
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
         , m_imageIndex(other.m_imageIndex)
@@ -154,10 +151,9 @@ namespace spock
     {
         if (this != &other)
         {
-            m_colorFormat = other.m_colorFormat;
+            m_foundry = std::move(other.m_foundry);
             m_swapchain = std::move(other.m_swapchain);
-            m_graphicsQueue = std::move(other.m_graphicsQueue);
-            m_presentQueue = std::move(other.m_presentQueue);
+            m_colorFormat = other.m_colorFormat;
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
             m_imageIndex = other.m_imageIndex;
@@ -202,7 +198,7 @@ namespace spock
             *commandBuffer,
             *m_renderSemaphores[m_imageIndex]);
 
-        m_graphicsQueue.submit(submitInfo, m_frameFences[frameIndex]);
+        m_foundry->graphicsQueue().submit(submitInfo, m_frameFences[frameIndex]);
 
         return vk::Result::eSuccess;
     }
@@ -217,7 +213,7 @@ namespace spock
             presentInfo.setSwapchains(*m_swapchain);
             presentInfo.setPImageIndices(&m_imageIndex);
 
-            return m_presentQueue.presentKHR(presentInfo);
+            return m_foundry->presentQueue().presentKHR(presentInfo);
         }
         catch (std::exception const& e)
         {

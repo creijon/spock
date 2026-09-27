@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "presenter.hpp"
+#include "helpers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -32,6 +32,8 @@ namespace spock
         vk::raii::SurfaceKHR const &surface() const { return m_surface; }
         vk::raii::Device const &device() const { return m_device; }
         vk::raii::CommandPool const &commandPool() const { return m_commandPool; }
+        vk::raii::Queue const &graphicsQueue() const { return m_graphicsQueue; }
+        vk::raii::Queue const &presentQueue() const { return m_presentQueue; }
 
         uint32_t graphicsFamily() const { return m_graphicsFamily; }
         uint32_t presentFamily() const { return m_presentFamily; }
@@ -44,6 +46,12 @@ namespace spock
 
         void waitIdle() const;
 
+        template <typename Func>
+        void submit(Func const &func) const
+        {
+            oneTimeSubmit(m_device, m_commandPool, m_graphicsQueue, func);
+        }
+
     private:
         std::vector<vk::DeviceQueueCreateInfo> uniqueCreateInfos() const;
 
@@ -51,6 +59,8 @@ namespace spock
         vk::raii::SurfaceKHR m_surface{nullptr};
         vk::raii::Device m_device{nullptr};
         vk::raii::CommandPool m_commandPool{nullptr};
+        vk::raii::Queue m_graphicsQueue{nullptr};
+        vk::raii::Queue m_presentQueue{nullptr};
 
         uint32_t m_graphicsFamily{0};
         uint32_t m_presentFamily{0};

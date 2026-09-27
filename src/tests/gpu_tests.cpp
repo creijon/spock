@@ -28,7 +28,7 @@ TEST_CASE("a headless Vulkan device can be created for GPU-backed tests", "[gpu]
     CHECK(*fixture->foundry->device() != VK_NULL_HANDLE);
 }
 
-TEST_CASE("Queues discovers valid graphics, present, compute, and transfer queue family indices", "[gpu]")
+TEST_CASE("Foundry discovers valid graphics, present, compute, and transfer queue family indices", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -152,15 +152,7 @@ TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu
     spock::TextureWrapper texture(fixture->foundry, vk::Extent2D(4, 4));
     CHECK(*texture.sampler() != VK_NULL_HANDLE);
 
-    vk::raii::CommandPool commandPool(
-        fixture->foundry->device(),
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->graphicsFamily()));
-    vk::raii::Queue graphicsQueue(fixture->foundry->device(), fixture->foundry->graphicsFamily(), 0);
-
-    CHECK_NOTHROW(spock::oneTimeSubmit(
-        fixture->foundry->device(),
-        commandPool,
-        graphicsQueue,
+    CHECK_NOTHROW(fixture->foundry->submit(
         [&](vk::CommandBuffer commandBuffer)
         {
             texture.setImage(

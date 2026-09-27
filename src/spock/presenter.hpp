@@ -34,11 +34,6 @@ namespace spock
             return m_imageIndex;
         }
 
-        vk::raii::Queue const &graphicsQueue() const
-        {
-            return m_graphicsQueue;
-        }
-
         vk::Format colorFormat() const
         {
             return m_colorFormat;
@@ -49,10 +44,9 @@ namespace spock
         vk::Result presentFrame(uint32_t frameIndex);
 
     private:
+        std::shared_ptr<const Foundry> m_foundry;
         vk::raii::SwapchainKHR m_swapchain{nullptr};
-        vk::raii::Queue m_graphicsQueue{nullptr};
-        vk::raii::Queue m_presentQueue{nullptr};
-        vk::Format m_colorFormat;
+        vk::Format m_colorFormat{};
     
         std::vector<vk::Image> m_images;
         std::vector<vk::raii::ImageView> m_imageViews;
