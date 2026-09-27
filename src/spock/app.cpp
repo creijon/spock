@@ -7,6 +7,7 @@
 #include "foundry.hpp"
 #include "renderer.hpp"
 
+#include <iostream>
 #include <thread>
 #include <utility>
 
@@ -52,8 +53,6 @@ App::App(
     , m_window(name, {windowWidth, windowHeight})
     , m_frameDuration(frameDuration)
 {
-    // m_instance = createInstance(m_context, name, {}, getDefaultInstanceExtensions());
-    // m_window = createWindow(name, {windowWidth, windowHeight});
 }
 
 std::shared_ptr<Foundry> App::createFoundry() const
@@ -103,6 +102,27 @@ void App::run()
     }
 
     m_renderer->waitIdle();
+}
+
+int reportUncaughtException()
+{
+    try
+    {
+        throw;
+    }
+    catch (vk::SystemError const &err)
+    {
+        std::cerr << "vk::SystemError: " << err.what() << std::endl;
+    }
+    catch (std::exception const &err)
+    {
+        std::cerr << "std::exception: " << err.what() << std::endl;
+    }
+    catch (...)
+    {
+        std::cerr << "unknown error\n";
+    }
+    return -1;
 }
 
 } // namespace spock

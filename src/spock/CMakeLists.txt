@@ -50,4 +50,11 @@ set(HEADERS
 
 target_include_directories(spock PRIVATE ${CMAKE_SOURCE_DIR}/deps/lodepng)
 
+# GLM must be configured identically in every translation unit that sees it, including the
+# samples and tests, so the switches live on the target rather than in a header.
+target_compile_definitions(spock PUBLIC
+    GLM_FORCE_RADIANS
+    GLM_ENABLE_EXPERIMENTAL
+    GLM_FORCE_DEPTH_ZERO_TO_ONE)
+
 set_target_properties(spock PROPERTIES FOLDER "libs")

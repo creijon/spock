@@ -5,6 +5,8 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <cassert>
+#include <cstring>
 #include <vector>
 
 namespace spock

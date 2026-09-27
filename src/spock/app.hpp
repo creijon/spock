@@ -8,7 +8,6 @@
 #include <vulkan/vulkan_raii.hpp>
 
 #include <chrono>
-#include <iostream>
 #include <memory>
 #include <utility>
 
@@ -51,6 +50,9 @@ namespace spock
         const std::chrono::microseconds m_frameDuration;
     };
 
+    // Reports the exception currently being handled and returns the process exit code.
+    int reportUncaughtException();
+
     // Constructs an AppT with the given arguments, runs it, and reports any
     // exception that escapes the main loop. Returns the process exit code.
     template <typename AppT, typename... Args>
@@ -61,20 +63,9 @@ namespace spock
             AppT app(std::forward<Args>(args)...);
             app.run();
         }
-        catch (vk::SystemError &err)
-        {
-            std::cout << "vk::SystemError: " << err.what() << std::endl;
-            return -1;
-        }
-        catch (std::exception &err)
-        {
-            std::cout << "std::exception: " << err.what() << std::endl;
-            return -1;
-        }
         catch (...)
         {
-            std::cout << "unknown error\n";
-            return -1;
+            return reportUncaughtException();
         }
         return 0;
     }

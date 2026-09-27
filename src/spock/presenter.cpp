@@ -10,8 +10,6 @@
 #include <iostream>
 #include <limits>
 
-using namespace vk;
-
 namespace spock
 {
     Presenter::Presenter(
@@ -59,7 +57,6 @@ namespace spock
             Alpha::eInherit;
 
         vk::PresentModeKHR presentMode = pickPresentMode(foundry->getSurfacePresentModesKHR());
-        vk::SwapchainKHR prevSwapchain = *m_swapchain;
         uint32_t imageCount = clampSurfaceImageCount(framesInFlight, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
         vk::SwapchainCreateInfoKHR swapChainCreateInfo(
             {},
@@ -75,8 +72,7 @@ namespace spock
             preTransform,
             compositeAlpha,
             presentMode,
-            true,
-            prevSwapchain);
+            true);
         if (foundry->graphicsFamily() != foundry->presentFamily())
         {
             // If the graphics and present queues are from different queue families, we either have to explicitly
@@ -100,7 +96,6 @@ namespace spock
             {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
 
         m_imageViews.reserve(m_images.size());
-        m_imageViews.clear();
 
         for (const auto& image : m_images)
         {
@@ -114,9 +109,6 @@ namespace spock
         m_imageSemaphores.reserve(framesInFlight);
         m_frameFences.reserve(framesInFlight);
         m_renderSemaphores.reserve(m_images.size());
-        m_imageSemaphores.clear();
-        m_frameFences.clear();
-        m_renderSemaphores.clear();
 
         vk::FenceCreateInfo fenceInfo{vk::FenceCreateFlagBits::eSignaled};
         vk::SemaphoreCreateInfo semaphoreInfo{};

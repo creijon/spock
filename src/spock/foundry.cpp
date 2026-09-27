@@ -9,6 +9,9 @@
 #include <vulkan/vulkan_beta.h>
 #endif
 
+#include <algorithm>
+#include <cassert>
+#include <limits>
 #include <optional>
 #include <set>
 
@@ -103,7 +106,6 @@ namespace spock
         }
 
         throw std::runtime_error("Could not find a queue family that supports present, terminating.");
-        return { };
     }
 
     Foundry::Foundry(

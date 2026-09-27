@@ -19,9 +19,6 @@
 #pragma warning(disable : 4127) // conditional expression is constant (glm)
 #endif
 
-#define GLM_FORCE_RADIANS
-#define GLM_ENABLE_EXPERIMENTAL
-#define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/packing.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -42,7 +39,7 @@ namespace spock
         {
         }
 
-        operator float() const
+        explicit operator float() const
         {
             return glm::unpackHalf1x16(value);
         }
@@ -109,5 +106,5 @@ namespace spock
         float scale{1.0f};
     };
 
-	glm::vec3 randomUnitVector(std::mt19937& rng);
+    glm::vec3 randomUnitVector(std::mt19937& rng);
 } // namespace spock

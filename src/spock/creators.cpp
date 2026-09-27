@@ -4,6 +4,8 @@
 #include "creators.hpp"
 #include "utils.hpp"
 
+#include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <numeric>
 
@@ -243,7 +245,7 @@ namespace spock
 
     std::vector<vk::raii::Framebuffer> createFramebuffers(
         vk::raii::Device const &device,
-        vk::raii::RenderPass &renderPass,
+        vk::raii::RenderPass const &renderPass,
         std::vector<vk::raii::ImageView> const &imageViews,
         vk::raii::ImageView const *depthImageView,
         vk::Extent2D const &extent)
@@ -375,8 +377,8 @@ namespace spock
     void updateDescriptorSets(
         vk::raii::Device const& device,
         vk::raii::DescriptorSet const& descriptorSet,
-        std::vector<std::reference_wrapper<BufferWrapper>> const& bufferData,
-        std::vector<std::reference_wrapper<TextureWrapper>> const& textureData,
+        std::vector<std::reference_wrapper<BufferWrapper const>> const& bufferData,
+        std::vector<std::reference_wrapper<TextureWrapper const>> const& textureData,
         uint32_t bindingOffset)
     {
         std::vector<vk::DescriptorBufferInfo> bufferInfos;

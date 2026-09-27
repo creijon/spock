@@ -17,8 +17,6 @@ using namespace std::chrono_literals;
 
 namespace spock
 {
-    class Foundry;
-
     class Renderer
     {
     public:
@@ -37,8 +35,6 @@ namespace spock
 
     protected:
         virtual void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) = 0;
-
-        friend class Loader;
 
         std::shared_ptr<const Foundry> m_foundry;
         RenderPass m_renderPass;

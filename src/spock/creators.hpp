@@ -64,7 +64,7 @@ namespace spock
     // Create framebuffer objects for every swapchain image view and optional depth image view.
     std::vector<vk::raii::Framebuffer> createFramebuffers(
         vk::raii::Device const &device,
-        vk::raii::RenderPass &renderPass,
+        vk::raii::RenderPass const &renderPass,
         std::vector<vk::raii::ImageView> const &imageViews,
         vk::raii::ImageView const *pDepthImageView,
         vk::Extent2D const &extent);
@@ -90,7 +90,7 @@ namespace spock
     void updateDescriptorSets(
         vk::raii::Device const& device,
         vk::raii::DescriptorSet const& descriptorSet,
-        std::vector<std::reference_wrapper<BufferWrapper>> const& bufferData,
-        std::vector<std::reference_wrapper<TextureWrapper>> const& textureData,
+        std::vector<std::reference_wrapper<BufferWrapper const>> const& bufferData,
+        std::vector<std::reference_wrapper<TextureWrapper const>> const& textureData,
         uint32_t bindingOffset = 0);
 } // namespace spock
