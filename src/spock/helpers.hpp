@@ -11,9 +11,6 @@
 
 namespace spock
 {
-    // The timeout used for waiting on frame fences during rendering.
-    const uint64_t FenceTimeout = 100000000ull;
-
     // Clamp the requested swapchain image count between the supported min and max.
     uint32_t clampSurfaceImageCount(
         uint32_t desiredImageCount,

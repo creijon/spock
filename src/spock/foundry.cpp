@@ -91,7 +91,7 @@ namespace spock
             if ((queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics) &&
                 physicalDevice.getSurfaceSupportKHR(i, surface))
             {
-                return { graphicsFamily, i };
+                return { i, i };
             }
         }
 
@@ -195,7 +195,9 @@ namespace spock
 
     std::vector<vk::DeviceQueueCreateInfo> Foundry::uniqueCreateInfos() const
     {
-        float queuePriority = 0.0f;
+        // The returned create infos point at this value, so it must outlive the function.
+        // 1.0 is the conventional priority for a single queue per family.
+        static constexpr float queuePriority = 1.0f;
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
         std::set<uint32_t> uniqueQueueFamilies = {
             m_graphicsFamily,

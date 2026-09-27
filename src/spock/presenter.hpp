@@ -44,6 +44,8 @@ namespace spock
         vk::Result presentFrame(uint32_t frameIndex);
 
     private:
+        // The Foundry has to be the first member since it holds the lifetime of the device and this
+        // must be maintained until after the swapchain is destroyed.s
         std::shared_ptr<const Foundry> m_foundry;
         vk::raii::SwapchainKHR m_swapchain{nullptr};
         vk::Format m_colorFormat{};

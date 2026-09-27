@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <iostream>
 #include <limits>
+#include <stdexcept>
+#include <tuple>
 
 namespace spock
 {
@@ -159,26 +161,33 @@ namespace spock
 
     vk::Result Presenter::acquireFrame(vk::raii::Device const &device, uint32_t frameIndex)
     {
-        vk::Result result = vk::Result::eSuccess;
-
-        static const uint64_t fenceTimeout = 100000000ull;
-
-        (void)device.waitForFences({ m_frameFences[frameIndex] }, VK_TRUE, fenceTimeout);
-
-        try
-        {    
-            std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(fenceTimeout, m_imageSemaphores[frameIndex]);
+        // Wait without a timeout. The command buffer for this frame index is about to be re-recorded,
+        // so returning while the previous submission is still executing is never acceptable.
+        vk::Result waitResult = device.waitForFences(
+            { m_frameFences[frameIndex] },
+            VK_TRUE,
+            std::numeric_limits<uint64_t>::max());
+        if (waitResult != vk::Result::eSuccess)
+        {
+            throw std::runtime_error("Presenter: waiting for the frame fence failed: " + vk::to_string(waitResult));
         }
-        catch (std::exception const& e)
+
+        // The fence is deliberately not reset here. That happens in submitCommands(), immediately before
+        // the submit that will signal it again. If the acquire below fails, the caller skips the submit,
+        // and the fence stays signalled so the next wait on this frame index returns straight away.
+        try
+        {
+            vk::Result result = vk::Result::eSuccess;
+            std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(
+                std::numeric_limits<uint64_t>::max(),
+                m_imageSemaphores[frameIndex]);
+            return result;
+        }
+        catch (std::exception const &)
         {
             // Most commonly vk::OutOfDateKHRError right after a resize.
-            result = vk::Result::eErrorOutOfDateKHR;
+            return vk::Result::eErrorOutOfDateKHR;
         }
-
-        // Reset the fence for use in submitCommands().
-        device.resetFences({ m_frameFences[frameIndex] });
-
-        return result;
     }
 
     vk::Result Presenter::submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex)
@@ -190,6 +199,7 @@ namespace spock
             *commandBuffer,
             *m_renderSemaphores[m_imageIndex]);
 
+        m_foundry->device().resetFences({ m_frameFences[frameIndex] });
         m_foundry->graphicsQueue().submit(submitInfo, m_frameFences[frameIndex]);
 
         return vk::Result::eSuccess;
