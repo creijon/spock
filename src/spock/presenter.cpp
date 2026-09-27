@@ -159,11 +159,11 @@ namespace spock
         return *this;
     }
 
-    vk::Result Presenter::acquireFrame(vk::raii::Device const &device, uint32_t frameIndex)
+    vk::Result Presenter::acquireFrame(uint32_t frameIndex)
     {
         // Wait without a timeout. The command buffer for this frame index is about to be re-recorded,
         // so returning while the previous submission is still executing is never acceptable.
-        vk::Result waitResult = device.waitForFences(
+        vk::Result waitResult = m_foundry->device().waitForFences(
             { m_frameFences[frameIndex] },
             VK_TRUE,
             std::numeric_limits<uint64_t>::max());

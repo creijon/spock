@@ -72,7 +72,7 @@ namespace spock
 
     vk::Result Renderer::renderFrame(std::chrono::microseconds time)
     {
-        vk::Result acquireResult = m_presenter->acquireFrame(m_foundry->device(), m_inFlightIndex);
+        vk::Result acquireResult = m_presenter->acquireFrame(m_inFlightIndex);
 
         // If frame acquisition failed, skip rendering and present this frame.
         // The semaphore was not signaled by the swapchain, so we cannot wait on it.

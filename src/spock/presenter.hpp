@@ -39,7 +39,7 @@ namespace spock
             return m_colorFormat;
         }
 
-        vk::Result acquireFrame(vk::raii::Device const &device, uint32_t frameIndex);
+        vk::Result acquireFrame(uint32_t frameIndex);
         vk::Result submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex);
         vk::Result presentFrame(uint32_t frameIndex);
 
