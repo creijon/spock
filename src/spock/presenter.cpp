@@ -20,6 +20,8 @@ namespace spock
         vk::ImageUsageFlags usage,
         uint32_t framesInFlight)
     {
+        vk::raii::Device const& device = foundry->device();
+
         vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(foundry->getSurfaceFormatsKHR());
         m_colorFormat = surfaceFormat.format;
 
@@ -28,8 +30,14 @@ namespace spock
         if (surfaceCapabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)())
         {
             // If the surface size is undefined, the size is set to the size of the images requested.
-            swapchainExtent.width = std::clamp(extent.width, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
-            swapchainExtent.height = std::clamp(extent.height, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+            swapchainExtent.width = std::clamp(
+                extent.width,
+                surfaceCapabilities.minImageExtent.width,
+                surfaceCapabilities.maxImageExtent.width);
+            swapchainExtent.height = std::clamp(
+                extent.height,
+                surfaceCapabilities.minImageExtent.height,
+                surfaceCapabilities.maxImageExtent.height);
         }
         else
         {
@@ -54,7 +62,7 @@ namespace spock
         uint32_t imageCount = clampSurfaceImageCount(framesInFlight, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
         vk::SwapchainCreateInfoKHR swapChainCreateInfo(
             {},
-            foundry->windowSurface(),
+            foundry->surface(),
             imageCount,
             m_colorFormat,
             surfaceFormat.colorSpace,
@@ -68,17 +76,17 @@ namespace spock
             presentMode,
             true,
             prevSwapchain);
-        if (foundry->queues().graphicsFamily() != foundry->queues().presentFamily())
+        if (foundry->graphicsFamily() != foundry->presentFamily())
         {
             // If the graphics and present queues are from different queue families, we either have to explicitly
             // transfer ownership of images between the queues, or we have to create the swapchain with imageSharingMode
             // as vk::SharingMode::eConcurrent
-            uint32_t queueFamilyIndices[]{ foundry->queues().graphicsFamily(), foundry->queues().presentFamily()};
+            uint32_t queueFamilyIndices[]{ foundry->graphicsFamily(), foundry->presentFamily()};
             swapChainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
             swapChainCreateInfo.queueFamilyIndexCount = 2;
             swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
         }
-        m_swapchain = vk::raii::SwapchainKHR(foundry->device(), swapChainCreateInfo);
+        m_swapchain = vk::raii::SwapchainKHR(device, swapChainCreateInfo);
 
         m_images = m_swapchain.getImages();
 
@@ -96,11 +104,11 @@ namespace spock
         for (const auto& image : m_images)
         {
             imageViewCreateInfo.image = image;
-            m_imageViews.emplace_back(foundry->device(), imageViewCreateInfo);
+            m_imageViews.emplace_back(device, imageViewCreateInfo);
         }
 
-        m_graphicsQueue = vk::raii::Queue(foundry->device(), foundry->queues().graphicsFamily(), 0);
-        m_presentQueue = vk::raii::Queue(foundry->device(), foundry->queues().presentFamily(), 0);
+        m_graphicsQueue = vk::raii::Queue(device, foundry->graphicsFamily(), 0);
+        m_presentQueue = vk::raii::Queue(device, foundry->presentFamily(), 0);
 
         // Synchronisation primitives.
         // imageSemaphores and frameFences are indexed by frame index (caller's in-flight index).
@@ -117,14 +125,14 @@ namespace spock
 
         for (size_t i = 0; i < framesInFlight; i++)
         {
-            m_imageSemaphores.push_back(foundry->device().createSemaphore(semaphoreInfo));
-            m_frameFences.push_back(foundry->device().createFence(fenceInfo));
+            m_imageSemaphores.push_back(device.createSemaphore(semaphoreInfo));
+            m_frameFences.push_back(device.createFence(fenceInfo));
         }
 
         // Create semaphores for each swapchain image
         for (size_t i = 0; i < m_images.size(); i++)
         {
-            m_renderSemaphores.push_back(foundry->device().createSemaphore(semaphoreInfo));
+            m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
         }
     }
 

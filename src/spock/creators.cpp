@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: MIT
 
 #include "creators.hpp"
-#include "queues.hpp"
 #include "utils.hpp"
 
 #include <iostream>
@@ -131,36 +130,6 @@ namespace spock
 
         return vk::raii::Instance(
             context, instanceCreateInfoChain.get<vk::InstanceCreateInfo>());
-    }
-
-    // Create a logical device for the selected physical device and queue family.
-    // All requested extensions are enabled on the resulting device.
-    vk::raii::Device createDevice(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        Queues const &queues,
-        std::vector<std::string> const &extensions,
-        vk::PhysicalDeviceFeatures const *physicalDeviceFeatures,
-        void const *pNext)
-    {
-        std::vector<char const *> enabledExtensions;
-        enabledExtensions.reserve(extensions.size());
-
-        for (auto const &ext : extensions)
-        {
-            enabledExtensions.push_back(ext.data());
-        }
-
-        std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{ queues.uniqueCreateInfos() };
-
-        vk::DeviceCreateInfo deviceCreateInfo(
-            vk::DeviceCreateFlags(),
-            queueCreateInfos,
-            {},
-            enabledExtensions,
-            physicalDeviceFeatures,
-            pNext);
-
-        return vk::raii::Device(physicalDevice, deviceCreateInfo);
     }
 
     // Create a basic render pass with a single color attachment and an optional

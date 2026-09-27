@@ -5,7 +5,6 @@
 
 #include "foundry.hpp"
 #include "presenter.hpp"
-#include "queues.hpp"
 #include "render_pass.hpp"
 
 #include <vulkan/vulkan_raii.hpp>

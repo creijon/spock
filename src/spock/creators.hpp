@@ -25,14 +25,6 @@ namespace spock
         std::vector<std::string> const &extensions = {},
         uint32_t apiVersion = VK_API_VERSION_1_4);
 
-    // Create a logical Vulkan device and enable the requested device extensions.
-    vk::raii::Device createDevice(
-        vk::raii::PhysicalDevice const &physicalDevice,
-        Queues const& queues,
-        std::vector<std::string> const &extensions = {},
-        vk::PhysicalDeviceFeatures const *physicalDeviceFeatures = nullptr,
-        void const *pNext = nullptr);
-
     // Allocate a primary command buffer from the given command pool.
     vk::raii::CommandBuffer createCommandBuffer(
         vk::raii::Device const &device,

@@ -12,21 +12,21 @@ FetchContent_MakeAvailable(Catch2)
 list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
 
 add_executable(spock_tests
-    test_setup.cpp
     camera_tests.cpp
-    math_tests.cpp
-    math_extended_tests.cpp
-    utils_tests.cpp
-    utils_extended_tests.cpp
-    helpers_tests.cpp
-    helpers_extended_tests.cpp
-    queues_tests.cpp
-    shaders_tests.cpp
+    foundry_tests.cpp
+    geo_intersect3d_tests.cpp
     gpu_fixture.hpp
     gpu_tests.cpp
+    helpers_extended_tests.cpp
+    helpers_tests.cpp
+    math_extended_tests.cpp
+    math_tests.cpp
     renderer_tests.cpp
+    shaders_tests.cpp
+    test_setup.cpp
+    utils_extended_tests.cpp
+    utils_tests.cpp
     wrappers_tests.cpp
-    geo_intersect3d_tests.cpp
 )
 
 target_link_libraries(spock_tests PRIVATE ${BINARY_NAME} geo Catch2::Catch2WithMain)

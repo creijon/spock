@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "queues.hpp"
-
 #include <vulkan/vulkan_raii.hpp>
 
 #include <vector>
@@ -36,7 +34,7 @@ namespace spock
             return m_imageIndex;
         }
 
-        vk::raii::Queue graphicsQueue() const
+        vk::raii::Queue const &graphicsQueue() const
         {
             return m_graphicsQueue;
         }

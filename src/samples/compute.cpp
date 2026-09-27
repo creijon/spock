@@ -242,7 +242,7 @@ protected:
         }
 
         // Upload the input buffer to the GPU.
-        spock::CommandRecorder computeRecorder(m_foundry->device(), m_foundry->queues().computeFamily());
+        spock::CommandRecorder computeRecorder(m_foundry->device(), m_foundry->computeFamily());
         m_elementsA.upload(
             m_foundry,
             computeRecorder.commandPool(),
@@ -379,7 +379,7 @@ public:
 protected:
     std::shared_ptr<spock::Foundry> createFoundry() const override
     {
-        std::vector<std::string> extensions{ VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME };
+        std::vector<char const*> extensions{ VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME };
         vk::PhysicalDeviceSubgroupSizeControlFeatures subgroupSizeControl{ VK_TRUE, VK_TRUE };
 
         return std::make_shared<spock::Foundry>(

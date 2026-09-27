@@ -316,7 +316,7 @@ public:
 protected:
     std::shared_ptr<spock::Foundry> createFoundry() const override
     {
-        std::vector<std::string> extensions{
+        std::vector<char const*> extensions{
             VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
             VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
             VK_KHR_STORAGE_BUFFER_STORAGE_CLASS_EXTENSION_NAME

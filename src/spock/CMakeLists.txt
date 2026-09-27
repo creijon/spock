@@ -17,7 +17,6 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/loader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presenter.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/queues.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/render_pass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/renderer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders.cpp
@@ -40,7 +39,6 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/loader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/presenter.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/queues.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/render_pass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/renderer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders.hpp

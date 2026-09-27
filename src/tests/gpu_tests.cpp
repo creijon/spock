@@ -37,11 +37,11 @@ TEST_CASE("Queues discovers valid graphics, present, compute, and transfer queue
     }
 
     auto queueFamilyProperties = fixture->foundry->physicalDevice().getQueueFamilyProperties();
-    CHECK(fixture->foundry->queues().graphicsFamily() < queueFamilyProperties.size());
-    CHECK(fixture->foundry->queues().presentFamily() < queueFamilyProperties.size());
-    CHECK(fixture->foundry->queues().computeFamily() < queueFamilyProperties.size());
-    CHECK(fixture->foundry->queues().transferFamily() < queueFamilyProperties.size());
-    CHECK((queueFamilyProperties[fixture->foundry->queues().graphicsFamily()].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics);
+    CHECK(fixture->foundry->graphicsFamily() < queueFamilyProperties.size());
+    CHECK(fixture->foundry->presentFamily() < queueFamilyProperties.size());
+    CHECK(fixture->foundry->computeFamily() < queueFamilyProperties.size());
+    CHECK(fixture->foundry->transferFamily() < queueFamilyProperties.size());
+    CHECK((queueFamilyProperties[fixture->foundry->graphicsFamily()].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics);
 }
 
 TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", "[gpu]")
@@ -154,8 +154,8 @@ TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu
 
     vk::raii::CommandPool commandPool(
         fixture->foundry->device(),
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->queues().graphicsFamily()));
-    vk::raii::Queue graphicsQueue(fixture->foundry->device(), fixture->foundry->queues().graphicsFamily(), 0);
+        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->graphicsFamily()));
+    vk::raii::Queue graphicsQueue(fixture->foundry->device(), fixture->foundry->graphicsFamily(), 0);
 
     CHECK_NOTHROW(spock::oneTimeSubmit(
         fixture->foundry->device(),
@@ -248,7 +248,7 @@ TEST_CASE("createCommandBuffer allocates a primary command buffer", "[gpu]")
 
     vk::raii::CommandPool commandPool(
         fixture->foundry->device(),
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->queues().graphicsFamily()));
+        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->graphicsFamily()));
 
     vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->foundry->device(), commandPool);
 
@@ -265,7 +265,7 @@ TEST_CASE("CommandRecorder owns a command pool and queue for its family and can 
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    spock::CommandRecorder recorder(fixture->foundry->device(), fixture->foundry->queues().computeFamily());
+    spock::CommandRecorder recorder(fixture->foundry->device(), fixture->foundry->computeFamily());
     CHECK(*recorder.commandPool() != VK_NULL_HANDLE);
     CHECK(*recorder.queue() != VK_NULL_HANDLE);
 
