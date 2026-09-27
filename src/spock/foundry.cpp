@@ -12,23 +12,8 @@
 #include <optional>
 #include <set>
 
-namespace
+namespace spock
 {
-    std::vector<std::string> deviceExtensions(std::vector<std::string> const& extensions)
-    {
-        std::vector<std::string> defaultExtensions{
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-#if defined(__APPLE__)
-            VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
-#endif
-        };
-
-        defaultExtensions.insert(defaultExtensions.end(), extensions.begin(), extensions.end());
-
-        return defaultExtensions;
-    }
-
-
     // Find the first queue family whose flags include every flag in `include` and exclude every
     // flag in `exclude`.
     // If none are found return an empty optional.
@@ -120,10 +105,7 @@ namespace
         throw std::runtime_error("Could not find a queue family that supports present, terminating.");
         return { };
     }
-}
 
-namespace spock
-{
     Foundry::Foundry(
         vk::raii::Instance const &instance,
         vk::raii::SurfaceKHR windowSurface,
