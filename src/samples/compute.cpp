@@ -169,7 +169,6 @@ protected:
 
     void createPipelines(std::shared_ptr<const spock::Foundry> const &foundry)
     {
-        glslang::InitializeProcess();
         vk::raii::ShaderModule histogramShader{nullptr};
         vk::raii::ShaderModule sortShader{nullptr};
         try
@@ -180,10 +179,8 @@ protected:
         catch (std::exception const& e)
         {
             spock::writeLog(std::string(e.what()));
-            glslang::FinalizeProcess();
             throw;
         }
-        glslang::FinalizeProcess();
 
         vk::PipelineShaderStageCreateInfo histogramStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *histogramShader, "main");
         vk::PipelineShaderStageCreateInfo sortStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *sortShader, "main");

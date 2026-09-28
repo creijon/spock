@@ -15,6 +15,15 @@
 
 namespace spock
 {
+        void ensureGlslangInitialised()
+        {
+            static struct GlslangProcess
+            {
+                GlslangProcess() { glslang::InitializeProcess(); }
+                ~GlslangProcess() { glslang::FinalizeProcess(); }
+            } const process;
+            (void)process;
+        }
     struct ShaderConversion
     {
         EShLanguage stage;
@@ -109,6 +118,8 @@ namespace spock
         vk::ShaderStageFlagBits shaderStage,
         std::string const& shaderSource)
     {
+        ensureGlslangInitialised();
+
         std::vector<uint32_t> shaderSPV;
         std::string log;
         std::string debugLog;

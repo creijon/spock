@@ -7,8 +7,6 @@
 #include "foundry.hpp"
 #include "shaders.hpp"
 
-#include <glslang/Public/ShaderLang.h>
-
 #include <stdexcept>
 #include <utility>
 
@@ -16,7 +14,7 @@ namespace spock
 {
     namespace
     {
-        const char* const vertexShaderSource = R"(
+        const char* const vertShaderSource = R"(
 #version 400
 
 #extension GL_ARB_separate_shader_objects : enable
@@ -37,7 +35,7 @@ void main()
 }
 )";
 
-        const char* const fragmentShaderSource = R"(
+        const char* const fragShaderSource = R"(
 #version 400
 
 #extension GL_ARB_separate_shader_objects : enable
@@ -77,26 +75,14 @@ void main()
             foundry->device(),
             vk::PipelineLayoutCreateInfo({}, {}, pushConstantRange));
 
-        glslang::InitializeProcess();
-        vk::raii::ShaderModule vertexShader{nullptr};
-        vk::raii::ShaderModule fragmentShader{nullptr};
-        try
-        {
-            vertexShader = compileShader(
-                foundry->device(), vk::ShaderStageFlagBits::eVertex, vertexShaderSource);
-            fragmentShader = compileShader(
-                foundry->device(), vk::ShaderStageFlagBits::eFragment, fragmentShaderSource);
-        }
-        catch (...)
-        {
-            glslang::FinalizeProcess();
-            throw;
-        }
-        glslang::FinalizeProcess();
+        vk::raii::ShaderModule vertShader = compileShader(
+            foundry->device(), vk::ShaderStageFlagBits::eVertex, vertShaderSource);
+        vk::raii::ShaderModule fragShader = compileShader(
+            foundry->device(), vk::ShaderStageFlagBits::eFragment, fragShaderSource);
 
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStages{
-            {{}, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
-            {{}, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"}};
+            {{}, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
+            {{}, vk::ShaderStageFlagBits::eFragment, *fragShader, "main"}};
 
         m_pipeline = createGraphicsPipeline(
             foundry->device(),

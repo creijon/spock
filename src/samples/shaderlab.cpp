@@ -95,18 +95,16 @@ public:
 
     void createPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
-        glslang::InitializeProcess();
-
         try
         {
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
-                m_vertexShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                m_vertShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
-                m_fragmentShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                m_fragShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
         }
         catch (std::exception const& e)
@@ -114,14 +112,12 @@ public:
             spock::writeLog(std::string(e.what()));
         }
 
-        glslang::FinalizeProcess();
-
-        if (m_vertexShader != nullptr && m_fragmentShader != nullptr)
+        if (m_vertShader != nullptr && m_fragShader != nullptr)
         {
             const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
             std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertexShader, "main"},
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragmentShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertShader, "main"},
+                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragShader, "main"},
             };
 
             m_graphicsPipeline =
@@ -178,8 +174,8 @@ protected:
 private:
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
-    vk::raii::ShaderModule m_vertexShader{nullptr};
-    vk::raii::ShaderModule m_fragmentShader{nullptr};
+    vk::raii::ShaderModule m_vertShader{nullptr};
+    vk::raii::ShaderModule m_fragShader{nullptr};
 
     spock::BufferWrapper m_vertexBuffer;
 

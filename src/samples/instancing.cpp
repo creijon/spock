@@ -216,25 +216,13 @@ protected:
     void createPipeline(vk::raii::Device const& device)
     {
         // Create the shaders
-        glslang::InitializeProcess();
-        vk::raii::ShaderModule vertexShader{nullptr};
-        vk::raii::ShaderModule fragmentShader{nullptr};
-        try
-        {
-            vertexShader = spock::compileShader(device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-            fragmentShader = spock::compileShader(device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
-        }
-        catch (...)
-        {
-            glslang::FinalizeProcess();
-            throw;
-        }
-        glslang::FinalizeProcess();
+        auto vertShader = spock::compileShader(device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
+        auto fragShader = spock::compileShader(device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
 
         const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertexShader, "main"},
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragmentShader, "main"},
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
+            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragShader, "main"},
         };
 
         // Create vertex format combining vertex and instance attributes

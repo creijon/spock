@@ -7,8 +7,6 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
-#include <glslang/Public/ShaderLang.h>
-
 #include <string>
 #include <vector>
 
