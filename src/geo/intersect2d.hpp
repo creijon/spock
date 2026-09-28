@@ -7,13 +7,13 @@
 
 namespace geo2d
 {
-    struct Intersect
+    namespace intersect
     {
-        static bool test(glm::vec2 const& point, Rect const& rect);
-        static bool test(Rect const& a, Rect const& b);
-        static bool test(Edge const& edge, Rect const& rect);
-        static bool test(Edge const& a, Edge const& b, float& t);
-        static bool test(glm::vec2 const& point, Triangle const& triangle);
-        static bool test(Triangle const& triangle, Rect const& rect);
-    };
+        bool test(glm::vec2 const& point, Rect const& rect);
+        bool test(Rect const& a, Rect const& b);
+        bool test(Edge const& edge, Rect const& rect);
+        bool test(Edge const& a, Edge const& b, float& t);
+        bool test(glm::vec2 const& point, Triangle const& triangle);
+        bool test(Triangle const& triangle, Rect const& rect);
+    }
 }

@@ -8,7 +8,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 using geo3d::Aabb;
-using geo3d::Intersect;
+namespace intersect = geo3d::intersect;
 using geo3d::Triangle;
 
 namespace
@@ -47,10 +47,10 @@ TEST_CASE("Triangle-Aabb intersection handles near-corner and degenerate triangl
             glm::vec3(0.07522762f, 0.09086225f, 0.0286315f),
             true);
 
-        CHECK_FALSE(Intersect::testSS(triangle, box));
-        CHECK_FALSE(Intersect::testNoBB(triangle, box));
-        CHECK_FALSE(Intersect::test(triangle, box));
-        CHECK_FALSE(Intersect::testAM(triangle, box));
+        CHECK_FALSE(intersect::testSS(triangle, box));
+        CHECK_FALSE(intersect::testNoBB(triangle, box));
+        CHECK_FALSE(intersect::test(triangle, box));
+        CHECK_FALSE(intersect::testAM(triangle, box));
     }
 
     SECTION("Degenerate (single-point) triangle inside the box: intersects")
@@ -58,10 +58,10 @@ TEST_CASE("Triangle-Aabb intersection handles near-corner and degenerate triangl
         Triangle degenerate(glm::vec3(0.0f), glm::vec3(0.0f), glm::vec3(0.0f));
         Aabb box(glm::vec3(0.0f), glm::vec3(1.0f));
 
-        CHECK(Intersect::testSS(degenerate, box));
-        CHECK(Intersect::testNoBB(degenerate, box));
-        CHECK(Intersect::test(degenerate, box));
-        CHECK(Intersect::testAM(degenerate, box));
+        CHECK(intersect::testSS(degenerate, box));
+        CHECK(intersect::testNoBB(degenerate, box));
+        CHECK(intersect::test(degenerate, box));
+        CHECK(intersect::testAM(degenerate, box));
     }
 
     SECTION("Degenerate (collinear) triangle crossing the box: intersects")
@@ -69,10 +69,10 @@ TEST_CASE("Triangle-Aabb intersection handles near-corner and degenerate triangl
         Triangle collinear(glm::vec3(-0.5f, 0.0f, 0.0f), glm::vec3(0.5f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 0.0f));
         Aabb box(glm::vec3(0.0f), glm::vec3(1.0f));
 
-        CHECK(Intersect::testSS(collinear, box));
-        CHECK(Intersect::testNoBB(collinear, box));
-        CHECK(Intersect::test(collinear, box));
-        CHECK(Intersect::testAM(collinear, box));
+        CHECK(intersect::testSS(collinear, box));
+        CHECK(intersect::testNoBB(collinear, box));
+        CHECK(intersect::test(collinear, box));
+        CHECK(intersect::testAM(collinear, box));
     }
 
     SECTION("Degenerate (collinear) triangle away from the box: does not intersect")
@@ -80,10 +80,151 @@ TEST_CASE("Triangle-Aabb intersection handles near-corner and degenerate triangl
         Triangle collinear(glm::vec3(5.0f, 0.0f, 0.0f), glm::vec3(6.0f, 0.0f, 0.0f), glm::vec3(5.5f, 0.0f, 0.0f));
         Aabb box(glm::vec3(0.0f), glm::vec3(1.0f));
 
-        CHECK_FALSE(Intersect::testSS(collinear, box));
-        CHECK_FALSE(Intersect::testNoBB(collinear, box));
-        CHECK_FALSE(Intersect::test(collinear, box));
-        CHECK_FALSE(Intersect::testAM(collinear, box));
+        CHECK_FALSE(intersect::testSS(collinear, box));
+        CHECK_FALSE(intersect::testNoBB(collinear, box));
+        CHECK_FALSE(intersect::test(collinear, box));
+        CHECK_FALSE(intersect::testAM(collinear, box));
+    }
+}
+
+// A tiny (~0.001 scale) triangle has edge vectors of ~1e-3 and an unnormalised plane normal of
+// ~1e-6, so the SAT projections are small enough to expose any absolute epsilon or degeneracy
+// check that wrongly treats a small-but-valid triangle as zero-area. The box spans [-1, 1].
+TEST_CASE("Triangle-Aabb intersection handles tiny triangles", "[geo]")
+{
+    Aabb box(glm::vec3(0.0f), glm::vec3(1.0f));
+
+    SECTION("Tiny triangle at the box centre: intersects")
+    {
+        Triangle tiny(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.001f, 0.0f, 0.0f), glm::vec3(0.0f, 0.001f, 0.0f));
+
+        CHECK(intersect::testSS(tiny, box));
+        CHECK(intersect::testNoBB(tiny, box));
+        CHECK(intersect::test(tiny, box));
+        CHECK(intersect::testAM(tiny, box));
+    }
+
+    SECTION("Tiny triangle straddling a box face: intersects")
+    {
+        Triangle tiny(glm::vec3(0.9995f, 0.0f, 0.0f), glm::vec3(1.0005f, 0.0f, 0.0f), glm::vec3(1.0f, 0.001f, 0.0005f));
+
+        CHECK(intersect::testSS(tiny, box));
+        CHECK(intersect::testNoBB(tiny, box));
+        CHECK(intersect::test(tiny, box));
+        CHECK(intersect::testAM(tiny, box));
+    }
+
+    SECTION("Tiny triangle just outside a box face: does not intersect")
+    {
+        Triangle tiny(glm::vec3(1.0005f, 0.0f, 0.0f), glm::vec3(1.0015f, 0.0f, 0.0f), glm::vec3(1.001f, 0.001f, 0.0005f));
+
+        CHECK_FALSE(intersect::testSS(tiny, box));
+        CHECK_FALSE(intersect::testNoBB(tiny, box));
+        CHECK_FALSE(intersect::test(tiny, box));
+        CHECK_FALSE(intersect::testAM(tiny, box));
+    }
+
+    SECTION("Tiny triangle parallel to a box face, just above it: does not intersect")
+    {
+        Triangle tiny(glm::vec3(0.0f, 0.0f, 1.0001f), glm::vec3(0.001f, 0.0f, 1.0001f), glm::vec3(0.0f, 0.001f, 1.0001f));
+
+        CHECK_FALSE(intersect::testSS(tiny, box));
+        CHECK_FALSE(intersect::testNoBB(tiny, box));
+        CHECK_FALSE(intersect::test(tiny, box));
+        CHECK_FALSE(intersect::testAM(tiny, box));
+    }
+
+    // The triangle's bounds overlap the box and its plane cuts the box, so the only separating
+    // axis is an edge cross product: the edge running diagonally past the box's (+x, +y) edge.
+    SECTION("Tiny triangle just outside a box edge, separated only by an edge-cross axis: does not intersect")
+    {
+        Triangle tiny(
+            glm::vec3(1.0015f, 0.9995f, 0.0f),
+            glm::vec3(0.9995f, 1.0015f, 0.0f),
+            glm::vec3(1.0015f, 1.0015f, 0.001f));
+
+        CHECK_FALSE(intersect::testSS(tiny, box));
+        CHECK_FALSE(intersect::testNoBB(tiny, box));
+        CHECK_FALSE(intersect::test(tiny, box));
+        CHECK_FALSE(intersect::testAM(tiny, box));
+    }
+
+    // Even smaller (~1e-5 scale, so the unnormalised normal is ~1e-10): a triangle in the plane
+    // x + y + z = 3 + d that surrounds the (+x, +y, +z) corner when viewed along (1, 1, 1). Its
+    // bounds overlap the box and no edge-cross axis separates it, so only its own normal does.
+    SECTION("Tiny triangle just outside a box corner, separated only by its normal: does not intersect")
+    {
+        float const s = 1e-5f;
+        float const d = 3e-6f;
+        Triangle tiny(
+            glm::vec3(1.0f + d + s, 1.0f - s, 1.0f),
+            glm::vec3(1.0f, 1.0f + d + s, 1.0f - s),
+            glm::vec3(1.0f - s, 1.0f, 1.0f + d + s));
+
+        CHECK_FALSE(intersect::testSS(tiny, box));
+        CHECK_FALSE(intersect::testNoBB(tiny, box));
+        CHECK_FALSE(intersect::test(tiny, box));
+        CHECK_FALSE(intersect::testAM(tiny, box));
+    }
+
+    // A small box poking through the interior of a tiny triangle, touching none of its edges, so
+    // testNoBB must fall through to its box-diagonal ray tests. With the triangle and the box
+    // diagonals both short, any absolute epsilon on the ray-triangle determinant rejects the hit.
+    SECTION("Small box inside the interior of a tiny triangle, touching no edge: intersects")
+    {
+        Triangle tiny(glm::vec3(0.0f), glm::vec3(0.001f, 0.0f, 0.0f), glm::vec3(0.0f, 0.001f, 0.0f));
+        Aabb smallBox(glm::vec3(0.00025f, 0.00025f, 0.0f), glm::vec3(0.00005f));
+
+        CHECK(intersect::testSS(tiny, smallBox));
+        CHECK(intersect::testNoBB(tiny, smallBox));
+        CHECK(intersect::test(tiny, smallBox));
+        CHECK(intersect::testAM(tiny, smallBox));
+    }
+
+    // As above, but sized to isolate testNoBB's degenerate-triangle check from the ray-triangle
+    // test. With legs of 0.015 the unnormalised normal is 2.25e-4 (|n|^2 ~5e-8, below float
+    // epsilon), so an absolute threshold on |n|^2 wrongly treats the triangle as degenerate. The
+    // box diagonals are long enough (0.003 along z) that the ray-triangle determinant (~7e-7)
+    // stays above float epsilon, so this fails only if the degenerate check regresses.
+    SECTION("Small box inside a 0.015-scale triangle, touching no edge: intersects")
+    {
+        Triangle small(glm::vec3(0.0f), glm::vec3(0.015f, 0.0f, 0.0f), glm::vec3(0.0f, 0.015f, 0.0f));
+        Aabb smallBox(glm::vec3(0.004f, 0.004f, 0.0f), glm::vec3(0.0015f));
+
+        CHECK(intersect::testSS(small, smallBox));
+        CHECK(intersect::testNoBB(small, smallBox));
+        CHECK(intersect::test(small, smallBox));
+        CHECK(intersect::testAM(small, smallBox));
+    }
+
+    // The mirror of the box-corner case above: the same tiny triangle shape moved just inside the
+    // corner, so the corner pokes through its interior without touching any of its edges.
+    SECTION("Box corner poking through the interior of a tiny triangle, touching no edge: intersects")
+    {
+        float const s = 1e-5f;
+        float const d = 3e-6f;
+        Triangle tiny(
+            glm::vec3(1.0f - d + s, 1.0f - s, 1.0f),
+            glm::vec3(1.0f, 1.0f - d + s, 1.0f - s),
+            glm::vec3(1.0f - s, 1.0f, 1.0f - d + s));
+
+        CHECK(intersect::testSS(tiny, box));
+        CHECK(intersect::testNoBB(tiny, box));
+        CHECK(intersect::test(tiny, box));
+        CHECK(intersect::testAM(tiny, box));
+    }
+
+    SECTION("Tiny triangle straddling a box edge: intersects")
+    {
+        Triangle tiny(
+            glm::vec3(1.0005f, 0.9985f, 0.0f),
+            glm::vec3(0.9985f, 1.0005f, 0.0f),
+            glm::vec3(1.0005f, 1.0005f, 0.001f));
+
+        CHECK(intersect::testSS(tiny, box));
+        CHECK(intersect::testNoBB(tiny, box));
+        CHECK(intersect::test(tiny, box));
+        CHECK(intersect::testAM(tiny, box));
     }
 }
 
@@ -99,40 +240,40 @@ TEST_CASE("Triangle-Aabb intersection benchmarks", "[.][geo][benchmark]")
 {
     SECTION("Common case: a triangle edge passes through the box")
     {
-        REQUIRE(Intersect::testSS(edgeThroughOriginTriangle, unitBoxAtOrigin));
-        REQUIRE(Intersect::testNoBB(edgeThroughOriginTriangle, unitBoxAtOrigin));
-        REQUIRE(Intersect::test(edgeThroughOriginTriangle, unitBoxAtOrigin));
-        REQUIRE(Intersect::testAM(edgeThroughOriginTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::testSS(edgeThroughOriginTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::testNoBB(edgeThroughOriginTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::test(edgeThroughOriginTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::testAM(edgeThroughOriginTriangle, unitBoxAtOrigin));
 
-        BENCHMARK("testSS") { return Intersect::testSS(edgeThroughOriginTriangle, unitBoxAtOrigin); };
-        BENCHMARK("testNoBB") { return Intersect::testNoBB(edgeThroughOriginTriangle, unitBoxAtOrigin); };
-        BENCHMARK("test") { return Intersect::test(edgeThroughOriginTriangle, unitBoxAtOrigin); };
-        BENCHMARK("testAM") { return Intersect::testAM(edgeThroughOriginTriangle, unitBoxAtOrigin); };
+        BENCHMARK("testSS") { return intersect::testSS(edgeThroughOriginTriangle, unitBoxAtOrigin); };
+        BENCHMARK("testNoBB") { return intersect::testNoBB(edgeThroughOriginTriangle, unitBoxAtOrigin); };
+        BENCHMARK("test") { return intersect::test(edgeThroughOriginTriangle, unitBoxAtOrigin); };
+        BENCHMARK("testAM") { return intersect::testAM(edgeThroughOriginTriangle, unitBoxAtOrigin); };
     }
 
     SECTION("testNoBB's costliest path: box sits inside the triangle's interior, touching no edge")
     {
-        REQUIRE(Intersect::testSS(bigTriangle, unitBoxAtOrigin));
-        REQUIRE(Intersect::testNoBB(bigTriangle, unitBoxAtOrigin));
-        REQUIRE(Intersect::test(bigTriangle, unitBoxAtOrigin));
-        REQUIRE(Intersect::testAM(bigTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::testSS(bigTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::testNoBB(bigTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::test(bigTriangle, unitBoxAtOrigin));
+        REQUIRE(intersect::testAM(bigTriangle, unitBoxAtOrigin));
 
-        BENCHMARK("testSS") { return Intersect::testSS(bigTriangle, unitBoxAtOrigin); };
-        BENCHMARK("testNoBB") { return Intersect::testNoBB(bigTriangle, unitBoxAtOrigin); };
-        BENCHMARK("test") { return Intersect::test(bigTriangle, unitBoxAtOrigin); };
-        BENCHMARK("testAM") { return Intersect::testAM(bigTriangle, unitBoxAtOrigin); };
+        BENCHMARK("testSS") { return intersect::testSS(bigTriangle, unitBoxAtOrigin); };
+        BENCHMARK("testNoBB") { return intersect::testNoBB(bigTriangle, unitBoxAtOrigin); };
+        BENCHMARK("test") { return intersect::test(bigTriangle, unitBoxAtOrigin); };
+        BENCHMARK("testAM") { return intersect::testAM(bigTriangle, unitBoxAtOrigin); };
     }
 
     SECTION("Common case: disjoint along the triangle's own normal axis")
     {
-        REQUIRE_FALSE(Intersect::testSS(bigTriangle, unitBoxAlongNormal));
-        REQUIRE_FALSE(Intersect::testNoBB(bigTriangle, unitBoxAlongNormal));
-        REQUIRE_FALSE(Intersect::test(bigTriangle, unitBoxAlongNormal));
-        REQUIRE_FALSE(Intersect::testAM(bigTriangle, unitBoxAlongNormal));
+        REQUIRE_FALSE(intersect::testSS(bigTriangle, unitBoxAlongNormal));
+        REQUIRE_FALSE(intersect::testNoBB(bigTriangle, unitBoxAlongNormal));
+        REQUIRE_FALSE(intersect::test(bigTriangle, unitBoxAlongNormal));
+        REQUIRE_FALSE(intersect::testAM(bigTriangle, unitBoxAlongNormal));
 
-        BENCHMARK("testSS") { return Intersect::testSS(bigTriangle, unitBoxAlongNormal); };
-        BENCHMARK("testNoBB") { return Intersect::testNoBB(bigTriangle, unitBoxAlongNormal); };
-        BENCHMARK("test") { return Intersect::test(bigTriangle, unitBoxAlongNormal); };
-        BENCHMARK("testAM") { return Intersect::testAM(bigTriangle, unitBoxAlongNormal); };
+        BENCHMARK("testSS") { return intersect::testSS(bigTriangle, unitBoxAlongNormal); };
+        BENCHMARK("testNoBB") { return intersect::testNoBB(bigTriangle, unitBoxAlongNormal); };
+        BENCHMARK("test") { return intersect::test(bigTriangle, unitBoxAlongNormal); };
+        BENCHMARK("testAM") { return intersect::testAM(bigTriangle, unitBoxAlongNormal); };
     }
 }

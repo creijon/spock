@@ -18,20 +18,20 @@ namespace
 
 namespace geo2d
 {
-    bool Intersect::test(glm::vec2 const& point, Rect const& rect)
+    bool intersect::test(glm::vec2 const& point, Rect const& rect)
     {
         glm::vec2 offset = point - rect.centre;
         return std::abs(offset.x) <= rect.extents.x && std::abs(offset.y) <= rect.extents.y;
     }
 
-    bool Intersect::test(Rect const& a, Rect const& b)
+    bool intersect::test(Rect const& a, Rect const& b)
     {
         glm::vec2 offset = a.centre - b.centre;
         glm::vec2 extents = a.extents + b.extents;
         return std::abs(offset.x) <= extents.x && std::abs(offset.y) <= extents.y;
     }
 
-    bool Intersect::test(Edge const& edge, Rect const& rect)
+    bool intersect::test(Edge const& edge, Rect const& rect)
     {
         glm::vec2 halfAxis = edge.axis() * 0.5f;
         glm::vec2 offset = edge.centre() - rect.centre;
@@ -43,7 +43,7 @@ namespace geo2d
                    std::numeric_limits<float>::epsilon();
     }
 
-    bool Intersect::test(Edge const& a, Edge const& b, float& t)
+    bool intersect::test(Edge const& a, Edge const& b, float& t)
     {
         t = 0.0f;
         float a1 = signedTriArea(a.v0, a.v1, b.v1);
@@ -56,7 +56,7 @@ namespace geo2d
         return true;
     }
 
-    bool Intersect::test(glm::vec2 const& point, Triangle const& triangle)
+    bool intersect::test(glm::vec2 const& point, Triangle const& triangle)
     {
         // A degenerate (zero-area) triangle has no interior for a point to be inside: the three
         // signed areas below all collapse to zero for any point on the triangle's own line, not
@@ -71,7 +71,7 @@ namespace geo2d
         return d * (s + t) >= 0.0f;
     }
 
-    bool Intersect::test(Triangle const& triangle, Rect const& rect)
+    bool intersect::test(Triangle const& triangle, Rect const& rect)
     {
         return test(triangle.edge0(), rect) || test(triangle.edge1(), rect) ||
                test(triangle.edge2(), rect) || test(rect.centre, triangle);

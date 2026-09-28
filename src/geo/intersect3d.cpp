@@ -11,12 +11,12 @@
 
 namespace geo3d
 {
-    bool Intersect::test(glm::vec3 const& point, Aabb const& box)
+    bool intersect::test(glm::vec3 const& point, Aabb const& box)
     {
         return glm::all(glm::lessThanEqual(glm::abs(point - box.centre), box.extents));
     }
 
-    bool Intersect::test(glm::vec3 const& point, Triangle const& triangle)
+    bool intersect::test(glm::vec3 const& point, Triangle const& triangle)
     {
         glm::vec3 e0 = triangle.v1 - triangle.v0;
         glm::vec3 e1 = triangle.v2 - triangle.v0;
@@ -28,7 +28,7 @@ namespace geo3d
         return u >= 0.0f && v >= 0.0f && denominator >= u + v;
     }
 
-    bool Intersect::test(glm::vec3 const& point, Cone const& cone)
+    bool intersect::test(glm::vec3 const& point, Cone const& cone)
     {
         glm::vec3 pointToOrigin = point - cone.origin;
         float distanceAlongAxis = glm::dot(pointToOrigin, cone.axis);
@@ -39,17 +39,17 @@ namespace geo3d
         return glm::dot(offsetFromAxis, offsetFromAxis) <= coneRadius * coneRadius;
     }
 
-    bool Intersect::test(glm::vec3 const& point, Plane const& plane)
+    bool intersect::test(glm::vec3 const& point, Plane const& plane)
     {
         return plane.signedDistance(point) < 0.0f;
     }
 
-    bool Intersect::test(Aabb const& a, Aabb const& b)
+    bool intersect::test(Aabb const& a, Aabb const& b)
     {
         return glm::all(glm::lessThanEqual(glm::abs(a.centre - b.centre), a.extents + b.extents));
     }
 
-    bool Intersect::test(Ray const& ray, Aabb const& box, float& t)
+    bool intersect::test(Ray const& ray, Aabb const& box, float& t)
     {
         glm::vec3 inverseDirection = 1.0f / ray.direction;
         glm::vec3 minimum = (box.min() - ray.origin) * inverseDirection;
@@ -65,7 +65,7 @@ namespace geo3d
         return true;
     }
 
-    bool Intersect::test(Edge const& edge, Aabb const& box)
+    bool intersect::test(Edge const& edge, Aabb const& box)
     {
         glm::vec3 half = edge.axis() * 0.5f;
         glm::vec3 offset = edge.centre() - box.centre;
@@ -76,14 +76,18 @@ namespace geo3d
         return std::abs(half.x * offset.y - half.y * offset.x) <= box.extents.x * h.y + box.extents.y * h.x;
     }
 
-    bool Intersect::test(Ray const& ray, Triangle const& triangle, float& t)
+    bool intersect::test(Ray const& ray, Triangle const& triangle, float& t)
     {
         glm::vec3 e1 = triangle.v1 - triangle.v0;
         glm::vec3 e2 = triangle.v2 - triangle.v0;
         glm::vec3 p = glm::cross(ray.direction, e2);
         float determinant = glm::dot(e1, p);
         t = 0.0f;
-        if (std::abs(determinant) <= std::numeric_limits<float>::epsilon()) return false;
+
+        // The ray is parallel to the triangle (or the triangle is degenerate). The threshold is relative to
+        // |e1| * |p|, since determinant = dot(e1, p), so short rays and small triangles aren't rejected.
+        float scale = std::sqrt(glm::dot(e1, e1) * glm::dot(p, p));
+        if (std::abs(determinant) <= std::numeric_limits<float>::epsilon() * scale) return false;
         float inverse = 1.0f / determinant;
         glm::vec3 q = ray.origin - triangle.v0;
         float u = glm::dot(q, p) * inverse;
@@ -95,25 +99,25 @@ namespace geo3d
         return t > std::numeric_limits<float>::epsilon();
     }
 
-    bool Intersect::test(Edge const& edge, Triangle const& triangle, float& t)
+    bool intersect::test(Edge const& edge, Triangle const& triangle, float& t)
     {
         float length = glm::length(edge.axis());
         if (length <= std::numeric_limits<float>::epsilon()) { t = 0.0f; return false; }
         return test(Ray{edge.v0, edge.axis() / length}, triangle, t) && t <= length;
     }
 
-    bool Intersect::test(Plane const& plane, Aabb const& box)
+    bool intersect::test(Plane const& plane, Aabb const& box)
     {
         float radius = glm::dot(box.extents, glm::abs(plane.normal));
         return std::abs(plane.signedDistance(box.centre)) <= radius;
     }
 
-    bool Intersect::test(Edge const& edge, Plane const& plane)
+    bool intersect::test(Edge const& edge, Plane const& plane)
     {
         return plane.signedDistance(edge.v0) * plane.signedDistance(edge.v1) <= 0.0f;
     }
 
-    bool Intersect::test(Edge const& edge, Plane const& plane, float& t)
+    bool intersect::test(Edge const& edge, Plane const& plane, float& t)
     {
         float d0 = plane.signedDistance(edge.v0);
         float d1 = plane.signedDistance(edge.v1);
@@ -123,7 +127,7 @@ namespace geo3d
         return true;
     }
 
-    bool Intersect::testSS(Triangle const& triangle, Aabb const& box)
+    bool intersect::testSS(Triangle const& triangle, Aabb const& box)
     {
         glm::vec3 n = triangle.cross();
         float r = glm::dot(box.extents, glm::abs(n));
@@ -131,9 +135,9 @@ namespace geo3d
 
         if (std::abs(s) > r) return false;
 
-        if (!geo2d::Intersect::test(triangle.xy(), box.xy())) return false;
-        if (!geo2d::Intersect::test(triangle.yz(), box.yz())) return false;
-        if (!geo2d::Intersect::test(triangle.zx(), box.zx())) return false;
+        if (!geo2d::intersect::test(triangle.xy(), box.xy())) return false;
+        if (!geo2d::intersect::test(triangle.yz(), box.yz())) return false;
+        if (!geo2d::intersect::test(triangle.zx(), box.zx())) return false;
 
         return true;
     }
@@ -154,7 +158,7 @@ namespace geo3d
     // - testNoBB: a novel early-exit algorithm, fastest when queries are mostly intersecting (e.g. SVO generation).
     // - test: testNoBB with an AABB precheck; a middle ground when disjoint queries are common.
     
-    bool Intersect::testAM(Triangle const& triangle, Aabb const& box)
+    bool intersect::testAM(Triangle const& triangle, Aabb const& box)
     {
         glm::dvec3 const v0(triangle.v0), v1(triangle.v1), v2(triangle.v2);
         glm::dvec3 const centre(box.centre), extents(box.extents);
@@ -189,16 +193,20 @@ namespace geo3d
         if (!test(triangle.calcBounds(), box)) return false;
 
         // A degenerate (zero-area) triangle has no plane normal to test against; the edge and
-        // AABB tests above are already a complete overlap test for a segment or point.
-        glm::dvec3 normal = glm::cross(v1 - v0, v1 - v2);
-        if (glm::dot(normal, normal) < std::numeric_limits<double>::epsilon()) return true;
+        // AABB tests above are already a complete overlap test for a segment or point. The threshold
+        // is relative to the edge lengths, so small but well-shaped triangles still get the normal test.
+        glm::dvec3 const e0 = v1 - v0;
+        glm::dvec3 const e1 = v2 - v0;
+        glm::dvec3 normal = glm::cross(e0, e1);
+        double const eps = std::numeric_limits<double>::epsilon();
+        if (glm::dot(normal, normal) <= eps * eps * glm::dot(e0, e0) * glm::dot(e1, e1)) return true;
 
         double radius = glm::dot(extents, glm::abs(normal));
         double signedDistance = glm::dot(normal, centre - v0);
         return std::abs(signedDistance) <= radius;
     }
 
-    bool Intersect::test(Triangle const& triangle, Aabb const& box)
+    bool intersect::test(Triangle const& triangle, Aabb const& box)
     {
         // Early out if the AABB of the triangle is disjoint with the AABB.
         if (!test(triangle.calcBounds(), box)) return false;
@@ -221,8 +229,7 @@ namespace geo3d
     // 3. Check between the plane of triangle and the AABB. Exit if disjoint.
     // 4. Test the four internal diagonal axes of the AABB against the triangle, for the cases where
     //    the box intersects the face of the triangle without touching any of its edges.
-
-    bool Intersect::testNoBB(Triangle const& triangle, Aabb const& box)
+    bool intersect::testNoBB(Triangle const& triangle, Aabb const& box)
     {
         // Test the three triangle edges against the box.
         if (test(triangle.edge0(), box)) return true;
@@ -231,7 +238,10 @@ namespace geo3d
 
         // A degenerate triangle cannot intersect the box if none of its edges do.
         glm::vec3 normal = triangle.cross();
-        if (glm::dot(normal, normal) < std::numeric_limits<float>::epsilon()) return false;
+        glm::vec3 e0 = triangle.v1 - triangle.v0;
+        glm::vec3 e1 = triangle.v2 - triangle.v0;
+        float eps = std::numeric_limits<float>::epsilon();
+        if (glm::dot(normal, normal) <= eps * eps * glm::dot(e0, e0) * glm::dot(e1, e1)) return false;
 
         // Test whether the triangle plane intersects the box.
         float radius = glm::dot(box.extents, glm::abs(normal));

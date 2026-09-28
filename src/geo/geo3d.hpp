@@ -124,7 +124,7 @@ namespace geo3d
         geo2d::Triangle yz() const { return {{v0.y, v0.z}, {v1.y, v1.z}, {v2.y, v2.z}}; }
         geo2d::Triangle zx() const { return {{v0.z, v0.x}, {v1.z, v1.x}, {v2.z, v2.x}}; }
 
-        glm::vec3 cross() const { return glm::cross(v1 - v0, v1 - v2); }
+        glm::vec3 cross() const { return glm::cross(v1 - v0, v2 - v0); }
         Aabb calcBounds() const
         {
             Aabb bounds{v0, glm::vec3(0.0f)};
@@ -136,9 +136,16 @@ namespace geo3d
         Plane calcPlane() const { glm::vec3 n = calcNormal(); return {n, glm::dot(v0, n)}; }
         glm::vec2 calcBarycentric(glm::vec3 const& point) const
         {
-            glm::vec3 e0 = v2 - v0, e1 = v1 - v0, p = point - v0;
-            float d00 = glm::dot(e0, e0), d01 = glm::dot(e0, e1), d11 = glm::dot(e1, e1);
-            float d02 = glm::dot(e0, p), d12 = glm::dot(e1, p), inverse = 1.0f / (d00 * d11 - d01 * d01);
+            const glm::vec3 e0 = v1 - v0;
+            const glm::vec3 e1 = v2 - v0;
+            const glm::vec3 p = point - v0;
+            const float d00 = glm::dot(e0, e0);
+            const float d01 = glm::dot(e0, e1);
+            const float d11 = glm::dot(e1, e1);
+            const float d02 = glm::dot(e0, p);
+            const float d12 = glm::dot(e1, p);
+            const float inverse = 1.0f / (d00 * d11 - d01 * d01);
+
             return {(d11 * d02 - d01 * d12) * inverse, (d00 * d12 - d01 * d02) * inverse};
         }
     };

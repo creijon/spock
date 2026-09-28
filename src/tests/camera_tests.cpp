@@ -11,8 +11,9 @@ namespace
 {
     // Independently re-derive the expected matrix using the same formula
     // documented for viewProjMatrix, so the test doesn't just re-implement
-    // the function under test verbatim from memory.
-    glm::mat4x4 expectedViewProjClip(
+    // the function under test verbatim from memory. GLM_FORCE_DEPTH_ZERO_TO_ONE
+    // gives Vulkan's [0, 1] depth range, so only the Y axis needs flipping.
+    glm::mat4x4 expectedViewProj(
         vk::Extent2D const &extent,
         glm::vec3 const &eye,
         glm::vec3 const &center,
@@ -27,15 +28,9 @@ namespace
 
         glm::mat4x4 view = glm::lookAt(eye, center, up);
         glm::mat4x4 projection = glm::perspective(glm::radians(fov), aspect, zNear, zFar);
-        // clang-format off
-        glm::mat4x4 clip{
-            1.0f,  0.0f, 0.0f, 0.0f,
-            0.0f, -1.0f, 0.0f, 0.0f,
-            0.0f,  0.0f, 0.5f, 0.0f,
-            0.0f,  0.0f, 0.5f, 1.0f};
-        // clang-format on
+        glm::mat4x4 flipY = glm::scale(glm::mat4x4(1.0f), glm::vec3(1.0f, -1.0f, 1.0f));
 
-        return clip * projection * view;
+        return flipY * projection * view;
     }
 
     bool matAlmostEqual(glm::mat4x4 const &a, glm::mat4x4 const &b, float eps = 1e-4f)
@@ -54,7 +49,7 @@ namespace
     }
 } // namespace
 
-TEST_CASE("viewProjMatrix matches the documented view/projection/clip composition", "[camera]")
+TEST_CASE("viewProjMatrix matches the documented view/projection composition", "[camera]")
 {
     vk::Extent2D extent(1920, 1080);
     glm::vec3 eye(3.0f, 2.0f, 5.0f);
@@ -62,7 +57,7 @@ TEST_CASE("viewProjMatrix matches the documented view/projection/clip compositio
     glm::vec3 up(0.0f, 1.0f, 0.0f);
 
     glm::mat4x4 actual = spock::viewProjMatrix(extent, eye, center, up, 60.0f, 0.5f, 200.0f);
-    glm::mat4x4 expected = expectedViewProjClip(extent, eye, center, up, 60.0f, 0.5f, 200.0f);
+    glm::mat4x4 expected = expectedViewProj(extent, eye, center, up, 60.0f, 0.5f, 200.0f);
 
     CHECK(matAlmostEqual(actual, expected));
 }
@@ -75,7 +70,7 @@ TEST_CASE("viewProjMatrix uses the default fov/near/far when not specified", "[c
     glm::vec3 up(0.0f, 1.0f, 0.0f);
 
     glm::mat4x4 actual = spock::viewProjMatrix(extent, eye, center, up);
-    glm::mat4x4 expected = expectedViewProjClip(extent, eye, center, up, 45.0f, 0.1f, 1000.0f);
+    glm::mat4x4 expected = expectedViewProj(extent, eye, center, up, 45.0f, 0.1f, 1000.0f);
 
     CHECK(matAlmostEqual(actual, expected));
 }
@@ -111,13 +106,30 @@ TEST_CASE("viewProjMatrix flips the projected Y axis for Vulkan clip space", "[c
     CHECK(pointAboveCenter.y < 0.0f);
 }
 
+TEST_CASE("viewProjMatrix maps the near and far planes to Vulkan's [0, 1] depth range", "[camera]")
+{
+    vk::Extent2D extent(100, 100);
+    glm::vec3 eye(0.0f, 0.0f, 5.0f);
+    glm::vec3 center(0.0f, 0.0f, 0.0f);
+    glm::vec3 up(0.0f, 1.0f, 0.0f);
+    float zNear = 0.5f;
+    float zFar = 50.0f;
+
+    glm::mat4x4 mvp = spock::viewProjMatrix(extent, eye, center, up, 45.0f, zNear, zFar);
+    glm::vec4 nearPoint = mvp * glm::vec4(0.0f, 0.0f, 5.0f - zNear, 1.0f);
+    glm::vec4 farPoint = mvp * glm::vec4(0.0f, 0.0f, 5.0f - zFar, 1.0f);
+
+    CHECK(std::abs(nearPoint.z / nearPoint.w) < 1e-5f);
+    CHECK(std::abs(farPoint.z / farPoint.w - 1.0f) < 1e-5f);
+}
+
 TEST_CASE("OrbitCamera starts behind its focus point", "[camera]")
 {
     spock::OrbitCamera camera(glm::vec3(1.0f, 2.0f, 3.0f), 5.0f, 5.0f, 60.0f);
     vk::Extent2D extent(100, 100);
 
     glm::mat4x4 actual = camera.viewProjMatrix(extent);
-    glm::mat4x4 expected = expectedViewProjClip(
+    glm::mat4x4 expected = expectedViewProj(
         extent,
         glm::vec3(1.0f, 2.0f, 8.0f),
         glm::vec3(1.0f, 2.0f, 3.0f),
@@ -135,7 +147,7 @@ TEST_CASE("OrbitCamera mouse delta orbits around its focus point", "[camera]")
     camera.update(glm::vec2(glm::half_pi<float>(), 0.0f));
 
     glm::mat4x4 actual = camera.viewProjMatrix(vk::Extent2D(100, 100));
-    glm::mat4x4 expected = expectedViewProjClip(
+    glm::mat4x4 expected = expectedViewProj(
         vk::Extent2D(100, 100),
         glm::vec3(5.0f, 0.0f, 0.0f),
         glm::vec3(0.0f),
