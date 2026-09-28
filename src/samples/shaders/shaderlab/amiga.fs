@@ -48,22 +48,22 @@ const float maxx = 0.378;
 //-1/5/2013 CHANGE : Tweaked edge bounce.
 void main()
 {
-	float asp = pc.iResolution.y/pc.iResolution.x;
-	vec2 uv = (fragCoord.xy / pc.iResolution.xy);
-	vec2 uvR = floor(uv*res);
-	vec2 g = step(2.0,mod(uvR,16.0));
-	vec3 bgcol = mix(cPurple,mix(cPurple,cGrey,g.x),g.y);
-	uv = uvR/res;
-	float xt = mod(pc.iTime+1.0,6.0);
-	float dir = (step(xt,3.0)-.5)*-2.0;
-	uv.x -= (maxx*2.0*dir)*mod(xt,3.0)/3.0+(-maxx*dir);
-	uv.y -= abs(sin(4.5+pc.iTime*1.3))*0.5-0.3;
-	bgcol = mix(bgcol,bgcol-vec3(0.2),1.0-step(0.12,length(vec2(uv.x,uv.y*asp)-vec2(0.57,0.29))));
-	vec3 rd = normalize(vec3((uv*2.0-1.0)*vec2(1.0,asp),1.5));
-	float b = dot(rd,ro);
-	float t1 = b*b-15.6;
+    float asp = pc.iResolution.y/pc.iResolution.x;
+    vec2 uv = (fragCoord.xy / pc.iResolution.xy);
+    vec2 uvR = floor(uv*res);
+    vec2 g = step(2.0,mod(uvR,16.0));
+    vec3 bgcol = mix(cPurple,mix(cPurple,cGrey,g.x),g.y);
+    uv = uvR/res;
+    float xt = mod(pc.iTime+1.0,6.0);
+    float dir = (step(xt,3.0)-.5)*-2.0;
+    uv.x -= (maxx*2.0*dir)*mod(xt,3.0)/3.0+(-maxx*dir);
+    uv.y -= abs(sin(4.5+pc.iTime*1.3))*0.5-0.3;
+    bgcol = mix(bgcol,bgcol-vec3(0.2),1.0-step(0.12,length(vec2(uv.x,uv.y*asp)-vec2(0.57,0.29))));
+    vec3 rd = normalize(vec3((uv*2.0-1.0)*vec2(1.0,asp),1.5));
+    float b = dot(rd,ro);
+    float t1 = b*b-15.6;
     float t = -b-sqrt(t1);
-	vec3 nor = normalize(ro+rd*t)*mRot;
-	vec2 tuv = floor(vec2(atan(nor.x,nor.z)/PI+((floor((pc.iTime*-dir)*60.0)/60.0)*0.5),acos(nor.y)/PI)*8.0);
-	fragColor = vec4(mix(bgcol,mix(cRed,cWhite,clamp(mod(tuv.x+tuv.y,2.0),0.0,1.0)),1.0-step(t1,0.0)),1.0);
+    vec3 nor = normalize(ro+rd*t)*mRot;
+    vec2 tuv = floor(vec2(atan(nor.x,nor.z)/PI+((floor((pc.iTime*-dir)*60.0)/60.0)*0.5),acos(nor.y)/PI)*8.0);
+    fragColor = vec4(mix(bgcol,mix(cRed,cWhite,clamp(mod(tuv.x+tuv.y,2.0),0.0,1.0)),1.0-step(t1,0.0)),1.0);
 }

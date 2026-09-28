@@ -396,7 +396,7 @@ protected:
     }
 
 private:
-	bool m_multithreaded{true};
+    bool m_multithreaded{true};
 };
 
 int main(int argc, char** argv)

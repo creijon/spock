@@ -43,7 +43,7 @@ float ndot( in vec2 a, in vec2 b ) { return a.x*b.x - a.y*b.y; }
 
 float sdPlane( vec3 p )
 {
-	return p.y;
+    return p.y;
 }
 
 float sdSphere( vec3 p, float s )
@@ -116,9 +116,9 @@ float sdOctogonPrism( in vec3 p, in float r, float h )
 
 float sdCapsule( vec3 p, vec3 a, vec3 b, float r )
 {
-	vec3 pa = p-a, ba = b-a;
-	float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
-	return length( pa - ba*h ) - r;
+    vec3 pa = p-a, ba = b-a;
+    float h = clamp( dot(pa,ba)/dot(ba,ba), 0.0, 1.0 );
+    return length( pa - ba*h ) - r;
 }
 
 float sdRoundCone( in vec3 p, in float r1, float r2, float h )
@@ -202,12 +202,12 @@ float sdCone( in vec3 p, in vec2 c, float h )
     vec2 q = h*vec2(c.x,-c.y)/c.y;
     vec2 w = vec2( length(p.xz), p.y );
     
-	vec2 a = w - q*clamp( dot(w,q)/dot(q,q), 0.0, 1.0 );
+    vec2 a = w - q*clamp( dot(w,q)/dot(q,q), 0.0, 1.0 );
     vec2 b = w - q*vec2( clamp( w.x/q.x, 0.0, 1.0 ), 1.0 );
     float k = sign( q.y );
     float d = min(dot( a, a ),dot(b, b));
     float s = max( k*(w.x*q.y-w.y*q.x),k*(w.y-q.y)  );
-	return sqrt(d)*sign(s);
+    return sqrt(d)*sign(s);
 }
 
 float sdCappedCone( in vec3 p, in float h, in float r1, in float r2 )
@@ -251,7 +251,7 @@ float sdSolidAngle(vec3 pos, vec2 c, float ra)
 {
     vec2 p = vec2( length(pos.xz), pos.y );
     float l = length(p) - ra;
-	float m = length(p - c*clamp(dot(p,c),0.0,ra) );
+    float m = length(p - c*clamp(dot(p,c),0.0,ra) );
     return max(l,m*sign(c.y*p.x-c.x*p.y));
 }
 
@@ -269,7 +269,7 @@ float sdOctahedron(vec3 p, float s)
     
     // exact distance
     #if 1
- 	vec3 q;
+     vec3 q;
          if( 3.0*p.x < m ) q = p.xyz;
     else if( 3.0*p.y < m ) q = p.yzx;
     else if( 3.0*p.z < m ) q = p.zxy;
@@ -280,7 +280,7 @@ float sdOctahedron(vec3 p, float s)
     
     // bound, not exact
     #if 0
-	return m*0.57735027;
+    return m*0.57735027;
     #endif
 }
 
@@ -292,7 +292,7 @@ float sdPyramid( in vec3 p, in float h )
     p.xz = abs(p.xz);
     p.xz = (p.z>p.x) ? p.zx : p.xz;
     p.xz -= 0.5;
-	
+    
     // project into face plane (2D)
     vec3 q = vec3( p.z, h*p.y - 0.5*p.x, h*p.x + 0.5*p.y);
    
@@ -300,7 +300,7 @@ float sdPyramid( in vec3 p, in float h )
     float t = clamp( (q.y-0.5*p.z)/(m2+0.25), 0.0, 1.0 );
     
     float a = m2*(q.x+s)*(q.x+s) + q.y*q.y;
-	float b = m2*(q.x+0.5*t)*(q.x+0.5*t) + (q.y-m2*t)*(q.y-m2*t);
+    float b = m2*(q.x+0.5*t)*(q.x+0.5*t) + (q.y-m2*t)*(q.y-m2*t);
     
     float d2 = min(q.y,-q.x*m2-q.y*0.5) > 0.0 ? 0.0 : min(a,b);
     
@@ -314,7 +314,7 @@ float sdRhombus(vec3 p, float la, float lb, float h, float ra)
     p = abs(p);
     vec2 b = vec2(la,lb);
     float f = clamp( (ndot(b,b-2.0*p.xz))/dot(b,b), -1.0, 1.0 );
-	vec2 q = vec2(length(p.xz-0.5*b*vec2(1.0-f,1.0+f))*sign(p.x*b.y+p.z*b.x-b.x*b.y)-ra, p.y-h);
+    vec2 q = vec2(length(p.xz-0.5*b*vec2(1.0-f,1.0+f))*sign(p.x*b.y+p.z*b.x-b.x*b.y)-ra, p.y-h);
     return min(max(q.x,q.y),0.0) + length(max(q,0.0));
 }
 
@@ -347,7 +347,7 @@ float sdU( in vec3 p, in float r, in float le, vec2 w )
 
 vec2 opU( vec2 d1, vec2 d2 )
 {
-	return (d1.x<d2.x) ? d1 : d2;
+    return (d1.x<d2.x) ? d1 : d2;
 }
 
 //------------------------------------------------------------------
@@ -367,15 +367,15 @@ vec2 map( in vec3 pos )
     if( sdBox( pos-vec3(-2.0,0.3,0.25),vec3(0.3,0.3,1.0) )<res.x )
     {
       res = opU( res, vec2( sdSphere(    pos-vec3(-2.0,0.25, 0.0), 0.25 ), 26.9 ) );
-	  res = opU( res, vec2( sdRhombus(  (pos-vec3(-2.0,0.25, 1.0)).xzy, 0.15, 0.25, 0.04, 0.08 ),17.0 ) );
+      res = opU( res, vec2( sdRhombus(  (pos-vec3(-2.0,0.25, 1.0)).xzy, 0.15, 0.25, 0.04, 0.08 ),17.0 ) );
     }
 
     // bounding box
     if( sdBox( pos-vec3(0.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )
     {
-	res = opU( res, vec2( sdCappedTorus((pos-vec3( 0.0,0.30, 1.0))*vec3(1,-1,1), vec2(0.866025,-0.5), 0.25, 0.05), 25.0) );
+    res = opU( res, vec2( sdCappedTorus((pos-vec3( 0.0,0.30, 1.0))*vec3(1,-1,1), vec2(0.866025,-0.5), 0.25, 0.05), 25.0) );
     res = opU( res, vec2( sdBoxFrame(    pos-vec3( 0.0,0.25, 0.0), vec3(0.3,0.25,0.2), 0.025 ), 16.9 ) );
-	res = opU( res, vec2( sdCone(        pos-vec3( 0.0,0.45,-1.0), vec2(0.6,0.8),0.45 ), 55.0 ) );
+    res = opU( res, vec2( sdCone(        pos-vec3( 0.0,0.45,-1.0), vec2(0.6,0.8),0.45 ), 55.0 ) );
     res = opU( res, vec2( sdCappedCone(  pos-vec3( 0.0,0.25,-2.0), 0.25, 0.25, 0.1 ), 13.67 ) );
     res = opU( res, vec2( sdSolidAngle(  pos-vec3( 0.0,0.00,-3.0), vec2(3,4)/5.0, 0.4 ), 49.13 ) );
     }
@@ -383,18 +383,18 @@ vec2 map( in vec3 pos )
     // bounding box
     if( sdBox( pos-vec3(0.0,0.3,-1.0),vec3(0.35,0.3,2.5) )<res.x )
     {
-	res = opU( res, vec2( sdTorus(      (pos-vec3( 0.0,0.30, 1.0)).xzy, vec2(0.25,0.05) ), 7.1 ) );
+    res = opU( res, vec2( sdTorus(      (pos-vec3( 0.0,0.30, 1.0)).xzy, vec2(0.25,0.05) ), 7.1 ) );
     res = opU( res, vec2( sdBox(         pos-vec3( 0.0,0.25, 0.0), vec3(0.3,0.25,0.1) ), 3.0 ) );
     res = opU( res, vec2( sdCapsule(     pos-vec3( 0.0,0.00,-1.0),vec3(-0.1,0.1,-0.1), vec3(0.2,0.4,0.2), 0.1  ), 31.9 ) );
-	res = opU( res, vec2( sdCylinder(    pos-vec3( 0.0,0.25,-2.0), vec2(0.15,0.25) ), 8.0 ) );
+    res = opU( res, vec2( sdCylinder(    pos-vec3( 0.0,0.25,-2.0), vec2(0.15,0.25) ), 8.0 ) );
     res = opU( res, vec2( sdHexPrism(    pos-vec3( 0.0,0.2,-3.0), vec2(0.2,0.05) ), 18.4 ) );
     }
 
     // bounding box
     if( sdBox( pos-vec3(-1.0,0.35,-1.0),vec3(0.35,0.35,2.5))<res.x )
     {
-	res = opU( res, vec2( sdPyramid(    pos-vec3(-1.0,-0.6,-3.0), 1.0 ), 13.56 ) );
-	res = opU( res, vec2( sdOctahedron( pos-vec3(-1.0,0.15,-2.0), 0.35 ), 23.56 ) );
+    res = opU( res, vec2( sdPyramid(    pos-vec3(-1.0,-0.6,-3.0), 1.0 ), 13.56 ) );
+    res = opU( res, vec2( sdOctahedron( pos-vec3(-1.0,0.15,-2.0), 0.35 ), 23.56 ) );
     res = opU( res, vec2( sdTriPrism(   pos-vec3(-1.0,0.15,-1.0), vec2(0.3,0.05) ),43.5 ) );
     res = opU( res, vec2( sdEllipsoid(  pos-vec3(-1.0,0.25, 0.0), vec3(0.2, 0.25, 0.05) ), 43.17 ) );
     res = opU( res, vec2( sdHorseshoe(  pos-vec3(-1.0,0.25, 1.0), vec2(cos(1.3),sin(1.3)), 0.2, 0.3, vec2(0.03,0.08) ), 11.5 ) );
@@ -405,7 +405,7 @@ vec2 map( in vec3 pos )
     {
     res = opU( res, vec2( sdOctogonPrism(pos-vec3( 2.0,0.2,-3.0), 0.2, 0.05), 51.8 ) );
     res = opU( res, vec2( sdCylinder(    pos-vec3( 2.0,0.14,-2.0), vec3(0.1,-0.1,0.0), vec3(-0.2,0.35,0.1), 0.08), 31.2 ) );
-	res = opU( res, vec2( sdCappedCone(  pos-vec3( 2.0,0.09,-1.0), vec3(0.1,0.0,0.0), vec3(-0.2,0.40,0.1), 0.15, 0.05), 46.1 ) );
+    res = opU( res, vec2( sdCappedCone(  pos-vec3( 2.0,0.09,-1.0), vec3(0.1,0.0,0.0), vec3(-0.2,0.40,0.1), 0.15, 0.05), 46.1 ) );
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.15, 0.0), vec3(0.1,0.0,0.0), vec3(-0.1,0.35,0.1), 0.15, 0.05), 51.7 ) );
     res = opU( res, vec2( sdRoundCone(   pos-vec3( 2.0,0.20, 1.0), 0.2, 0.1, 0.3 ), 37.0 ) );
     }
@@ -421,8 +421,8 @@ vec2 iBox( in vec3 ro, in vec3 rd, in vec3 rad )
     vec3 k = abs(m)*rad;
     vec3 t1 = -n - k;
     vec3 t2 = -n + k;
-	return vec2( max( max( t1.x, t1.y ), t1.z ),
-	             min( min( t2.x, t2.y ), t2.z ) );
+    return vec2( max( max( t1.x, t1.y ), t1.z ),
+                 min( min( t2.x, t2.y ), t2.z ) );
 }
 
 vec2 raycast( in vec3 ro, in vec3 rd )
@@ -475,7 +475,7 @@ float calcSoftshadow( in vec3 ro, in vec3 rd, in float mint, in float tmax )
     float t = mint;
     for( int i=ZERO; i<24; i++ )
     {
-		float h = map( ro + rd*t ).x;
+        float h = map( ro + rd*t ).x;
         float s = clamp(8.0*h/t,0.0,1.0);
         res = min( res, s );
         t += clamp( h, 0.01, 0.2 );
@@ -492,9 +492,9 @@ vec3 calcNormal( in vec3 pos )
     // do NOT call map() many times inside calcNormal()
     vec2 e = vec2(1.0,-1.0)*0.5773*0.0005;
     return normalize( e.xyy*map( pos + e.xyy ).x + 
-					  e.yyx*map( pos + e.yyx ).x + 
-					  e.yxy*map( pos + e.yxy ).x + 
-					  e.xxx*map( pos + e.xxx ).x );
+                      e.yyx*map( pos + e.yyx ).x + 
+                      e.yxy*map( pos + e.yxy ).x + 
+                      e.xxx*map( pos + e.xxx ).x );
 #else
     // instead put it only once and in a loop to prevet
     // code expansion - inspired by tdhooper and klems - a way to prevent the compiler from inlining map() 4 times
@@ -512,7 +512,7 @@ vec3 calcNormal( in vec3 pos )
 // https://iquilezles.org/articles/nvscene2008/rwwtt.pdf
 float calcAO( in vec3 pos, in vec3 nor )
 {
-	float occ = 0.0;
+    float occ = 0.0;
     float sca = 1.0;
     for( int i=ZERO; i<5; i++ )
     {
@@ -544,7 +544,7 @@ vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
     // raycast scene
     vec2 res = raycast(ro,rd);
     float t = res.x;
-	float m = res.y;
+    float m = res.y;
     if( m>-0.5 )
     {
         vec3 pos = ro + t*rd;
@@ -569,7 +569,7 @@ vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
         // lighting
         float occ = calcAO( pos, nor );
         
-		vec3 lin = vec3(0.0);
+        vec3 lin = vec3(0.0);
 
         // sun
         {
@@ -577,8 +577,8 @@ vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
             vec3  hal = normalize( lig-rd );
             float dif = clamp( dot( nor, lig ), 0.0, 1.0 );
           //if( dif>0.0001 )
-        	      dif *= calcSoftshadow( pos, lig, 0.02, 2.5 );
-			float spe = pow( clamp( dot( nor, hal ), 0.0, 1.0 ),16.0);
+                  dif *= calcSoftshadow( pos, lig, 0.02, 2.5 );
+            float spe = pow( clamp( dot( nor, hal ), 0.0, 1.0 ),16.0);
                   spe *= dif;
                   spe *= 0.04+0.96*pow(clamp(1.0-dot(hal,lig),0.0,1.0),5.0);
                 //spe *= 0.04+0.96*pow(clamp(1.0-sqrt(0.5*(1.0-dot(rd,lig))),0.0,1.0),5.0);
@@ -599,40 +599,40 @@ vec3 render( in vec3 ro, in vec3 rd, in vec3 rdx, in vec3 rdy )
         }
         // back
         {
-        	float dif = clamp( dot( nor, normalize(vec3(0.5,0.0,0.6))), 0.0, 1.0 )*clamp( 1.0-pos.y,0.0,1.0);
+            float dif = clamp( dot( nor, normalize(vec3(0.5,0.0,0.6))), 0.0, 1.0 )*clamp( 1.0-pos.y,0.0,1.0);
                   dif *= occ;
-        	lin += col*0.55*dif*vec3(0.25,0.25,0.25);
+            lin += col*0.55*dif*vec3(0.25,0.25,0.25);
         }
         // sss
         {
             float dif = pow(clamp(1.0+dot(nor,rd),0.0,1.0),2.0);
                   dif *= occ;
-        	lin += col*0.25*dif*vec3(1.00,1.00,1.00);
+            lin += col*0.25*dif*vec3(1.00,1.00,1.00);
         }
         
-		col = lin;
+        col = lin;
 
         col = mix( col, vec3(0.7,0.7,0.9), 1.0-exp( -0.0001*t*t*t ) );
     }
 
-	return vec3( clamp(col,0.0,1.0) );
+    return vec3( clamp(col,0.0,1.0) );
 }
 
 mat3 setCamera( in vec3 ro, in vec3 ta, float cr )
 {
-	vec3 cw = normalize(ta-ro);
-	vec3 cp = vec3(sin(cr), cos(cr),0.0);
-	vec3 cu = normalize( cross(cw,cp) );
-	vec3 cv =          ( cross(cu,cw) );
+    vec3 cw = normalize(ta-ro);
+    vec3 cp = vec3(sin(cr), cos(cr),0.0);
+    vec3 cu = normalize( cross(cw,cp) );
+    vec3 cv =          ( cross(cu,cw) );
     return mat3( cu, cv, cw );
 }
 
 void main()
 {
     vec2 mo = pc.iMouse.xy/pc.iResolution.xy;
-	float time = 32.0 + pc.iTime*1.5;
+    float time = 32.0 + pc.iTime*1.5;
 
-    // camera	
+    // camera    
     vec3 ta = vec3( 0.0, 0.0, -1.0 );
     vec3 ro = ta + vec3( -4.0, 3.0, -2.0 );
     // camera-to-world transformation
@@ -662,13 +662,13 @@ void main()
         vec3 rdx = ca * normalize( vec3(px,fl) );
         vec3 rdy = ca * normalize( vec3(py,fl) );
         
-        // render	
+        // render    
         vec3 col = render( ro, rd, rdx, rdy );
 
         // gain
         // col = col*3.0/(2.5+col);
         
-		// gamma
+        // gamma
         col = pow( col, vec3(0.4545) );
 
         tot += col;

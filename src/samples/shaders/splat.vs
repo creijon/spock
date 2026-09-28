@@ -93,7 +93,7 @@ vec4 halfToVec4(float16_t v[4])
 
 mat3 quatToMat3(vec4 q)
 {
-	// Quaternion is stored in XYZW format.
+    // Quaternion is stored in XYZW format.
     return mat3(
         1.0 - 2.0 * q.y * q.y - 2.0 * q.z * q.z,
         2.0 * q.x * q.y + 2.0 * q.w * q.z,
@@ -208,7 +208,7 @@ void main()
                          : (a >= d ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
     vec2 axisDirection2 = vec2(-axisDirection1.y, axisDirection1.x);
 
-	if (false)
+    if (false)
     {
         outColor = vec3(1.0);
         //outColor = sphericalHarmonicsToRgb(viewVec, s);

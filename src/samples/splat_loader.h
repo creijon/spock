@@ -294,11 +294,11 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
             plyDetail::readAsFloat(row, z),
         };
 
-        splat.rotation = {	
-            plyDetail::readAsFloat(row, rot1),	// x
-            plyDetail::readAsFloat(row, rot2),	// y
-            plyDetail::readAsFloat(row, rot3),	// z
-            plyDetail::readAsFloat(row, rot0),	// w
+        splat.rotation = {
+            plyDetail::readAsFloat(row, rot1),  // x
+            plyDetail::readAsFloat(row, rot2),  // y
+            plyDetail::readAsFloat(row, rot3),  // z
+            plyDetail::readAsFloat(row, rot0),  // w
         };
 
         splat.scale = {

@@ -29,10 +29,10 @@ float intersectSphere(in vec3 ro, in vec3 rd, in vec3 sc, in float sr)
 
 void main()
 {
-	vec2 uv = (fragCoord.xy / pc.iResolution.xy) * 2.0 - 1.0;
-	uv.x *= pc.iResolution.x /  pc.iResolution.y;
+  vec2 uv = (fragCoord.xy / pc.iResolution.xy) * 2.0 - 1.0;
+  uv.x *= pc.iResolution.x /  pc.iResolution.y;
 
-	vec3 dir = normalize(vec3(uv, 1.0));
+  vec3 dir = normalize(vec3(uv, 1.0));
   vec3 origin = vec3(0.0);
 
   vec3 centre = vec3(0.0, 0.0, 1.0);

@@ -11,8 +11,8 @@ namespace geo3d
     {
         static bool test(glm::vec3 const& pos, Aabb const& box);
         static bool test(glm::vec3 const& pos, Triangle const& triangle);
-		static bool test(glm::vec3 const& pos, Cone const& cone);
-		static bool test(glm::vec3 const& pos, Plane const& plane);
+        static bool test(glm::vec3 const& pos, Cone const& cone);
+        static bool test(glm::vec3 const& pos, Plane const& plane);
         static bool test(Aabb const& a, Aabb const& b);
         static bool test(Ray const& ray, Aabb const& box, float& t);
         static bool test(Edge const& edge, Aabb const& box);
