@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "command_recorder.hpp"
 #include "foundry.hpp"
 #include "helpers.hpp"
 

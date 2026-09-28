@@ -8,7 +8,6 @@
 // but the GPU sort still handily beats it.
 
 #include "spock/app.hpp"
-#include "spock/command_recorder.hpp"
 #include "spock/creators.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
@@ -239,11 +238,10 @@ protected:
         }
 
         // Upload the input buffer to the GPU.
-        spock::CommandRecorder computeRecorder(m_foundry->device(), m_foundry->computeFamily());
         m_elementsA.upload(
             m_foundry,
-            computeRecorder.commandPool(),
-            computeRecorder.queue(),
+            m_foundry->computeCommandPool(),
+            m_foundry->computeQueue(),
             sortableKeys);
 
         vk::PipelineLayout pipelineLayout = *m_pipelineLayout;
@@ -259,8 +257,7 @@ protected:
 
         std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
-        computeRecorder.submit(
-            m_foundry->device(),
+        m_foundry->submitCompute(
             [&](vk::CommandBuffer const& commandBuffer)
             {
                 vk::MemoryBarrier computeBarrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead);
@@ -312,7 +309,7 @@ protected:
 
                 commandBuffer.copyBuffer(sortedElements, readbackBuffer, vk::BufferCopy(0, 0, elementsBytes));
             });
-        computeRecorder.waitIdle();
+        m_foundry->computeQueue().waitIdle();
 
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         double gpuSortMillis = std::chrono::duration<double, std::milli>(end - begin).count();

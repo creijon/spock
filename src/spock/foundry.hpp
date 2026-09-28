@@ -12,8 +12,8 @@
 
 namespace spock
 {
-    // Responsible for managing the lifetime of the devices and command pool, and keeping track of the pool families.
-    // Helps to simplify the calling convention for the wrappers, presenter, render pass etc.  But doesn't own them.
+    // Responsible for managing the lifetime of the devices, queues and command pools, and keeping track of the queue families.
+    // Helps to simplify the calling convention for the wrappers, presenter, renderer etc.  But doesn't own them.
     // It lives in the app, next to the renderer.
     // The danger is that it becomes a bit of a god class, so I've kept the functionality to a minimum.
     // Initially just pass it around and use the accessors, then move functions in where they make sense.
@@ -33,6 +33,8 @@ namespace spock
         vk::raii::Device const &device() const { return m_device; }
         vk::raii::CommandPool const &commandPool() const { return m_commandPool; }
         vk::raii::Queue const &graphicsQueue() const { return m_graphicsQueue; }
+        vk::raii::CommandPool const &computeCommandPool() const { return m_computeCommandPool; }
+        vk::raii::Queue const &computeQueue() const { return m_computeQueue; }
         vk::raii::Queue const &presentQueue() const { return m_presentQueue; }
 
         uint32_t graphicsFamily() const { return m_graphicsFamily; }
@@ -52,6 +54,13 @@ namespace spock
             oneTimeSubmit(m_device, m_commandPool, m_graphicsQueue, func);
         }
 
+        // Records a single-use command buffer via `func` and submits it to the compute queue.
+        template <typename Func>
+        void submitCompute(Func const &func) const
+        {
+            oneTimeSubmit(m_device, m_computeCommandPool, m_computeQueue, func);
+        }
+
     private:
         std::vector<vk::DeviceQueueCreateInfo> uniqueCreateInfos() const;
 
@@ -61,6 +70,8 @@ namespace spock
         vk::raii::CommandPool m_commandPool{nullptr};
         vk::raii::Queue m_graphicsQueue{nullptr};
         vk::raii::Queue m_presentQueue{nullptr};
+        vk::raii::CommandPool m_computeCommandPool{nullptr};
+        vk::raii::Queue m_computeQueue{nullptr};
 
         uint32_t m_graphicsFamily{0};
         uint32_t m_presentFamily{0};

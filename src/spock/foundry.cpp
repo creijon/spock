@@ -159,13 +159,17 @@ namespace spock
         m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
         m_graphicsQueue = vk::raii::Queue(m_device, m_graphicsFamily, 0);
         m_presentQueue = vk::raii::Queue(m_device, m_presentFamily, 0);
+        m_computeQueue = vk::raii::Queue(m_device, m_computeFamily, 0);
 
-        // Create the command pool.
+        // Create the command pools.
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
             vk::CommandPoolCreateFlagBits::eTransient,
             m_graphicsFamily};
         m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
+
+        poolInfo.queueFamilyIndex = m_computeFamily;
+        m_computeCommandPool = vk::raii::CommandPool(m_device, poolInfo);
     }
 
     Foundry::~Foundry()

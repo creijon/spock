@@ -3,7 +3,6 @@
 
 #include "gpu_fixture.hpp"
 
-#include "spock/command_recorder.hpp"
 #include "spock/creators.hpp"
 #include "spock/helpers.hpp"
 #include "spock/shaders.hpp"
@@ -249,7 +248,7 @@ TEST_CASE("createCommandBuffer allocates a primary command buffer", "[gpu]")
     CHECK_NOTHROW(commandBuffer.end());
 }
 
-TEST_CASE("CommandRecorder owns a command pool and queue for its family and can submit one-time commands", "[gpu]")
+TEST_CASE("Foundry owns a compute command pool and queue and can submit one-time commands to them", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -257,18 +256,16 @@ TEST_CASE("CommandRecorder owns a command pool and queue for its family and can 
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    spock::CommandRecorder recorder(fixture->foundry->device(), fixture->foundry->computeFamily());
-    CHECK(*recorder.commandPool() != VK_NULL_HANDLE);
-    CHECK(*recorder.queue() != VK_NULL_HANDLE);
+    CHECK(*fixture->foundry->computeCommandPool() != VK_NULL_HANDLE);
+    CHECK(*fixture->foundry->computeQueue() != VK_NULL_HANDLE);
 
     bool recorded = false;
-    CHECK_NOTHROW(recorder.submit(
-        fixture->foundry->device(),
+    CHECK_NOTHROW(fixture->foundry->submitCompute(
         [&](vk::CommandBuffer const &commandBuffer)
         {
             recorded = true;
             // A no-op barrier is enough to prove a real command buffer was
-            // recorded and submitted through the recorder's own queue.
+            // recorded and submitted through the compute queue.
             commandBuffer.pipelineBarrier(
                 vk::PipelineStageFlagBits::eTopOfPipe,
                 vk::PipelineStageFlagBits::eBottomOfPipe,
