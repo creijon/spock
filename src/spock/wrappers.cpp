@@ -134,7 +134,7 @@ namespace spock
             return m_mapped;
         }
 
-        if (m_propertyFlags == (vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent))
+        if (m_propertyFlags & (vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent))
         {
             m_mapped = m_deviceMemory.mapMemory(0, m_size);
             return m_mapped;

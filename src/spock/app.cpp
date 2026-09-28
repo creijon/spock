@@ -85,19 +85,19 @@ void App::run()
             result == vk::Result::eSuboptimalKHR ||
             result == vk::Result::eErrorOutOfDateKHR)
         {
-            // Ignore zero-sized framebuffers (minimized / hidden on some platforms).
-            if (fbExtents.width == 0 || fbExtents.height == 0)
+            if (fbExtents.width != 0 && fbExtents.height != 0)
             {
-                continue;
+                m_window.setExtents(fbExtents);
+                m_renderer->waitIdle();
+                m_renderer->resizeWindow(fbExtents);
             }
-
-            m_window.setExtents(fbExtents);
-            m_renderer->waitIdle();
-            m_renderer->resizeWindow(fbExtents);
+            else
+            {
+                // Minimized, do nothing.
+            }
         }
 
         m_time += m_frameDuration;
-
         std::this_thread::sleep_until(startTime + m_time);
     }
 

@@ -65,7 +65,7 @@ namespace spock
             std::shared_ptr<const Foundry> const &foundry,
             vk::DeviceSize size,
             vk::BufferUsageFlags usage,
-            vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible,
+            vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
             std::vector<uint32_t> const &concurrentQueueFamilies = {});
         BufferWrapper() = default;
         BufferWrapper(const BufferWrapper &) = delete;

@@ -94,8 +94,8 @@ namespace spock
 
         if (!program.link(messages))
         {
-            log = shader.getInfoLog();
-            debugLog = shader.getInfoDebugLog();
+            log = program.getInfoLog();
+            debugLog = program.getInfoDebugLog();
             return false;
         }
 
