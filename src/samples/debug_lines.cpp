@@ -140,7 +140,7 @@ public:
             extents,
             {0.02f, 0.02f, 0.05f, 1.0f},
             {1.0f, 0})
-        , m_debugLines(foundry, m_renderPass.renderPass())
+        , m_debugLines(foundry, m_renderPass)
         , m_cubes(makeOrbitingCubes(CUBE_COUNT))
         , m_sphereLines(makeSphereLines(ORBIT_RADIUS, SPHERE_SEGMENTS))
     {

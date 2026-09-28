@@ -38,7 +38,9 @@ namespace spock
         m_framesSinceResize = 0;
 
         // For resizing we need to clear out the previous framebuffers and command buffers before the swapchain.
-        m_renderPass = RenderPass();
+        m_frameBuffers.clear();
+        m_renderPass = nullptr;
+        m_depthBuffer = DepthBufferWrapper();
         m_commandBuffers.clear();
         m_presenter.reset();
 
@@ -48,14 +50,21 @@ namespace spock
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
             m_framesInFlight);
 
-        m_renderPass = RenderPass(
-            m_foundry,
-            m_presenter->imageViews(),
+        if (m_useDepthBuffer)
+        {
+            m_depthBuffer = DepthBufferWrapper(m_foundry, vk::Format::eD16Unorm, m_extents);
+        }
+
+        m_renderPass = createRenderPass(
+            m_foundry->device(),
             m_presenter->colorFormat(),
-            m_extents,
-            m_clearColor,
-            m_clearDepthStencil,
-            m_useDepthBuffer);
+            m_useDepthBuffer ? m_depthBuffer.format() : vk::Format::eUndefined);
+        m_frameBuffers = createFramebuffers(
+            m_foundry->device(),
+            m_renderPass,
+            m_presenter->imageViews(),
+            m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr,
+            m_extents);
 
         m_commandBuffers.reserve(m_framesInFlight);
 
@@ -87,7 +96,14 @@ namespace spock
 
         commandBuffer.begin({});
 
-        m_renderPass.begin(commandBuffer, m_presenter->imageIndex(), m_extents);
+        vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
+
+        vk::RenderPassBeginInfo renderPassBeginInfo(
+            m_renderPass,
+            m_frameBuffers[m_presenter->imageIndex()],
+            vk::Rect2D(vk::Offset2D(0, 0), m_extents),
+            clearValues);
+        commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
         // Setup the viewport and scissor rectangle.
         commandBuffer.setViewport(
@@ -103,7 +119,7 @@ namespace spock
         render(commandBuffer, time);
 
         // End the render pass and submit the command buffer.
-        m_renderPass.end(commandBuffer);
+        commandBuffer.endRenderPass();
         commandBuffer.end();
 
         m_presenter->submitCommands(commandBuffer, m_inFlightIndex);

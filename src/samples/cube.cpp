@@ -177,7 +177,7 @@ protected:
             device,
             shaderStagesInfo,
             m_pipelineLayout,
-            m_renderPass.renderPass(),
+            m_renderPass,
             spock::VertexFormatWrapper<CubeVertex>());
     }
 

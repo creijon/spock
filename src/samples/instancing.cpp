@@ -235,7 +235,7 @@ protected:
             device,
             shaderStagesInfo,
             m_pipelineLayout,
-            m_renderPass.renderPass(),
+            m_renderPass,
             vertexFormat,
             vk::PrimitiveTopology::eTriangleStrip,
             vk::CullModeFlagBits::eNone);

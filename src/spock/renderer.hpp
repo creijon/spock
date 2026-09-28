@@ -5,7 +5,7 @@
 
 #include "foundry.hpp"
 #include "presenter.hpp"
-#include "render_pass.hpp"
+#include "wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -37,7 +37,6 @@ namespace spock
         virtual void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) = 0;
 
         std::shared_ptr<const Foundry> m_foundry;
-        RenderPass m_renderPass;
 
         // Per-frame resources used for double buffering.
         std::vector<vk::raii::CommandBuffer> m_commandBuffers;
@@ -45,6 +44,11 @@ namespace spock
         vk::Extent2D m_extents;
 
         std::unique_ptr<Presenter> m_presenter{nullptr};
+
+        // Declared after the presenter so the framebuffers are destroyed before the swapchain image views.
+        DepthBufferWrapper m_depthBuffer;
+        vk::raii::RenderPass m_renderPass{nullptr};
+        std::vector<vk::raii::Framebuffer> m_frameBuffers;
         bool m_useDepthBuffer{true};
 
         uint32_t m_frameCount{0};

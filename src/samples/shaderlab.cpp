@@ -125,7 +125,7 @@ public:
                     m_foundry->device(),
                     shaderStagesInfo,
                     m_pipelineLayout,
-                    m_renderPass.renderPass(),
+                    m_renderPass,
                     spock::VertexFormatWrapper<ShaderLabVertex>(),
                     vk::PrimitiveTopology::eTriangleList,
                     vk::CullModeFlagBits::eNone,
