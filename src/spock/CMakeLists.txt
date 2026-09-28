@@ -44,7 +44,7 @@ set(HEADERS
     PARENT_SCOPE
 )
 
-target_include_directories(spock PRIVATE ${CMAKE_SOURCE_DIR}/deps/lodepng)
+target_include_directories(spock PRIVATE ${CMAKE_SOURCE_DIR}/deps/stb)
 
 # GLM must be configured identically in every translation unit that sees it, including the
 # samples and tests, so the switches live on the target rather than in a header.

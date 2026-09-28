@@ -42,11 +42,9 @@ add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/instancing.cpp)
 add_sample_target(compute ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp)
 add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp)
 
-add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/textured_cube.cpp ${CMAKE_SOURCE_DIR}/deps/lodepng/lodepng.cpp)
-target_include_directories(textured_cube PRIVATE ${CMAKE_SOURCE_DIR}/deps/lodepng)
+add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/textured_cube.cpp)
 
-add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/textured_sphere.cpp ${CMAKE_SOURCE_DIR}/deps/lodepng/lodepng.cpp)
-target_include_directories(textured_sphere PRIVATE ${CMAKE_SOURCE_DIR}/deps/lodepng)
+add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/textured_sphere.cpp)
 
 set_target_properties(
     cube

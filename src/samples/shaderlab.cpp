@@ -71,20 +71,20 @@ public:
             { 0.2f, 0.2f, 0.3f, 1.0 },
             { 1.0f, 0 })
     {
-        createResources(foundry);
+        createResources();
     }
 
-    void createResources(std::shared_ptr<const spock::Foundry> const &foundry)
+    void createResources()
     {
         vk::PushConstantRange pushConstantRange{
             vk::ShaderStageFlagBits::eAllGraphics,
             0,
             sizeof(PushConstants) };
 
-        m_pipelineLayout = vk::raii::PipelineLayout(foundry->device(), {{}, {}, pushConstantRange});
+        m_pipelineLayout = vk::raii::PipelineLayout(m_foundry->device(), {{}, {}, pushConstantRange});
 
         m_vertexBuffer = spock::BufferWrapper(
-            foundry,
+            m_foundry,
             SHADERLAB_VERTEX_BUFFER_SIZE,
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(

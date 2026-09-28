@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
-// This sample extends the basic cube sample by loading a PNG texture from disk with lodepng
+// This sample extends the basic cube sample by loading a PNG texture from disk
 // and mapping it onto the faces of the cube via a combined image sampler.
 
 #include "spock/app.hpp"

@@ -6,23 +6,46 @@
 #include "helpers.hpp"
 #include "foundry.hpp"
 
-#include "lodepng.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#include <memory>
 
 namespace spock
 {
+
+namespace
+{
+
+using ImagePixels = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
+
+// Decodes an image file to tightly packed 8-bit RGBA, whatever its channel count on disk.
+ImagePixels loadRgba(std::string const &path, unsigned &width, unsigned &height)
+{
+    int w = 0;
+    int h = 0;
+    int channels = 0;
+    ImagePixels pixels(
+        stbi_load(path.c_str(), &w, &h, &channels, STBI_rgb_alpha),
+        &stbi_image_free);
+    if (!pixels)
+    {
+        throw std::runtime_error("Failed to load texture '" + path + "': " + stbi_failure_reason());
+    }
+    width = static_cast<unsigned>(w);
+    height = static_cast<unsigned>(h);
+    return pixels;
+}
+
+} // namespace
 
 TextureWrapper Loader::texture(
     std::shared_ptr<const Foundry> const &foundry,
     std::string const &path)
 {
-    std::vector<unsigned char> pixels;
     unsigned width = 0;
     unsigned height = 0;
-    unsigned error = lodepng::decode(pixels, width, height, path);
-    if (error)
-    {
-        throw std::runtime_error("Failed to load texture '" + path + "': " + lodepng_error_text(error));
-    }
+    auto pixels = loadRgba(path, width, height);
 
     TextureWrapper texture(foundry, vk::Extent2D(width, height));
 
@@ -33,7 +56,7 @@ TextureWrapper Loader::texture(
                 commandBuffer,
                 [&pixels](void *data, vk::Extent2D const &extent)
                 {
-                    std::memcpy(data, pixels.data(), static_cast<size_t>(extent.width) * extent.height * 4);
+                    std::memcpy(data, pixels.get(), static_cast<size_t>(extent.width) * extent.height * 4);
                 });
         });
 
@@ -44,18 +67,15 @@ CubemapWrapper Loader::cubemap(
     std::shared_ptr<const Foundry> const &foundry,
     std::array<std::string, CUBEMAP_FACE_COUNT> const &paths)
 {
-    std::array<std::vector<unsigned char>, CUBEMAP_FACE_COUNT> facePixels;
+    std::vector<ImagePixels> facePixels;
+    facePixels.reserve(CUBEMAP_FACE_COUNT);
     unsigned size = 0;
 
     for (uint32_t i = 0; i < CUBEMAP_FACE_COUNT; ++i)
     {
         unsigned width = 0;
         unsigned height = 0;
-        unsigned error = lodepng::decode(facePixels[i], width, height, paths[i]);
-        if (error)
-        {
-            throw std::runtime_error("Failed to load texture '" + paths[i] + "': " + lodepng_error_text(error));
-        }
+        facePixels.push_back(loadRgba(paths[i], width, height));
         if (width != height || (i > 0 && width != size))
         {
             throw std::runtime_error("Cubemap face '" + paths[i] + "' must be square and the same size as the other faces");
@@ -71,7 +91,7 @@ CubemapWrapper Loader::cubemap(
     uint8_t *staging = static_cast<uint8_t *>(stagingBuffer.deviceMemory().mapMemory(0, faceBytes * CUBEMAP_FACE_COUNT));
     for (uint32_t i = 0; i < CUBEMAP_FACE_COUNT; ++i)
     {
-        std::memcpy(staging + i * faceBytes, facePixels[i].data(), faceBytes);
+        std::memcpy(staging + i * faceBytes, facePixels[i].get(), faceBytes);
     }
     stagingBuffer.deviceMemory().unmapMemory();
 

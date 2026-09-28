@@ -96,13 +96,13 @@ public:
             {1.0f, 0},
             true)
     {
-        createResources(foundry);
-        createPipelines(foundry);
+        createResources();
+        createPipelines();
         runRadixSort(multithreaded);
     }
 
 protected:
-    void createResources(std::shared_ptr<const spock::Foundry> const &foundry)
+    void createResources()
     {
         uint32_t globalInvocations = ceilDiv(ELEMENT_COUNT, BLOCKS_PER_WORKGROUP);
         m_numWorkgroups = ceilDiv(globalInvocations, WORKGROUP_SIZE);
@@ -117,63 +117,64 @@ protected:
 
         // Ping-pong buffers: each radix sort pass reads one and writes the other.
         m_elementsA = spock::BufferWrapper(
-            foundry,
+            m_foundry,
             elementsBytes,
             elementsUsage,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
         m_elementsB = spock::BufferWrapper(
-            foundry,
+            m_foundry,
             elementsBytes,
             elementsUsage,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
         // Fully overwritten by the histogram shader every pass, so it never needs clearing.
         m_histograms = spock::BufferWrapper(
-            foundry,
+            m_foundry,
             histogramBytes,
             vk::BufferUsageFlagBits::eStorageBuffer,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
 
         m_readback = spock::BufferWrapper(
-            foundry,
+            m_foundry,
             elementsBytes,
             vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-        m_histogramSetLayout = spock::createDescriptorSetLayout(foundry->device(), vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 2);
-        m_sortSetLayout = spock::createDescriptorSetLayout(foundry->device(), vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 3);
+		vk::raii::Device const& device = m_foundry->device();
+        m_histogramSetLayout = spock::createDescriptorSetLayout(device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 2);
+        m_sortSetLayout = spock::createDescriptorSetLayout(device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 3);
 
         vk::PushConstantRange pushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(PushConstants)};
         std::array<vk::DescriptorSetLayout, 2> setLayouts{*m_histogramSetLayout, *m_sortSetLayout};
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(foundry->device(), {{}, setLayouts, pushConstantRange}));
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(device, {{}, setLayouts, pushConstantRange}));
 
-        m_descriptorPool = spock::createDescriptorPool(foundry->device(), {{vk::DescriptorType::eStorageBuffer, 10}});
+        m_descriptorPool = spock::createDescriptorPool(device, {{vk::DescriptorType::eStorageBuffer, 10}});
 
         std::array<vk::DescriptorSetLayout, 2> histogramLayouts{*m_histogramSetLayout, *m_histogramSetLayout};
-        vk::raii::DescriptorSets histogramSets(foundry->device(), {m_descriptorPool, histogramLayouts});
+        vk::raii::DescriptorSets histogramSets(device, {m_descriptorPool, histogramLayouts});
         m_histogramSetForA = std::move(histogramSets[0]);
         m_histogramSetForB = std::move(histogramSets[1]);
 
         std::array<vk::DescriptorSetLayout, 2> sortLayouts{*m_sortSetLayout, *m_sortSetLayout};
-        vk::raii::DescriptorSets sortSets(foundry->device(), {m_descriptorPool, sortLayouts});
+        vk::raii::DescriptorSets sortSets(device, {m_descriptorPool, sortLayouts});
         m_sortSetAtoB = std::move(sortSets[0]);
         m_sortSetBtoA = std::move(sortSets[1]);
 
-        spock::updateDescriptorSets(foundry->device(), m_histogramSetForA, {m_elementsA, m_histograms}, {});
-        spock::updateDescriptorSets(foundry->device(), m_histogramSetForB, {m_elementsB, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_histogramSetForA, {m_elementsA, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_histogramSetForB, {m_elementsB, m_histograms}, {});
 
-        spock::updateDescriptorSets(foundry->device(), m_sortSetAtoB, {m_elementsA, m_elementsB, m_histograms}, {});
-        spock::updateDescriptorSets(foundry->device(), m_sortSetBtoA, {m_elementsB, m_elementsA, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_sortSetAtoB, {m_elementsA, m_elementsB, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_sortSetBtoA, {m_elementsB, m_elementsA, m_histograms}, {});
     }
 
-    void createPipelines(std::shared_ptr<const spock::Foundry> const &foundry)
+    void createPipelines()
     {
         vk::raii::ShaderModule histogramShader{nullptr};
         vk::raii::ShaderModule sortShader{nullptr};
         try
         {
-            histogramShader = spock::loadShader(foundry->device(), vk::ShaderStageFlagBits::eCompute, SHADER_PATH + HISTOGRAM_SHADER);
-            sortShader = spock::loadShader(foundry->device(), vk::ShaderStageFlagBits::eCompute, SHADER_PATH + RADIXSORT_SHADER);
+            histogramShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eCompute, SHADER_PATH + HISTOGRAM_SHADER);
+            sortShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eCompute, SHADER_PATH + RADIXSORT_SHADER);
         }
         catch (std::exception const& e)
         {
@@ -188,7 +189,7 @@ protected:
         // so pin it to REQUIRED_SUBGROUP_SIZE, but only when the requiredSubgroupSizeStages.
         vk::PipelineShaderStageRequiredSubgroupSizeCreateInfo requiredSubgroupSize{REQUIRED_SUBGROUP_SIZE};
         auto subgroupSizeControlProperties =
-            foundry->physicalDevice()
+            m_foundry->physicalDevice()
                 .getProperties2<vk::PhysicalDeviceProperties2, vk::PhysicalDeviceSubgroupSizeControlProperties>()
                 .get<vk::PhysicalDeviceSubgroupSizeControlProperties>();
         if (subgroupSizeControlProperties.requiredSubgroupSizeStages & vk::ShaderStageFlagBits::eCompute)
@@ -196,8 +197,8 @@ protected:
             sortStageInfo.pNext = &requiredSubgroupSize;
         }
 
-        m_histogramPipeline = spock::createComputePipeline(foundry->device(), histogramStageInfo, m_pipelineLayout);
-        m_sortPipeline = spock::createComputePipeline(foundry->device(), sortStageInfo, m_pipelineLayout);
+        m_histogramPipeline = spock::createComputePipeline(m_foundry->device(), histogramStageInfo, m_pipelineLayout);
+        m_sortPipeline = spock::createComputePipeline(m_foundry->device(), sortStageInfo, m_pipelineLayout);
     }
 
     void runRadixSort(bool multithreaded)

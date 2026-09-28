@@ -17,8 +17,6 @@
 
 #include "vulkan/vulkan.hpp"
 
-#include "lodepng.h"
-
 #include <algorithm>
 #include <array>
 #include <cstdint>

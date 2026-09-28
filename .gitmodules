@@ -16,6 +16,6 @@
 [submodule "deps/VkRadixSort"]
 	path = deps/VkRadixSort
 	url = git@github.com:MircoWerner/VkRadixSort.git
-[submodule "deps/lodepng"]
-	path = deps/lodepng
-	url = git@github.com:lvandeve/lodepng.git
+[submodule "deps/stb"]
+	path = deps/stb
+	url = git@github.com:nothings/stb.git
