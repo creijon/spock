@@ -272,10 +272,9 @@ protected:
         auto vertShader = spock::compileShader(device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
         auto fragShader = spock::compileShader(device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
 
-        const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragShader, "main"},
+            {{}, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
+            {{}, vk::ShaderStageFlagBits::eFragment, *fragShader, "main"},
         };
 
         // Finally create the graphics pipeline.

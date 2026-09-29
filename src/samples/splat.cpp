@@ -227,10 +227,9 @@ public:
         }
         if (m_vertShader != nullptr && m_fragShader != nullptr)
         {
-            const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
             std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *m_vertShader, "main"},
-                {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *m_fragShader, "main"},
+                {{}, vk::ShaderStageFlagBits::eVertex, *m_vertShader, "main"},
+                {{}, vk::ShaderStageFlagBits::eFragment, *m_fragShader, "main"},
             };
 
             spock::VertexFormat vertexFormat;

@@ -336,8 +336,8 @@ void main() { outColor = vec4(1.0); }
     vk::raii::PipelineLayout pipelineLayout(fixture->foundry->device(), vk::PipelineLayoutCreateInfo({}, {}, pushConstantRange));
 
     std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo = {
-            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eVertex, *vertexModule, "main"},
-            {vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eFragment, *fragmentModule, "main"} };
+            {{}, vk::ShaderStageFlagBits::eVertex, *vertexModule, "main"},
+            {{}, vk::ShaderStageFlagBits::eFragment, *fragmentModule, "main"} };
 
     spock::VertexFormat vertexFormat{{ { vk::Format::eR32G32B32A32Sfloat, 0 } }, sizeof(float) * 4};
 

@@ -182,8 +182,8 @@ protected:
             throw;
         }
 
-        vk::PipelineShaderStageCreateInfo histogramStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *histogramShader, "main");
-        vk::PipelineShaderStageCreateInfo sortStageInfo(vk::PipelineShaderStageCreateFlags(), vk::ShaderStageFlagBits::eCompute, *sortShader, "main");
+        vk::PipelineShaderStageCreateInfo histogramStageInfo({}, vk::ShaderStageFlagBits::eCompute, *histogramShader, "main");
+        vk::PipelineShaderStageCreateInfo sortStageInfo({}, vk::ShaderStageFlagBits::eCompute, *sortShader, "main");
 
         // multi_radixsort.comp indexes shared arrays by gl_SubgroupID with a fixed subgroup size,
         // so pin it to REQUIRED_SUBGROUP_SIZE, but only when the requiredSubgroupSizeStages.

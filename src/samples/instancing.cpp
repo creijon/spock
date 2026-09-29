@@ -70,8 +70,8 @@ static std::vector<SpriteInstance> createSpriteGrid()
 
     const float gridSpacing = 1.5f;
     const float gridSize = dim * gridSpacing;
-    const float startX = -gridSize * 0.5f;
-    const float startY = -gridSize * 0.5f;
+    const float startX = -gridSize * 0.5f + 0.75f;
+    const float startY = -gridSize * 0.5f + 0.75f;
 
     for (int y = 0; y < dim; ++y)
     {
@@ -219,10 +219,9 @@ protected:
         auto vertShader = spock::compileShader(device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
         auto fragShader = spock::compileShader(device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
 
-        const vk::PipelineShaderStageCreateFlags shaderStageCreateFlags{};
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
-            {shaderStageCreateFlags, vk::ShaderStageFlagBits::eFragment, *fragShader, "main"},
+            {{}, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
+            {{}, vk::ShaderStageFlagBits::eFragment, *fragShader, "main"},
         };
 
         // Create vertex format combining vertex and instance attributes

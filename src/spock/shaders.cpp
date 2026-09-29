@@ -15,15 +15,16 @@
 
 namespace spock
 {
-        void ensureGlslangInitialised()
+    void ensureGlslangInitialised()
+    {
+        static struct GlslangProcess
         {
-            static struct GlslangProcess
-            {
-                GlslangProcess() { glslang::InitializeProcess(); }
-                ~GlslangProcess() { glslang::FinalizeProcess(); }
-            } const process;
-            (void)process;
-        }
+            GlslangProcess() { glslang::InitializeProcess(); }
+            ~GlslangProcess() { glslang::FinalizeProcess(); }
+        } const process;
+        (void)process;
+    }
+
     struct ShaderConversion
     {
         EShLanguage stage;
