@@ -1,3 +1,6 @@
+[submodule "deps/efsw"]
+	path = deps/efsw
+	url = git@github.com:SpartanJ/efsw.git
 [submodule "deps/glfw"]
 	path = deps/glfw
 	url = https://github.com/glfw/glfw.git
@@ -7,15 +10,9 @@
 [submodule "deps/glslang"]
 	path = deps/glslang
 	url = https://github.com/KhronosGroup/glslang.git
-[submodule "deps/efsw"]
-	path = deps/efsw
-	url = git@github.com:SpartanJ/efsw.git
-[submodule "deps/tinygltf"]
-	path = deps/tinygltf
-	url = git@github.com:syoyo/tinygltf.git
-[submodule "deps/VkRadixSort"]
-	path = deps/VkRadixSort
-	url = git@github.com:MircoWerner/VkRadixSort.git
 [submodule "deps/stb"]
 	path = deps/stb
 	url = git@github.com:nothings/stb.git
+[submodule "deps/tinygltf"]
+	path = deps/tinygltf
+	url = git@github.com:syoyo/tinygltf.git
