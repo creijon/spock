@@ -247,9 +247,9 @@ namespace spock
         TextureWrapper(
             std::shared_ptr<const Foundry> const &foundry,
             vk::Extent2D extent,
+            vk::raii::Sampler sampler,
             vk::ImageUsageFlags usageFlags = {},
             vk::FormatFeatureFlags formatFeatureFlags = {},
-            bool anisotropyEnable = false,
             bool forceStaging = false);
         TextureWrapper() = default;
         TextureWrapper(const TextureWrapper &) = delete;

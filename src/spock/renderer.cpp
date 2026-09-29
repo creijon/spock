@@ -41,13 +41,15 @@ namespace spock
         m_renderPass = nullptr;
         m_depthBuffer = DepthBufferWrapper();
         m_commandBuffers.clear();
-        m_presenter.reset();
 
+        // The old presenter is kept alive until its replacement exists so its swapchain can be handed over.
+        // Assigning the new one then destroys the old one, including its retired swapchain.
         m_presenter = std::make_unique<Presenter>(
             m_foundry,
             extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-            m_framesInFlight);
+            m_framesInFlight,
+            m_presenter.get());
 
         // The surface may constrain the swapchain extent, so everything sized to the swapchain
         // (depth buffer, framebuffers, viewport, scissor) uses the extent it was actually created with.

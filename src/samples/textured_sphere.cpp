@@ -226,7 +226,8 @@ public:
 
         m_cubemap = spock::Loader::cubemap(
             foundry,
-            CUBEMAP_FACES);
+            CUBEMAP_FACES,
+            spock::createSampler(foundry->device(), vk::Filter::eLinear, vk::SamplerAddressMode::eClampToEdge));
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             foundry->device(),

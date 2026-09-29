@@ -16,10 +16,12 @@ namespace spock
         std::shared_ptr<const Foundry> const &foundry,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
-        uint32_t framesInFlight)
+        uint32_t framesInFlight,
+        Presenter const *oldPresenter)
         : m_foundry(foundry)
     {
-        SwapchainInfo swapchain = foundry->createSwapchain(extent, usage, framesInFlight);
+        vk::SwapchainKHR oldSwapchain = oldPresenter ? *oldPresenter->m_swapchain : vk::SwapchainKHR{};
+        SwapchainInfo swapchain = foundry->createSwapchain(extent, usage, framesInFlight, oldSwapchain);
         m_swapchain = std::move(swapchain.swapchain);
         m_colorFormat = swapchain.colorFormat;
         m_extent = swapchain.extent;

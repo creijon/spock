@@ -210,7 +210,8 @@ namespace spock
     SwapchainInfo Foundry::createSwapchain(
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
-        uint32_t desiredImageCount) const
+        uint32_t desiredImageCount,
+        vk::SwapchainKHR oldSwapchain) const
     {
         vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface));
 
@@ -262,7 +263,8 @@ namespace spock
             preTransform,
             compositeAlpha,
             presentMode,
-            true);
+            true,
+            oldSwapchain);
 
         uint32_t const queueFamilyIndices[]{m_graphicsFamily, m_presentFamily};
         if (m_graphicsFamily != m_presentFamily)

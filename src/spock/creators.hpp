@@ -84,6 +84,13 @@ namespace spock
         vk::PipelineShaderStageCreateInfo const &shaderStageInfo,
         vk::raii::PipelineLayout const &pipelineLayout);
 
+    // Helper to simplify the creation of samplers.
+    // TODO: add additional parameters with sensible defaults.
+    vk::raii::Sampler createSampler(
+        vk::raii::Device const &device,
+        vk::Filter filter,
+        vk::SamplerAddressMode addressMode);
+
     // Update a descriptor set with uniform buffer bindings and optional textures.
     void updateDescriptorSets(
         vk::raii::Device const& device,

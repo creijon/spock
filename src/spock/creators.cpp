@@ -372,6 +372,30 @@ namespace spock
         return vk::raii::Pipeline(device, cache, computePipelineInfo);
     }
 
+    vk::raii::Sampler createSampler(
+        vk::raii::Device const &device,
+        vk::Filter filter,
+        vk::SamplerAddressMode addressMode)
+    {
+        return {
+            device,
+            {{},
+            filter,
+            filter,
+            vk::SamplerMipmapMode::eLinear,
+            addressMode,
+            addressMode,
+            addressMode,
+            0.0f,
+            false,
+            16.0f,
+            false,
+            vk::CompareOp::eNever,
+            0.0f,
+            0.0f,
+            vk::BorderColor::eFloatOpaqueBlack}};
+    }
+
     // Upload buffer and texture bindings into the descriptor set. Buffer data is
     // placed sequentially starting at bindingOffset followed by any textures.
     void updateDescriptorSets(

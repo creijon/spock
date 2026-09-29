@@ -10,6 +10,7 @@
 #include "stb_image.h"
 
 #include <memory>
+#include <utility>
 
 namespace spock
 {
@@ -41,13 +42,14 @@ ImagePixels loadRgba(std::string const &path, unsigned &width, unsigned &height)
 
 TextureWrapper Loader::texture(
     std::shared_ptr<const Foundry> const &foundry,
-    std::string const &path)
+    std::string const &path,
+    vk::raii::Sampler sampler)
 {
     unsigned width = 0;
     unsigned height = 0;
     auto pixels = loadRgba(path, width, height);
 
-    TextureWrapper texture(foundry, vk::Extent2D(width, height));
+    TextureWrapper texture(foundry, vk::Extent2D(width, height), std::move(sampler));
 
     foundry->submit(
         [&](vk::CommandBuffer commandBuffer)
@@ -65,7 +67,8 @@ TextureWrapper Loader::texture(
 
 CubemapWrapper Loader::cubemap(
     std::shared_ptr<const Foundry> const &foundry,
-    std::array<std::string, CUBEMAP_FACE_COUNT> const &paths)
+    std::array<std::string, CUBEMAP_FACE_COUNT> const &paths,
+    vk::raii::Sampler sampler)
 {
     std::vector<ImagePixels> facePixels;
     facePixels.reserve(CUBEMAP_FACE_COUNT);
@@ -143,23 +146,7 @@ CubemapWrapper Loader::cubemap(
                 CUBEMAP_FACE_COUNT);
         });
 
-    cubemap.sampler = vk::raii::Sampler(
-        foundry->device(),
-        {{},
-        vk::Filter::eLinear,
-        vk::Filter::eLinear,
-        vk::SamplerMipmapMode::eLinear,
-        vk::SamplerAddressMode::eClampToEdge,
-        vk::SamplerAddressMode::eClampToEdge,
-        vk::SamplerAddressMode::eClampToEdge,
-        0.0f,
-        false,
-        16.0f,
-        false,
-        vk::CompareOp::eNever,
-        0.0f,
-        0.0f,
-        vk::BorderColor::eFloatOpaqueBlack});
+    cubemap.sampler = std::move(sampler);
 
     return cubemap;
 }

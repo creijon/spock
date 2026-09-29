@@ -49,6 +49,33 @@ TEST_CASE("Foundry::createSwapchain builds a swapchain for the headless surface"
     CHECK(swapchain.swapchain.getImages().size() >= 2);
 }
 
+TEST_CASE("Foundry::createSwapchain recreates a swapchain from the old one", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    spock::SwapchainInfo oldSwapchain = fixture->foundry->createSwapchain(
+        vk::Extent2D{256, 256},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2);
+
+    spock::SwapchainInfo newSwapchain = fixture->foundry->createSwapchain(
+        vk::Extent2D{128, 128},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2,
+        *oldSwapchain.swapchain);
+
+    CHECK(*newSwapchain.swapchain != VK_NULL_HANDLE);
+    CHECK(*newSwapchain.swapchain != *oldSwapchain.swapchain);
+    CHECK(newSwapchain.swapchain.getImages().size() >= 2);
+
+    // The retired swapchain must still be destroyable while its replacement is alive.
+    CHECK_NOTHROW(oldSwapchain.swapchain.clear());
+}
+
 TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", "[gpu]")
 {
     auto fixture = createGpuFixture();
@@ -154,7 +181,10 @@ TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    spock::TextureWrapper texture(fixture->foundry, vk::Extent2D(4, 4));
+    spock::TextureWrapper texture(
+        fixture->foundry,
+        vk::Extent2D(4, 4),
+        spock::createSampler(fixture->foundry->device(), vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat));
     CHECK(*texture.sampler() != VK_NULL_HANDLE);
 
     CHECK_NOTHROW(fixture->foundry->submit(

@@ -140,7 +140,7 @@ protected:
             vk::BufferUsageFlagBits::eTransferDst,
             vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
-		vk::raii::Device const& device = m_foundry->device();
+        vk::raii::Device const& device = m_foundry->device();
         m_histogramSetLayout = spock::createDescriptorSetLayout(device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 2);
         m_sortSetLayout = spock::createDescriptorSetLayout(device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 3);
 

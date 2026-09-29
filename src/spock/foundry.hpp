@@ -51,10 +51,13 @@ namespace spock
         // Create a swapchain for the surface.
         // `desiredImageCount` is clamped to what the surface supports; so the caller should use
         // the swapchain's actual image count.
+        // When recreating, pass the current swapchain as `oldSwapchain` so the driver can reuse its
+        // resources. It is retired by this call, but the caller must still destroy it.
         SwapchainInfo createSwapchain(
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
-            uint32_t desiredImageCount) const;
+            uint32_t desiredImageCount,
+            vk::SwapchainKHR oldSwapchain = {}) const;
 
         void waitIdle() const;
 

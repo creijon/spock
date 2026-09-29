@@ -246,29 +246,13 @@ namespace spock
     TextureWrapper::TextureWrapper(
         std::shared_ptr<const Foundry> const &foundry,
         vk::Extent2D extent,
+        vk::raii::Sampler sampler,
         vk::ImageUsageFlags usageFlags,
         vk::FormatFeatureFlags formatFeatureFlags,
-        bool anisotropyEnable,
         bool forceStaging)
         : m_format(vk::Format::eR8G8B8A8Unorm)
         , m_extent(extent)
-        , m_sampler(
-            foundry->device(),
-            {{},
-            vk::Filter::eLinear,
-            vk::Filter::eLinear,
-            vk::SamplerMipmapMode::eLinear,
-            vk::SamplerAddressMode::eRepeat,
-            vk::SamplerAddressMode::eRepeat,
-            vk::SamplerAddressMode::eRepeat,
-            0.0f,
-            anisotropyEnable,
-            16.0f,
-            false,
-            vk::CompareOp::eNever,
-            0.0f,
-            0.0f,
-            vk::BorderColor::eFloatOpaqueBlack})
+        , m_sampler(std::move(sampler))
     {
         vk::FormatProperties formatProperties = foundry->physicalDevice().getFormatProperties(m_format);
 

@@ -172,7 +172,10 @@ public:
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), CUBE_VERTEX_DATA, CUBE_VERTEX_COUNT);
 
-        m_texture = spock::Loader::texture(foundry, TEXTURE_PATH);
+        m_texture = spock::Loader::texture(
+            foundry,
+            TEXTURE_PATH,
+            spock::createSampler(foundry->device(), vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat));
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             foundry->device(),

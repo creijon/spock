@@ -14,11 +14,15 @@ namespace spock
     class Presenter
     {
     public:
+        // When replacing an existing presenter, e.g. on resize, pass it as `oldPresenter` so its swapchain
+        // is handed over to the new one. The old presenter must outlive this constructor, and the GPU
+        // must have finished with it; its swapchain is retired and can no longer acquire images.
         Presenter(
             std::shared_ptr<const Foundry> const &foundry,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
-            uint32_t framesInFlight);
+            uint32_t framesInFlight,
+            Presenter const *oldPresenter = nullptr);
         Presenter() = default;
         Presenter(const Presenter &) = delete;
         Presenter(Presenter && other) noexcept;
