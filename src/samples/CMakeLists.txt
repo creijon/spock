@@ -36,6 +36,7 @@ function(add_sample_target target_name source_file)
 endfunction()
 
 add_sample_target(cube ${CMAKE_CURRENT_SOURCE_DIR}/cube.cpp)
+add_sample_target(quad ${CMAKE_CURRENT_SOURCE_DIR}/quad.cpp)
 add_sample_target(shaderlab ${CMAKE_CURRENT_SOURCE_DIR}/shaderlab.cpp)
 add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/instancing.cpp)
 add_sample_target(splat ${CMAKE_CURRENT_SOURCE_DIR}/splat.cpp)
@@ -47,6 +48,7 @@ add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/textured_sphere.cp
 
 set_target_properties(
     cube
+    quad
     shaderlab
     instancing
     splat
