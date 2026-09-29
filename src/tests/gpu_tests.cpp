@@ -27,7 +27,7 @@ TEST_CASE("a headless Vulkan device can be created for GPU-backed tests", "[gpu]
     CHECK(*fixture->foundry->device() != VK_NULL_HANDLE);
 }
 
-TEST_CASE("Foundry discovers valid graphics, present, compute, and transfer queue family indices", "[gpu]")
+TEST_CASE("Foundry::createSwapchain builds a swapchain for the headless surface", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -35,12 +35,18 @@ TEST_CASE("Foundry discovers valid graphics, present, compute, and transfer queu
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    auto queueFamilyProperties = fixture->foundry->physicalDevice().getQueueFamilyProperties();
-    CHECK(fixture->foundry->graphicsFamily() < queueFamilyProperties.size());
-    CHECK(fixture->foundry->presentFamily() < queueFamilyProperties.size());
-    CHECK(fixture->foundry->computeFamily() < queueFamilyProperties.size());
-    CHECK(fixture->foundry->transferFamily() < queueFamilyProperties.size());
-    CHECK((queueFamilyProperties[fixture->foundry->graphicsFamily()].queueFlags & vk::QueueFlagBits::eGraphics) == vk::QueueFlagBits::eGraphics);
+    spock::SwapchainInfo swapchain = fixture->foundry->createSwapchain(
+        vk::Extent2D{256, 256},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2);
+
+    CHECK(*swapchain.swapchain != VK_NULL_HANDLE);
+    CHECK(swapchain.colorFormat != vk::Format::eUndefined);
+    CHECK(swapchain.extent.width > 0);
+    CHECK(swapchain.extent.height > 0);
+
+    // The requested count is a minimum; the driver may hand back more images, but never fewer.
+    CHECK(swapchain.swapchain.getImages().size() >= 2);
 }
 
 TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", "[gpu]")
@@ -237,11 +243,8 @@ TEST_CASE("createCommandBuffer allocates a primary command buffer", "[gpu]")
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    vk::raii::CommandPool commandPool(
-        fixture->foundry->device(),
-        vk::CommandPoolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, fixture->foundry->graphicsFamily()));
-
-    vk::raii::CommandBuffer commandBuffer = spock::createCommandBuffer(fixture->foundry->device(), commandPool);
+    vk::raii::CommandBuffer commandBuffer =
+        spock::createCommandBuffer(fixture->foundry->device(), fixture->foundry->commandPool());
 
     CHECK(*commandBuffer != VK_NULL_HANDLE);
     CHECK_NOTHROW(commandBuffer.begin(vk::CommandBufferBeginInfo()));

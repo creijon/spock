@@ -33,7 +33,6 @@ namespace spock
 
     void Renderer::resizeWindow(vk::Extent2D const &extents)
     {
-        m_extents = extents;
         m_inFlightIndex = 0;
         m_framesSinceResize = 0;
 
@@ -49,6 +48,10 @@ namespace spock
             extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
             m_framesInFlight);
+
+        // The surface may constrain the swapchain extent, so everything sized to the swapchain
+        // (depth buffer, framebuffers, viewport, scissor) uses the extent it was actually created with.
+        m_extents = m_presenter->extent();
 
         if (m_useDepthBuffer)
         {

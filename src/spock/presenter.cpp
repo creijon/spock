@@ -4,13 +4,11 @@
 #include "presenter.hpp"
 
 #include "foundry.hpp"
-#include "helpers.hpp"
 
-#include <algorithm>
-#include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <tuple>
+#include <utility>
 
 namespace spock
 {
@@ -21,72 +19,10 @@ namespace spock
         uint32_t framesInFlight)
         : m_foundry(foundry)
     {
-        vk::raii::Device const& device = foundry->device();
-
-        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(foundry->getSurfaceFormatsKHR());
-        m_colorFormat = surfaceFormat.format;
-
-        vk::SurfaceCapabilitiesKHR surfaceCapabilities = foundry->getSurfaceCapabilitiesKHR();
-        vk::Extent2D swapchainExtent;
-        if (surfaceCapabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)())
-        {
-            // If the surface size is undefined, the size is set to the size of the images requested.
-            swapchainExtent.width = std::clamp(
-                extent.width,
-                surfaceCapabilities.minImageExtent.width,
-                surfaceCapabilities.maxImageExtent.width);
-            swapchainExtent.height = std::clamp(
-                extent.height,
-                surfaceCapabilities.minImageExtent.height,
-                surfaceCapabilities.maxImageExtent.height);
-        }
-        else
-        {
-            // If the surface size is defined, the swap chain size must match
-            swapchainExtent = surfaceCapabilities.currentExtent;
-        }
-
-        auto preTransform = 
-            (surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity) ?
-            vk::SurfaceTransformFlagBitsKHR::eIdentity :
-            surfaceCapabilities.currentTransform;
-
-        using Alpha = vk::CompositeAlphaFlagBitsKHR;
-        auto compositeAlpha =
-            (surfaceCapabilities.supportedCompositeAlpha & Alpha::eOpaque)         ? Alpha::eOpaque :
-            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePreMultiplied)  ? Alpha::ePreMultiplied :
-            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePostMultiplied) ? Alpha::ePostMultiplied :
-            Alpha::eInherit;
-
-        vk::PresentModeKHR presentMode = pickPresentMode(foundry->getSurfacePresentModesKHR());
-        uint32_t imageCount = clampSurfaceImageCount(framesInFlight, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
-        vk::SwapchainCreateInfoKHR swapChainCreateInfo(
-            {},
-            foundry->surface(),
-            imageCount,
-            m_colorFormat,
-            surfaceFormat.colorSpace,
-            swapchainExtent,
-            1,
-            usage,
-            vk::SharingMode::eExclusive,
-            {},
-            preTransform,
-            compositeAlpha,
-            presentMode,
-            true);
-        if (foundry->graphicsFamily() != foundry->presentFamily())
-        {
-            // If the graphics and present queues are from different queue families, we either have to explicitly
-            // transfer ownership of images between the queues, or we have to create the swapchain with imageSharingMode
-            // as vk::SharingMode::eConcurrent
-            uint32_t queueFamilyIndices[]{ foundry->graphicsFamily(), foundry->presentFamily()};
-            swapChainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
-            swapChainCreateInfo.queueFamilyIndexCount = 2;
-            swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
-        }
-        m_swapchain = vk::raii::SwapchainKHR(device, swapChainCreateInfo);
-
+        SwapchainInfo swapchain = foundry->createSwapchain(extent, usage, framesInFlight);
+        m_swapchain = std::move(swapchain.swapchain);
+        m_colorFormat = swapchain.colorFormat;
+        m_extent = swapchain.extent;
         m_images = m_swapchain.getImages();
 
         vk::ImageViewCreateInfo imageViewCreateInfo{
@@ -98,6 +34,8 @@ namespace spock
             {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
 
         m_imageViews.reserve(m_images.size());
+
+        vk::raii::Device const& device = foundry->device();
 
         for (const auto& image : m_images)
         {
@@ -132,6 +70,7 @@ namespace spock
         : m_foundry(std::move(other.m_foundry))
         , m_swapchain(std::move(other.m_swapchain))
         , m_colorFormat(other.m_colorFormat)
+        , m_extent(other.m_extent)
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
         , m_imageIndex(other.m_imageIndex)
@@ -148,6 +87,7 @@ namespace spock
             m_foundry = std::move(other.m_foundry);
             m_swapchain = std::move(other.m_swapchain);
             m_colorFormat = other.m_colorFormat;
+            m_extent = other.m_extent;
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
             m_imageIndex = other.m_imageIndex;

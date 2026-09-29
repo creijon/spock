@@ -193,7 +193,7 @@ public:
 
         spock::updateDescriptorSets(foundry->device(), m_descriptorSet, {}, {m_texture});
 
-        foundry->createPipeline();
+        createPipeline();
     }
 
     void setView(glm::vec3 const& view)

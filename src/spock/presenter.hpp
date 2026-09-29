@@ -39,6 +39,13 @@ namespace spock
             return m_colorFormat;
         }
 
+        // The extent the swapchain was actually created with. This can differ from the extent
+        // requested in the constructor when the surface constrains it, so size render targets from this.
+        vk::Extent2D extent() const
+        {
+            return m_extent;
+        }
+
         vk::Result acquireFrame(uint32_t frameIndex);
         vk::Result submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex);
         vk::Result presentFrame(uint32_t frameIndex);
@@ -49,6 +56,7 @@ namespace spock
         std::shared_ptr<const Foundry> m_foundry;
         vk::raii::SwapchainKHR m_swapchain{nullptr};
         vk::Format m_colorFormat{};
+        vk::Extent2D m_extent{};
     
         std::vector<vk::Image> m_images;
         std::vector<vk::raii::ImageView> m_imageViews;
