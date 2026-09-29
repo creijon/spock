@@ -12,6 +12,15 @@
 
 namespace spock
 {
+    // The result of Foundry::createSwapchain.
+    // The extent is the one the swapchain was actually created with, which may differ from srequested.
+    struct SwapchainInfo
+    {
+        vk::raii::SwapchainKHR swapchain{nullptr};
+        vk::Format colorFormat{vk::Format::eUndefined};
+        vk::Extent2D extent{};
+    };
+
     // Responsible for managing the lifetime of the devices, queues and command pools, and keeping track of the queue families.
     // Helps to simplify the calling convention for the wrappers, presenter, renderer etc.  But doesn't own them.
     // It lives in the app, next to the renderer.
@@ -31,20 +40,21 @@ namespace spock
         vk::raii::PhysicalDevice const &physicalDevice() const { return m_physicalDevice; }
         vk::raii::SurfaceKHR const &surface() const { return m_surface; }
         vk::raii::Device const &device() const { return m_device; }
+
         vk::raii::CommandPool const &commandPool() const { return m_commandPool; }
-        vk::raii::Queue const &graphicsQueue() const { return m_graphicsQueue; }
         vk::raii::CommandPool const &computeCommandPool() const { return m_computeCommandPool; }
+
+        vk::raii::Queue const &graphicsQueue() const { return m_graphicsQueue; }
         vk::raii::Queue const &computeQueue() const { return m_computeQueue; }
         vk::raii::Queue const &presentQueue() const { return m_presentQueue; }
 
-        uint32_t graphicsFamily() const { return m_graphicsFamily; }
-        uint32_t presentFamily() const { return m_presentFamily; }
-        uint32_t computeFamily() const { return m_computeFamily; }
-        uint32_t transferFamily() const { return m_transferFamily; }
-
-        std::vector<vk::SurfaceFormatKHR> getSurfaceFormatsKHR() const;
-        vk::SurfaceCapabilitiesKHR getSurfaceCapabilitiesKHR() const;
-        std::vector<vk::PresentModeKHR> getSurfacePresentModesKHR() const;
+        // Create a swapchain for the surface.
+        // `desiredImageCount` is clamped to what the surface supports; so the caller should use
+        // the swapchain's actual image count.
+        SwapchainInfo createSwapchain(
+            vk::Extent2D const &extent,
+            vk::ImageUsageFlags usage,
+            uint32_t desiredImageCount) const;
 
         void waitIdle() const;
 
@@ -67,10 +77,12 @@ namespace spock
         vk::raii::PhysicalDevice m_physicalDevice{nullptr};
         vk::raii::SurfaceKHR m_surface{nullptr};
         vk::raii::Device m_device{nullptr};
+
         vk::raii::CommandPool m_commandPool{nullptr};
+        vk::raii::CommandPool m_computeCommandPool{nullptr};
+
         vk::raii::Queue m_graphicsQueue{nullptr};
         vk::raii::Queue m_presentQueue{nullptr};
-        vk::raii::CommandPool m_computeCommandPool{nullptr};
         vk::raii::Queue m_computeQueue{nullptr};
 
         uint32_t m_graphicsFamily{0};

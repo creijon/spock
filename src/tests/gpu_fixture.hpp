@@ -10,6 +10,8 @@
 
 #include <iostream>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace spock_test
 {
@@ -32,11 +34,22 @@ namespace spock_test
         auto fixture = std::make_unique<GpuFixture>();
         try
         {
+            std::vector<std::string> extensions{
+                VK_KHR_SURFACE_EXTENSION_NAME,
+                VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME};
+#if defined(__APPLE__)
+            // createInstance sets the portability enumeration flag on Apple, which the loader only honours
+            // when the matching extension is enabled. Without it MoltenVK is hidden and instance creation
+            // fails with ErrorIncompatibleDriver, silently skipping every [gpu] test.
+            extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+            extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+#endif
+
             fixture->instance = spock::createInstance(
                 fixture->context,
                 "spock-tests",
                 {},
-                {VK_KHR_SURFACE_EXTENSION_NAME, VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME});
+                extensions);
 
             fixture->foundry = std::make_shared<spock::Foundry>(
                 fixture->instance,

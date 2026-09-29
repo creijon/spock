@@ -182,21 +182,6 @@ namespace spock
         m_device.waitIdle();
     }
 
-    std::vector<vk::SurfaceFormatKHR> Foundry::getSurfaceFormatsKHR() const
-    {
-        return m_physicalDevice.getSurfaceFormatsKHR(m_surface);
-    }
-
-    vk::SurfaceCapabilitiesKHR Foundry::getSurfaceCapabilitiesKHR() const
-    {
-        return m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
-    }
-
-    std::vector<vk::PresentModeKHR> Foundry::getSurfacePresentModesKHR() const
-    {
-        return m_physicalDevice.getSurfacePresentModesKHR(m_surface);
-    }
-
     std::vector<vk::DeviceQueueCreateInfo> Foundry::uniqueCreateInfos() const
     {
         // The returned create infos point at this value, so it must outlive the function.
@@ -220,5 +205,76 @@ namespace spock
         }
 
         return queueCreateInfos;
+    }
+
+    SwapchainInfo Foundry::createSwapchain(
+        vk::Extent2D const &extent,
+        vk::ImageUsageFlags usage,
+        uint32_t desiredImageCount) const
+    {
+        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface));
+
+        vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
+        vk::Extent2D swapchainExtent;
+        if (surfaceCapabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)())
+        {
+            // If the surface size is undefined, the size is set to the size of the images requested.
+            swapchainExtent.width = std::clamp(
+                extent.width,
+                surfaceCapabilities.minImageExtent.width,
+                surfaceCapabilities.maxImageExtent.width);
+            swapchainExtent.height = std::clamp(
+                extent.height,
+                surfaceCapabilities.minImageExtent.height,
+                surfaceCapabilities.maxImageExtent.height);
+        }
+        else
+        {
+            // If the surface size is defined, the swap chain size must match
+            swapchainExtent = surfaceCapabilities.currentExtent;
+        }
+
+        auto preTransform =
+            (surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity) ?
+            vk::SurfaceTransformFlagBitsKHR::eIdentity :
+            surfaceCapabilities.currentTransform;
+
+        using Alpha = vk::CompositeAlphaFlagBitsKHR;
+        auto compositeAlpha =
+            (surfaceCapabilities.supportedCompositeAlpha & Alpha::eOpaque)         ? Alpha::eOpaque :
+            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePreMultiplied)  ? Alpha::ePreMultiplied :
+            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePostMultiplied) ? Alpha::ePostMultiplied :
+            Alpha::eInherit;
+
+        vk::PresentModeKHR presentMode = pickPresentMode(m_physicalDevice.getSurfacePresentModesKHR(m_surface));
+        uint32_t imageCount = clampSurfaceImageCount(desiredImageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
+        vk::SwapchainCreateInfoKHR swapChainCreateInfo(
+            {},
+            m_surface,
+            imageCount,
+            surfaceFormat.format,
+            surfaceFormat.colorSpace,
+            swapchainExtent,
+            1,
+            usage,
+            vk::SharingMode::eExclusive,
+            {},
+            preTransform,
+            compositeAlpha,
+            presentMode,
+            true);
+
+        uint32_t const queueFamilyIndices[]{m_graphicsFamily, m_presentFamily};
+        if (m_graphicsFamily != m_presentFamily)
+        {
+            swapChainCreateInfo.imageSharingMode = vk::SharingMode::eConcurrent;
+            swapChainCreateInfo.queueFamilyIndexCount = 2;
+            swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
+        }
+
+        return {
+            vk::raii::SwapchainKHR(m_device, swapChainCreateInfo),
+            surfaceFormat.format,
+            swapchainExtent};
     }
 }
