@@ -31,9 +31,7 @@ namespace spock
         uint32_t binding,
         vk::VertexInputRate inputRate)
     {
-        // Check to see whether there is already a binding on this slot; if so, reuse it
-        // rather than adding a duplicate, so callers can add attributes to the same
-        // binding across multiple calls.
+        // Add new attributes to the existing binding if it already exists.
         auto it = std::find_if(
             m_bindings.begin(), m_bindings.end(),
             [binding](auto desc) { return desc.binding == binding; });
@@ -43,10 +41,9 @@ namespace spock
             m_bindings.emplace_back(binding, stride, inputRate);
         }
 
-        // Attributes are sorted, so the last one will have the highest location.
-        uint32_t location = (!m_attributes.empty()) ? m_attributes.back().location + 1 : 0;
-
         // Populate the attributes.
+        uint32_t location = uint32_t(m_attributes.size());
+
         for (const auto& attr : attributes)
         {
             m_attributes.emplace_back(location, binding, attr.first, uint32_t(attr.second));
