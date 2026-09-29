@@ -207,18 +207,16 @@ public:
 
     void createPipeline(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
     {
-        auto foundry = m_foundry;
-
         try
         {
             if (shaderStages & vk::ShaderStageFlagBits::eVertex)
             {
-                m_vertShader = spock::loadShader(foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
+                m_vertShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
             if (shaderStages & vk::ShaderStageFlagBits::eFragment)
             {
-                m_fragShader = spock::loadShader(foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
+                m_fragShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
         }
         catch (std::exception const& e)
@@ -237,7 +235,7 @@ public:
             vertexFormat.addAttributes<SortingEntry>(1, vk::VertexInputRate::eInstance);
 
             m_graphicsPipeline = spock::createGraphicsPipeline(
-                foundry->device(),
+                m_foundry->device(),
                 shaderStagesInfo,
                 m_pipelineLayout,
                 m_renderPass,

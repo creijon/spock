@@ -193,7 +193,7 @@ public:
 
         spock::updateDescriptorSets(foundry->device(), m_descriptorSet, {}, {m_texture});
 
-        createPipeline(foundry->device());
+        foundry->createPipeline();
     }
 
     void setView(glm::vec3 const& view)
@@ -202,11 +202,11 @@ public:
     }
 
 protected:
-    void createPipeline(vk::raii::Device const& device)
+    void createPipeline()
     {
         // Create the shaders.
-        auto vertShader = spock::compileShader(device, vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
-        auto fragShader = spock::compileShader(device, vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+        auto vertShader = spock::compileShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
+        auto fragShader = spock::compileShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
 
         std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
             {{}, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
@@ -215,7 +215,7 @@ protected:
 
         // Finally create the graphics pipeline.
         m_graphicsPipeline = spock::createGraphicsPipeline(
-            device,
+            m_foundry->device(),
             shaderStagesInfo,
             m_pipelineLayout,
             m_renderPass,
