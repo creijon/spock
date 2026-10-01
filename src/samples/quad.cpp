@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
-// An even more simple example than the QUAD - just a single quad on the screen.
+// An even more simple example than the cube - just a single quad on the screen.
 // Useful as a basis for 2D rendering samples.
 
 #include "spock/app.hpp"
