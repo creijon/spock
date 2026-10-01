@@ -11,6 +11,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/camera.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/creators.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/file_watcher.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/foundry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/loader.cpp

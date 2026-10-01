@@ -9,7 +9,7 @@ set(PROJECT_VERSION_MAJOR 0)
 set(PROJECT_VERSION_MINOR 1)
 set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}")
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -81,6 +81,7 @@ target_link_libraries(
     ${OPENGL_LIBRARIES}
     ${Vulkan_LIBRARIES}
     Vulkan::Headers
+	efsw
     glfw
     glslang::glslang
     glslang::glslang-default-resource-limits

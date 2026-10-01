@@ -5,26 +5,26 @@
 
 #include <efsw/efsw.hpp>
 
+#include <mutex>
+#include <set>
 #include <string>
+#include <utility>
 
 namespace spock
 {
-    class FileWatcher : public efsw::FileWatchListener
+    class FileWatcher final : private efsw::FileWatchListener
     {
     public:
-        FileWatcher(std::string const& path)
-        {
-            m_watchID = m_fileWatcher.addWatch(path, this);
-            m_fileWatcher.watch();
-        }
+        FileWatcher(std::string const& path);
 
-        virtual ~FileWatcher()
-        {
-            m_fileWatcher.removeWatch(m_watchID);
-        }
+        FileWatcher(FileWatcher const&) = delete;
+        FileWatcher& operator=(FileWatcher const&) = delete;
+        
+        virtual ~FileWatcher();
 
-    protected:
-        virtual void fileModified(std::string const& filename) = 0;
+        // Retrieve the set of modified files since the last call to takeModified().
+        // This will clear the internal set of modified files.
+        std::set<std::string> takeModified();
 
     private:
         void handleFileAction(
@@ -32,14 +32,10 @@ namespace spock
             const std::string& dir,
             const std::string& filename,
             efsw::Action action,
-            const std::string& oldFilename) override
-        {
-            if (action == efsw::Actions::Modified)
-            {
-                fileModified(filename);
-            }
-        }
+            const std::string& oldFilename) override;
 
+        std::mutex m_mutex;
+        std::set<std::string> m_modified;
         efsw::FileWatcher m_fileWatcher;
         efsw::WatchID m_watchID;
     };

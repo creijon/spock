@@ -1,11 +1,13 @@
 
 ## Vulkan Features to Explore
 
-- Compute Shaders
 - Raytracing
+- Secondary command buffers
+- Multithreaded dispatch
 - Multidraw indirect
 - Mesh shaders
-- Secondary command buffers
+
+- Compute Shaders DONE
 
 ## High Priority Features
 
@@ -21,15 +23,15 @@
 ## Lower Priority Features
 
 - Display lists, high priority as soon as you have a scene representation.
-- Debug line rendering. DONE
 - Geometric primitives. NEEDS TESTING
 - VMA integration
+- Debug line rendering. DONE
 
-## Larger Scope, Specific Features
+## Larger Scope Ideas to Explore
 
 - Gaussian splatting (see below)
 - Contree (64tree) structure for voxels of volumetric textures
-- Lighting
+- Raytracing
 
 ### Gaussian Splatting
 
@@ -39,15 +41,17 @@
 4. Spatial partitioning of the splat data.
 5. 4DGS.
 
+### Contree
+
+- Initially for texture mapping (call it context)
+- Then look into a pure contree volumetric renderer.
+- But use a different rendering approach so it doesn't look blocky.
+
+### Raytracing
+
+
 ## Fixes/Refactoring
 
-- Rewrite the queue family logic so that it also supports Compute and Transfer.
-  - Split this out to a separate class that does all the querying etc.  DONE
-  - Modify the Renderer and Presenter to handle this. DONE
-  - Perhaps we should rename the Renderer to Device, Machine or something, because it is generic?
-    - This is important, because the renderer currently puts everything on the graphics queue.
-    - Needs some thought.
-    - The Presenter already encapsulates the Renderer to Window logic, so that will make it easier.
 - Create the concept of a Shader Pass:
   - A set of GPU commands that all use the same shader loadout.
   - This could be a compute shader, vert and frag or some combination of all of them.
@@ -55,6 +59,14 @@
   - Clean up the interface into creating and managing buffers.\
 - Need to have separate the resources from the renderer.  Have some sort of asset registry.
   - Has to allow reloading.
+
+- Rewrite the queue family logic so that it also supports Compute and Transfer. DONE
+  - Split this out to a separate class that does all the querying etc.  DONE
+  - Modify the Renderer and Presenter to handle this. DONE
+  - Perhaps we should rename the Renderer to Device, Machine or something, because it is generic?
+    - This is important, because the renderer currently puts everything on the graphics queue.
+    - Needs some thought.
+    - The Presenter already encapsulates the Renderer to Window logic, so that will make it easier.
 - Split the framework into an app and separate renderer. DONE
   - App is responsible for: window, update loop, asset loading (TBD)
   - Pure virtual function to create the subclassed renderer.

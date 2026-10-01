@@ -300,6 +300,7 @@ public:
             windowWidth,
             windowHeight)
         , m_sceneIndex(sceneIndex)
+		, m_watcher(SHADER_PATH)
     {
     }
 
@@ -372,10 +373,21 @@ protected:
             cameraMoved = true;
         }
 
-        m_watcher.notifyRenderer(renderer);
-
         renderer->update(m_scene, m_camera, cameraMoved, m_window.extents());
         m_previousCursor = cursor;
+
+        // Check the file watcher for any modified shader files and rebuild the pipeline if necessary.
+        auto modifiedFiles = m_watcher.takeModified();
+        vk::ShaderStageFlags modifiedShaders{0};
+        if (modifiedFiles.contains(VERTEX_SHADER)) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+        if (modifiedFiles.contains(FRAGMENT_SHADER)) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
+
+        if (modifiedShaders)
+        {
+            // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
+            renderer->waitIdle();
+            renderer->createPipeline(modifiedShaders);
+        }
     }
 
 private:
@@ -395,41 +407,6 @@ private:
         m_sceneBounds = m_scene.computeBounds();
     }
 
-    class Watcher : public spock::FileWatcher
-    {
-    public:
-        Watcher() : spock::FileWatcher(SHADER_PATH)
-        {}
-
-        void fileModified(std::string const& filename) override
-        {
-            std::unique_lock lock(mutex);
-            if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
-            if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
-        }
-
-        void notifyRenderer(SplatRenderer* renderer)
-        {
-            vk::ShaderStageFlags temp;
-            {
-                // Take the lock for the minimum amount of time to avoid blocking the file watcher thread.
-                std::unique_lock lock(mutex);
-                temp = modifiedShaders;
-                modifiedShaders = vk::ShaderStageFlags(0);
-            }
-            if (temp)
-            {
-                // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-                renderer->waitIdle();
-                renderer->createPipeline(temp);
-            }
-        }
-
-    private:
-        vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
-        std::mutex mutex;
-    };
-
     SplatScene m_scene;
     glm::vec4 m_sceneBounds{};
     uint32_t m_sceneIndex{ 1 };
@@ -437,7 +414,7 @@ private:
     vk::Offset2D m_previousCursor{};
     spock::OrbitCamera m_camera{glm::vec3(0.0f), 5.0f, 5.0f, 45.0f, 0.01f, 100.0f};
 
-    Watcher m_watcher;
+    spock::FileWatcher m_watcher;
 };
 
 int main(int argc, char** argv)

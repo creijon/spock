@@ -187,6 +187,7 @@ class ShaderLabApp : public spock::App
 public:
     ShaderLabApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::App("ShaderLab", windowWidth, windowHeight)
+		, m_watcher(SHADER_PATH)
     {
     }
 
@@ -210,46 +211,22 @@ protected:
             renderer->setMouseClickPos(mousePos);
         }
 
-        m_watcher.notifyRenderer(renderer);
+        // Check the file watcher for any modified shader files and rebuild the pipeline if necessary.
+        auto modifiedFiles = m_watcher.takeModified();
+        vk::ShaderStageFlags modifiedShaders{0};
+        if (modifiedFiles.contains(VERTEX_SHADER)) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
+        if (modifiedFiles.contains(FRAGMENT_SHADER)) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
+
+        if (modifiedShaders)
+        {
+            // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
+            renderer->waitIdle();
+            renderer->createPipeline(modifiedShaders);
+        }
     }
 
 private:
-    class Watcher : public spock::FileWatcher
-    {
-    public:
-        Watcher() : spock::FileWatcher(SHADER_PATH)
-        {}
-
-        void fileModified(std::string const& filename) override
-        {
-            std::unique_lock lock(mutex);
-            if (filename == VERTEX_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eVertex;
-            if (filename == FRAGMENT_SHADER) modifiedShaders |= vk::ShaderStageFlagBits::eFragment;
-        }
-
-        void notifyRenderer(ShaderLabRenderer* renderer)
-        {
-            vk::ShaderStageFlags temp;
-            {
-                // Take the lock for the minimum amount of time to avoid blocking the file watcher thread.
-                std::unique_lock lock(mutex);
-                temp = modifiedShaders;
-                modifiedShaders = vk::ShaderStageFlags(0);
-            }
-            if (temp)
-            {
-                // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-                renderer->waitIdle();
-                renderer->createPipeline(temp);
-            }
-        }
-
-    private:
-        vk::ShaderStageFlags modifiedShaders{ vk::ShaderStageFlagBits::eAllGraphics };
-        std::mutex mutex;
-    };
-
-    Watcher m_watcher;
+    spock::FileWatcher m_watcher;
 };
 
 int main()
