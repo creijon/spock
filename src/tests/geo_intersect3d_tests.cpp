@@ -228,6 +228,82 @@ TEST_CASE("Triangle-Aabb intersection handles tiny triangles", "[geo]")
     }
 }
 
+// The edge-triangle test treats the edge as a ray from v0 and accepts hits with t in [0, length],
+// so an edge that starts or ends exactly on the triangle counts as intersecting. t is the distance
+// from v0, not a [0, 1] parameter.
+TEST_CASE("Edge-Triangle intersection", "[geo]")
+{
+    using geo3d::Edge;
+
+    Triangle const triangle(
+        glm::vec3(-1.0f, -1.0f, 0.0f),
+        glm::vec3(1.0f, -1.0f, 0.0f),
+        glm::vec3(0.0f, 1.0f, 0.0f));
+    float t = -1.0f;
+
+    SECTION("an edge crossing the interior hits, with t as the distance from v0")
+    {
+        CHECK(intersect::test(Edge(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, -1.0f)), triangle, t));
+        CHECK(t == 3.0f);
+    }
+
+    SECTION("an edge starting on the triangle hits with t == 0")
+    {
+        CHECK(intersect::test(Edge(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 2.0f)), triangle, t));
+        CHECK(t == 0.0f);
+        CHECK(intersect::test(Edge(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -2.0f)), triangle, t));
+        CHECK(t == 0.0f);
+    }
+
+    SECTION("an edge ending on the triangle hits with t == length")
+    {
+        CHECK(intersect::test(Edge(glm::vec3(0.0f, 0.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f)), triangle, t));
+        CHECK(t == 2.0f);
+    }
+
+    SECTION("an edge that stops short of the triangle misses")
+    {
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 1.0f)), triangle, t));
+    }
+
+    SECTION("an edge pointing away from the triangle misses")
+    {
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, 0.0f, 3.0f)), triangle, t));
+    }
+
+    SECTION("an edge passing outside the triangle misses")
+    {
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(2.0f, 0.0f, 1.0f), glm::vec3(2.0f, 0.0f, -1.0f)), triangle, t));
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(0.0f, -1.5f, 1.0f), glm::vec3(0.0f, -1.5f, -1.0f)), triangle, t));
+    }
+
+    SECTION("an edge through a triangle vertex or along its boundary hits")
+    {
+        CHECK(intersect::test(Edge(glm::vec3(-1.0f, -1.0f, 1.0f), glm::vec3(-1.0f, -1.0f, -1.0f)), triangle, t));
+        CHECK(t == 1.0f);
+        CHECK(intersect::test(Edge(glm::vec3(0.0f, -1.0f, 1.0f), glm::vec3(0.0f, -1.0f, -1.0f)), triangle, t));
+        CHECK(t == 1.0f);
+    }
+
+    SECTION("an edge parallel to the triangle misses")
+    {
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(-2.0f, 0.0f, 1.0f), glm::vec3(2.0f, 0.0f, 1.0f)), triangle, t));
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(-2.0f, 0.0f, 0.0f), glm::vec3(2.0f, 0.0f, 0.0f)), triangle, t));
+    }
+
+    SECTION("a degenerate edge misses and sets t to 0")
+    {
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(0.0f), glm::vec3(0.0f)), triangle, t));
+        CHECK(t == 0.0f);
+    }
+
+    SECTION("a miss sets t to 0")
+    {
+        CHECK_FALSE(intersect::test(Edge(glm::vec3(2.0f, 0.0f, 1.0f), glm::vec3(2.0f, 0.0f, -1.0f)), triangle, t));
+        CHECK(t == 0.0f);
+    }
+}
+
 // Benchmarks for the Triangle-Aabb intersection strategies (testSS, testNoBB, test, and the
 // standard-SAT reference testAM), covering the scenarios called out when comparing them: the
 // common case testNoBB is optimised for (a triangle edge crosses the box), testNoBB's costliest

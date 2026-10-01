@@ -22,8 +22,10 @@ namespace geo3d
         bool test(Edge const& edge, Plane const& plane);
         bool test(Edge const& edge, Plane const& plane, float& t);
 
-        // This is a novel approach to triangle-box intersection that is designed to be more
-        // efficient in situations where the domain is mostly made up of intersecting shapes.
+        // This approach to the triangle-box intersection tests was inspired in part from 
+        // Voorhies' "Triangle-Cube intersection" (Graphics Gems III, 1992).
+        // It improves on that solution in that it is designed to be more efficient in situations
+        // where the domain is mostly made up of intersecting shapes, such as sparse voxel octrees.
         // It can exit early with common intersections, rather than only when disjoint.
 
         bool test(Triangle const& triangle, Aabb const& box);

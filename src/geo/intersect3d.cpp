@@ -99,11 +99,34 @@ namespace geo3d
         return t > std::numeric_limits<float>::epsilon();
     }
 
+	// Inclusive of the start point (t == 0), but only reliably for points exactly on the
+	// triangle's plane. Otherwise rounding can make t slightly negative and reject the hit.
     bool intersect::test(Edge const& edge, Triangle const& triangle, float& t)
     {
         float length = glm::length(edge.axis());
         if (length <= std::numeric_limits<float>::epsilon()) { t = 0.0f; return false; }
-        return test(Ray{edge.v0, edge.axis() / length}, triangle, t) && t <= length;
+
+		// Uses the ray-triangle intersection test, but with the edge as a ray and an additional
+		// check that t is in edge: [0, length].
+        glm::vec3 e1 = triangle.v1 - triangle.v0;
+        glm::vec3 e2 = triangle.v2 - triangle.v0;
+		glm::vec3 edgeDir = edge.axis() / length;
+        glm::vec3 p = glm::cross(edgeDir, e2);
+        float determinant = glm::dot(e1, p);
+        t = 0.0f;
+
+        float scale = std::sqrt(glm::dot(e1, e1) * glm::dot(p, p));
+        if (std::abs(determinant) <= std::numeric_limits<float>::epsilon() * scale) return false;
+        float inverse = 1.0f / determinant;
+        glm::vec3 q = edge.v0 - triangle.v0;
+        float u = glm::dot(q, p) * inverse;
+        if (u < 0.0f || u > 1.0f) return false;
+        glm::vec3 r = glm::cross(q, e1);
+        float v = glm::dot(edgeDir, r) * inverse;
+        if (v < 0.0f || u + v > 1.0f) return false;
+        t = glm::dot(e2, r) * inverse;
+	
+        return t >= 0.0f && t <= length;
     }
 
     bool intersect::test(Plane const& plane, Aabb const& box)
@@ -214,13 +237,20 @@ namespace geo3d
         return testNoBB(triangle, box);
     }
 
+	// Alternative triangle-AABB intersection test.
 
-    // This is a novel approach to triangle-box intersection that is designed to be more efficient
-    // in situations where the domain is mostly made up of intersecting shapes. It can exit early
-    // with common intersections, rather than only when disjoint.
+	// Inspired by Douglas Voorhies' "Triangle-Cube Intersection", Graphics Gems III, 1992.
+	// The key idea shared with Voorhies is that, after ruling out triangle-edge intersections,
+	// an intersection through the triangle interior can be detected using the four body diagonals
+	// of the box.
 
-    // This means that it is significantly more efficient when performing a series of hierarchial
-    // tests such as with the generation of Sparse Voxel Octrees from triangle meshes.
+	// This implementation is deliberately simpler and performance oriented: it is designed to be
+	// more efficient that the other Triangle-AABB test in situations where the domain is mostly
+	// made up of intersecting shapes. It can exit early with common intersections, rather than
+	// only when disjoint.
+
+    // This helps when performing a series of hierarchial tests such as with the generation of
+	// Sparse Voxel Octrees from triangle meshes.
 
     // Description of the algorithm:
 
