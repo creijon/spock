@@ -45,6 +45,19 @@ add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp)
 add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/textured_cube.cpp)
 add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/textured_sphere.cpp)
 
+# The video player needs FFmpeg, so it is only built when the libraries are found.
+find_package(PkgConfig)
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(FFMPEG IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
+endif()
+
+if (FFMPEG_FOUND)
+    add_sample_target(videoplayer ${CMAKE_CURRENT_SOURCE_DIR}/videoplayer.cpp)
+    target_link_libraries(videoplayer PRIVATE PkgConfig::FFMPEG)
+    set_target_properties(videoplayer PROPERTIES FOLDER "samples")
+else()
+    message(STATUS "FFmpeg not found, skipping the videoplayer sample")
+endif()
 
 set_target_properties(
     cube
