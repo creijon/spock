@@ -135,7 +135,7 @@ namespace spock
     }
 
     // Create a basic render pass with a single color attachment and an optional
-    // depth attachment, using the provided clear/load/store operations.
+    // depth attachment. loadOp applies to color only; depth is always cleared and discarded.
     vk::raii::RenderPass createRenderPass(
         vk::raii::Device const &device,
         vk::Format colorFormat,
@@ -163,7 +163,7 @@ namespace spock
                 vk::AttachmentDescriptionFlags(),
                 depthFormat,
                 vk::SampleCountFlagBits::e1,
-                loadOp,
+                vk::AttachmentLoadOp::eClear,
                 vk::AttachmentStoreOp::eDontCare,
                 vk::AttachmentLoadOp::eDontCare,
                 vk::AttachmentStoreOp::eDontCare,
@@ -181,7 +181,19 @@ namespace spock
             colorAttachment,
             {},
             (depthFormat != vk::Format::eUndefined) ? &depthAttachment : nullptr);
-        vk::RenderPassCreateInfo renderPassCreateInfo(vk::RenderPassCreateFlags(), attachmentDescriptions, subpassDescription);
+
+        vk::SubpassDependency dependency(
+            VK_SUBPASS_EXTERNAL, 0,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
+            vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead |
+                vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+        vk::RenderPassCreateInfo renderPassCreateInfo(
+            vk::RenderPassCreateFlags(), attachmentDescriptions, subpassDescription, dependency);
 
         return vk::raii::RenderPass(device, renderPassCreateInfo);
     }

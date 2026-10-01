@@ -27,6 +27,7 @@ namespace spock
         vk::raii::CommandPool const &commandPool);
 
     // Create a simple render pass that supports color and optional depth attachments.
+    // loadOp applies to the color attachment only; depth is always cleared and discarded.
     vk::raii::RenderPass createRenderPass(
         vk::raii::Device const &device,
         vk::Format colorFormat,
