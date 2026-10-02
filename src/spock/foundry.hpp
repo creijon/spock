@@ -31,8 +31,9 @@ namespace spock
     public:
         Foundry(
             vk::raii::Instance const &instance,
-            vk::raii::SurfaceKHR windowSurface, 
-            bool preferDiscreteGPU = true, // TODO: make this a more complete prioritisation scheme
+            vk::raii::SurfaceKHR windowSurface,
+            vk::QueueFlags requiredQueues = vk::QueueFlagBits::eGraphics,
+            vk::PhysicalDeviceType preferredDevice = vk::PhysicalDeviceType::eDiscreteGpu,
             std::vector<char const*> const &extensions = {},
             void const *features = nullptr);
 
@@ -44,10 +45,12 @@ namespace spock
 
         vk::raii::CommandPool const &commandPool() const { return m_commandPool; }
         vk::raii::CommandPool const &computeCommandPool() const { return m_computeCommandPool; }
+        vk::raii::CommandPool const &transferCommandPool() const { return m_transferCommandPool; }
 
         vk::raii::Queue const &graphicsQueue() const { return m_graphicsQueue; }
-        vk::raii::Queue const &computeQueue() const { return m_computeQueue; }
         vk::raii::Queue const &presentQueue() const { return m_presentQueue; }
+        vk::raii::Queue const &computeQueue() const { return m_computeQueue; }
+        vk::raii::Queue const &transferQueue() const { return m_transferQueue; }
 
         // Create a swapchain for the surface.
         // desiredImageCount: clamped to what the surface supports for the Swapchain imageCount.
@@ -74,6 +77,12 @@ namespace spock
         }
 
     private:
+        void selectPhysicalDeviceAndQueueFamilies(
+            vk::raii::Instance const& instance,
+            vk::QueueFlags requiredQueues,
+            vk::PhysicalDeviceType preferredDevice,
+            std::vector<char const*> const& requiredExtensions);
+
         std::vector<vk::DeviceQueueCreateInfo> uniqueCreateInfos() const;
 
         vk::raii::PhysicalDevice m_physicalDevice{nullptr};
@@ -82,10 +91,12 @@ namespace spock
 
         vk::raii::CommandPool m_commandPool{nullptr};
         vk::raii::CommandPool m_computeCommandPool{nullptr};
+        vk::raii::CommandPool m_transferCommandPool{nullptr};
 
         vk::raii::Queue m_graphicsQueue{nullptr};
         vk::raii::Queue m_presentQueue{nullptr};
         vk::raii::Queue m_computeQueue{nullptr};
+        vk::raii::Queue m_transferQueue{nullptr};
 
         uint32_t m_graphicsFamily{0};
         uint32_t m_presentFamily{0};
