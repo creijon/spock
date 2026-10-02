@@ -380,6 +380,7 @@ protected:
         return std::make_shared<spock::Foundry>(
             m_instance,
             m_window.createSurface(m_instance),
+            true,
             extensions,
             &subgroupSizeControl);
     }

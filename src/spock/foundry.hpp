@@ -31,7 +31,8 @@ namespace spock
     public:
         Foundry(
             vk::raii::Instance const &instance,
-            vk::raii::SurfaceKHR windowSurface,
+            vk::raii::SurfaceKHR windowSurface, 
+            bool preferDiscreteGPU = true, // TODO: make this a more complete prioritisation scheme
             std::vector<char const*> const &extensions = {},
             void const *features = nullptr);
 
@@ -49,10 +50,8 @@ namespace spock
         vk::raii::Queue const &presentQueue() const { return m_presentQueue; }
 
         // Create a swapchain for the surface.
-        // `desiredImageCount` is clamped to what the surface supports; so the caller should use
-        // the swapchain's actual image count.
-        // When recreating, pass the current swapchain as `oldSwapchain` so the driver can reuse its
-        // resources. It is retired by this call, but the caller must still destroy it.
+        // desiredImageCount: clamped to what the surface supports for the Swapchain imageCount.
+        // oldSwapchain: the current swapchain so the driver can reuse its resources.  The caller must still destroy it.
         SwapchainInfo createSwapchain(
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,

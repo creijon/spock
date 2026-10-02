@@ -111,11 +111,43 @@ namespace spock
     Foundry::Foundry(
         vk::raii::Instance const &instance,
         vk::raii::SurfaceKHR windowSurface,
+        bool preferDiscreteGPU, // TODO: make this a more complete prioritisation scheme
         std::vector<char const*> const &extensions,
         void const *features)
-        : m_physicalDevice(vk::raii::PhysicalDevices(instance).front())
-        , m_surface(std::move(windowSurface))
+        : m_surface(std::move(windowSurface))
     {
+        auto physicalDevices = vk::raii::PhysicalDevices(instance);
+        /*
+            std::vector<uint32_t> deviceScores(physicaDevices.size(), 0);
+
+            // Simple example
+            uint32_t count = 0;
+            vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, nullptr);
+            std::vector<VkExtensionProperties> extensions(count);
+            vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, extensions.data());
+
+            // Checking for support of VK_KHR_bind_memory2
+            for (uint32_t i = 0; i < count; i++) {
+                if (strcmp(VK_KHR_BIND_MEMORY_2_EXTENSION_NAME, extensions[i].extensionName) == 0) {
+                    break; // VK_KHR_bind_memory2 is supported
+                }
+            }
+        */
+
+		m_physicalDevice = physicalDevices.front();
+
+        if (preferDiscreteGPU)
+        {
+            for (const auto &device : physicalDevices)
+            {
+                if (device.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+                {
+                    m_physicalDevice = device;
+                    break;
+                }
+            }
+        }
+
         // Find the queue families.
         auto queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
         assert(queueFamilyProperties.size() < (std::numeric_limits<uint32_t>::max)());
