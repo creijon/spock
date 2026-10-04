@@ -187,7 +187,7 @@ class ShaderLabApp : public spock::App
 public:
     ShaderLabApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::App("ShaderLab", windowWidth, windowHeight)
-		, m_watcher(SHADER_PATH)
+        , m_watcher(SHADER_PATH)
     {
     }
 

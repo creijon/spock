@@ -20,16 +20,6 @@
 
 ## Critical Fixes
 
-- Physical device selection
-
-  - Enumerate devices
-  - Check against requested extensions and features
-  - Check for queues
-  - Score based on hard and soft requirements
-  - Report on the device selected
-
-  This also will include fixing the extension negotiation.
-
 - Vulkan version
 
   - Query the supported instance version
@@ -71,6 +61,16 @@
 
 - setImageLayout() assumes an eGeneral source layout was written by the host, so the barrier is wrong after compute or transfer writes.
 
+- Physical device selection DONE
+
+  - Enumerate devices
+  - Check against requested extensions and features
+  - Check for queues
+  - Score based on hard and soft requirements
+  - Report on the device selected
+
+  This also will include fixing the extension negotiation.
+
 
 ## Refactoring
 
@@ -95,6 +95,11 @@
     - Needs some thought.
     - The Presenter already encapsulates the Renderer to Window logic, so that will make it easier.
     - This logic is now split off to the "Foundry".
+
+- Support a headless Foundry without a surface or swapchain.
+  - For compute-only work, tests and offline rendering (e.g. golden images).
+  - Make the surface optional, and only require graphics and present queues, the swapchain extension and createSwapchain() when there is one.
+  - The tests currently work around this with VK_EXT_headless_surface.
 
 - Split the framework into an app and separate renderer. DONE
   - App is responsible for: window, update loop, asset loading (TBD)

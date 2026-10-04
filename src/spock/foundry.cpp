@@ -4,6 +4,7 @@
 #include "foundry.hpp"
 
 #include "creators.hpp"
+#include "utils.hpp"
 
 #if defined(__APPLE__)
 #include <vulkan/vulkan_beta.h>
@@ -108,67 +109,28 @@ namespace spock
         throw std::runtime_error("Could not find a queue family that supports present, terminating.");
     }
 
+    bool checkDeviceExtensionSupport(
+        vk::raii::PhysicalDevice const& physicalDevice,
+        std::vector<char const*> const& requiredExtensions)
+    {
+        std::set<std::string> requiredExtensionsSet(requiredExtensions.begin(), requiredExtensions.end());
+        auto availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
+        for (const auto& extension : availableExtensions)
+        {
+            requiredExtensionsSet.erase(extension.extensionName);
+        }
+        return requiredExtensionsSet.empty();
+    }
+
     Foundry::Foundry(
         vk::raii::Instance const &instance,
         vk::raii::SurfaceKHR windowSurface,
-        bool preferDiscreteGPU, // TODO: make this a more complete prioritisation scheme
+        vk::QueueFlags requiredQueues,
+        vk::PhysicalDeviceType preferredDevice,
         std::vector<char const*> const &extensions,
         void const *features)
         : m_surface(std::move(windowSurface))
     {
-        auto physicalDevices = vk::raii::PhysicalDevices(instance);
-        /*
-            std::vector<uint32_t> deviceScores(physicaDevices.size(), 0);
-
-            // Simple example
-            uint32_t count = 0;
-            vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, nullptr);
-            std::vector<VkExtensionProperties> extensions(count);
-            vkEnumerateDeviceExtensionProperties(physicalDevice, nullptr, &count, extensions.data());
-
-            // Checking for support of VK_KHR_bind_memory2
-            for (uint32_t i = 0; i < count; i++) {
-                if (strcmp(VK_KHR_BIND_MEMORY_2_EXTENSION_NAME, extensions[i].extensionName) == 0) {
-                    break; // VK_KHR_bind_memory2 is supported
-                }
-            }
-        */
-
-		m_physicalDevice = physicalDevices.front();
-
-        if (preferDiscreteGPU)
-        {
-            for (const auto &device : physicalDevices)
-            {
-                if (device.getProperties().deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-                {
-                    m_physicalDevice = device;
-                    break;
-                }
-            }
-        }
-
-        // Find the queue families.
-        auto queueFamilyProperties = m_physicalDevice.getQueueFamilyProperties();
-        assert(queueFamilyProperties.size() < (std::numeric_limits<uint32_t>::max)());
-
-        std::tie(m_graphicsFamily, m_presentFamily) = findGraphicsAndPresentQueueFamily(
-            m_physicalDevice,
-            m_surface,
-            queueFamilyProperties);
-
-        auto computeFamilyIndex = findQueueFamilyIndexFallback(
-            queueFamilyProperties,
-            vk::QueueFlagBits::eCompute,
-            vk::QueueFlagBits::eGraphics);
-        m_computeFamily = (computeFamilyIndex.has_value()) ? computeFamilyIndex.value() : m_graphicsFamily;
-
-        auto transferFamilyIndex = findQueueFamilyIndexFallback(
-            queueFamilyProperties,
-            vk::QueueFlagBits::eTransfer,
-            vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
-        m_transferFamily = (transferFamilyIndex.has_value()) ? transferFamilyIndex.value() : m_graphicsFamily;
-
         // Create the device.
         std::vector<char const*> deviceExtensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -177,6 +139,8 @@ namespace spock
 #endif
         };
         deviceExtensions.insert(deviceExtensions.end(), extensions.begin(), extensions.end());
+
+        selectPhysicalDeviceAndQueueFamilies(instance, requiredQueues, preferredDevice, deviceExtensions);
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{ uniqueCreateInfos() };
 
@@ -192,6 +156,7 @@ namespace spock
         m_graphicsQueue = vk::raii::Queue(m_device, m_graphicsFamily, 0);
         m_presentQueue = vk::raii::Queue(m_device, m_presentFamily, 0);
         m_computeQueue = vk::raii::Queue(m_device, m_computeFamily, 0);
+        m_transferQueue = vk::raii::Queue(m_device, m_transferFamily, 0);
 
         // Create the command pools.
         vk::CommandPoolCreateInfo poolInfo{
@@ -202,6 +167,9 @@ namespace spock
 
         poolInfo.queueFamilyIndex = m_computeFamily;
         m_computeCommandPool = vk::raii::CommandPool(m_device, poolInfo);
+
+        poolInfo.queueFamilyIndex = m_transferFamily;
+        m_transferCommandPool = vk::raii::CommandPool(m_device, poolInfo);
     }
 
     Foundry::~Foundry()
@@ -310,5 +278,136 @@ namespace spock
             vk::raii::SwapchainKHR(m_device, swapChainCreateInfo),
             surfaceFormat.format,
             swapchainExtent};
+    }
+
+    struct PhysicalDeviceScore
+    {
+        vk::raii::PhysicalDevice device;
+        uint32_t graphicsFamily{ 0 };
+        uint32_t presentFamily{ 0 };
+        uint32_t computeFamily{ 0 };
+        uint32_t transferFamily{ 0 };
+        uint32_t rank{ 0 };
+    };
+
+    void Foundry::selectPhysicalDeviceAndQueueFamilies(
+        vk::raii::Instance const& instance,
+        vk::QueueFlags requiredQueues,
+        vk::PhysicalDeviceType preferredDevice,
+        std::vector<char const*> const& requiredExtensions)
+    {
+        auto physicalDevices = vk::raii::PhysicalDevices(instance);
+        std::vector<PhysicalDeviceScore> deviceScores;
+
+        for (const auto& device : physicalDevices)
+        {
+            if (!checkDeviceExtensionSupport(device, requiredExtensions))
+            {
+                // Only consider devices that support the required extensions.
+                continue;
+            }
+
+            PhysicalDeviceScore score{ device };
+            auto queueFamilyProperties = device.getQueueFamilyProperties();
+            assert(queueFamilyProperties.size() < (std::numeric_limits<uint32_t>::max)());
+
+            // Graphics and present are always required, because the Foundry always creates a swapchain.
+            try
+            {
+                std::tie(score.graphicsFamily, score.presentFamily) = findGraphicsAndPresentQueueFamily(
+                    device,
+                    m_surface,
+                    queueFamilyProperties);
+            }
+            catch (const std::runtime_error&)
+            {
+                // If we can't find graphics and present queue families, skip this device.
+                continue;
+            }
+
+            // A requested compute queue must exist on the device, and a dedicated family scores higher.
+            score.computeFamily = score.graphicsFamily;
+            if (requiredQueues & vk::QueueFlagBits::eCompute)
+            {
+                auto dedicatedCompute = findQueueFamilyIndex(
+                    queueFamilyProperties,
+                    vk::QueueFlagBits::eCompute,
+                    vk::QueueFlagBits::eGraphics);
+                auto anyCompute = findQueueFamilyIndex(
+                    queueFamilyProperties,
+                    vk::QueueFlagBits::eCompute,
+                    {});
+
+                if (dedicatedCompute.has_value())
+                {
+                    score.computeFamily = dedicatedCompute.value();
+                    score.rank += 1;
+                }
+                else if (queueFamilyProperties[score.graphicsFamily].queueFlags & vk::QueueFlagBits::eCompute)
+                {
+                    score.computeFamily = score.graphicsFamily;
+                }
+                else if (anyCompute.has_value())
+                {
+                    score.computeFamily = anyCompute.value();
+                }
+                else
+                {
+                    continue;
+                }
+            }
+
+            // Graphics families always support transfer, so we only need to look for a dedicated family.
+            score.transferFamily = score.graphicsFamily;
+            if (requiredQueues & vk::QueueFlagBits::eTransfer)
+            {
+                auto dedicatedTransfer = findQueueFamilyIndex(
+                    queueFamilyProperties,
+                    vk::QueueFlagBits::eTransfer,
+                    vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute);
+                if (dedicatedTransfer.has_value())
+                {
+                    score.transferFamily = dedicatedTransfer.value();
+                    score.rank += 1;
+                }
+            }
+
+            vk::PhysicalDeviceType deviceType = device.getProperties().deviceType;
+            if (deviceType == preferredDevice)
+            {
+                // The preferred device type always wins.
+                score.rank += 100;
+            }
+            else
+            {
+                // Otherwise fall back in order of expected performance.
+                score.rank += (deviceType == vk::PhysicalDeviceType::eDiscreteGpu) ? 40 : 0;
+                score.rank += (deviceType == vk::PhysicalDeviceType::eIntegratedGpu) ? 30 : 0;
+                score.rank += (deviceType == vk::PhysicalDeviceType::eVirtualGpu) ? 20 : 0;
+                score.rank += (deviceType == vk::PhysicalDeviceType::eCpu) ? 10 : 0;
+            }
+
+            deviceScores.push_back(score);
+        }
+
+        if (deviceScores.empty())
+        {
+            throw std::runtime_error("No suitable physical device found.");
+        }
+
+        // Select the device with the highest score.
+        auto bestDevice = std::max_element(deviceScores.begin(), deviceScores.end(),
+            [](const PhysicalDeviceScore& a, const PhysicalDeviceScore& b) {
+                return a.rank < b.rank;
+            });
+
+        m_physicalDevice = bestDevice->device;
+        m_graphicsFamily = bestDevice->graphicsFamily;
+        m_presentFamily = bestDevice->presentFamily;
+        m_computeFamily = bestDevice->computeFamily;
+        m_transferFamily = bestDevice->transferFamily;
+
+        // Log the selected device.
+        writeLog("[Spock Vulkan] selected physical device: " + std::string(m_physicalDevice.getProperties().deviceName.data()) + "\n");
     }
 }

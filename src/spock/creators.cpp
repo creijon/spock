@@ -464,5 +464,4 @@ namespace spock
 
         device.updateDescriptorSets(writeDescriptorSets, nullptr);
     }
-
 } // namespace spock
