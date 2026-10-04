@@ -330,7 +330,8 @@ protected:
         return std::make_shared<spock::Foundry>(
             m_instance,
             m_window.createSurface(m_instance),
-            true,
+            vk::QueueFlagBits::eGraphics,
+            vk::PhysicalDeviceType::eDiscreteGpu,
             extensions,
             &storage16);
     }
