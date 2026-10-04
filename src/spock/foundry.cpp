@@ -381,10 +381,10 @@ namespace spock
             else
             {
                 // Otherwise fall back in order of expected performance.
-                score.rank += (deviceType == vk::PhysicalDeviceType::eDiscreteGpu) ? 40 : 0;
-                score.rank += (deviceType == vk::PhysicalDeviceType::eIntegratedGpu) ? 30 : 0;
-                score.rank += (deviceType == vk::PhysicalDeviceType::eVirtualGpu) ? 20 : 0;
-                score.rank += (deviceType == vk::PhysicalDeviceType::eCpu) ? 10 : 0;
+                score.rank += (deviceType == vk::PhysicalDeviceType::eDiscreteGpu) ? 40 :
+                              (deviceType == vk::PhysicalDeviceType::eIntegratedGpu) ? 30 :
+                              (deviceType == vk::PhysicalDeviceType::eVirtualGpu) ? 20 :
+                              (deviceType == vk::PhysicalDeviceType::eCpu) ? 10 : 0;
             }
 
             deviceScores.push_back(score);
