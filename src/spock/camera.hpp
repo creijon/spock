@@ -5,6 +5,8 @@
 
 #include "math.hpp"
 
+#include <vulkan/vulkan.hpp>
+
 namespace spock
 {
     class OrbitCamera

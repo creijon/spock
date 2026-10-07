@@ -12,8 +12,6 @@
 // unknow compiler... just ignore the warnings for yourselves ;)
 #endif
 
-#include <vulkan/vulkan.hpp>
-
 #if defined(_MSC_VER)
 #pragma warning(push)
 #pragma warning(disable : 4127) // conditional expression is constant (glm)

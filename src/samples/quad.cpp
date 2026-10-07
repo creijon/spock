@@ -5,18 +5,21 @@
 // Useful as a basis for 2D rendering samples.
 
 #include "spock/app.hpp"
-#include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/foundry.hpp"
+#include "spock/helpers.hpp"
 #include "spock/loader.hpp"
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
+#include <cstddef>
 #include <iterator>
+#include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 

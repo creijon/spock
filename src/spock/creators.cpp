@@ -2,12 +2,13 @@
 // SPDX-License-Identifier: MIT
 
 #include "creators.hpp"
-#include "utils.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cassert>
 #include <cstring>
-#include <iostream>
 #include <numeric>
+#include <utility>
 
 namespace spock
 {

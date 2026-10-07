@@ -14,17 +14,20 @@
 #include "spock/utils.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <execution>
 #include <iostream>
+#include <memory>
 #include <random>
 #include <string>
+#include <utility>
 #include <vector>
 
 // Required for Apple platforms to use parallel execution policy with std::sort.

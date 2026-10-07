@@ -8,7 +8,6 @@
 #include "shaders.hpp"
 
 #include <stdexcept>
-#include <utility>
 
 namespace spock
 {

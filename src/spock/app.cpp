@@ -7,9 +7,11 @@
 #include "foundry.hpp"
 #include "renderer.hpp"
 
+#include <exception>
 #include <iostream>
+#include <string>
 #include <thread>
-#include <utility>
+#include <vector>
 
 namespace
 {

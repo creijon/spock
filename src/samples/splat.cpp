@@ -14,19 +14,25 @@
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/file_watcher.hpp"
+#include "spock/helpers.hpp"
+#include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
-#include <cstdlib>
+#include <algorithm>
+#include <array>
+#include <cstring>
+#include <exception>
 #include <execution>
 #include <iostream>
 #include <iterator>
-#include <mutex>
-#include <numeric>
+#include <memory>
+#include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 

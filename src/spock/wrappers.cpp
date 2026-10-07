@@ -3,10 +3,7 @@
 
 #include "wrappers.hpp"
 
-#include "helpers.hpp"
-
 #include <algorithm>
-#include <iostream>
 
 namespace spock
 {

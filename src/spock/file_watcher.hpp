@@ -8,7 +8,6 @@
 #include <mutex>
 #include <set>
 #include <string>
-#include <utility>
 
 namespace spock
 {

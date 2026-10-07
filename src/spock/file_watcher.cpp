@@ -3,6 +3,8 @@
 
 #include "file_watcher.hpp"
 
+#include <utility>
+
 namespace spock
 {
     FileWatcher::FileWatcher(std::string const& path)

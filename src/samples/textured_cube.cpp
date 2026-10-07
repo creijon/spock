@@ -14,11 +14,12 @@
 #include "spock/shaders.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
-#include <cstring>
+#include <chrono>
+#include <cstddef>
 #include <iterator>
-#include <stdexcept>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>

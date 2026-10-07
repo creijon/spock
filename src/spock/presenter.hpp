@@ -5,6 +5,7 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <memory>
 #include <vector>
 
 namespace spock

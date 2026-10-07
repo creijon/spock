@@ -8,18 +8,20 @@
 #include "spock/app.hpp"
 #include "spock/creators.hpp"
 #include "spock/file_watcher.hpp"
+#include "spock/helpers.hpp"
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/utils.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
-#include <functional>
+#include <chrono>
+#include <exception>
 #include <iterator>
-#include <mutex>
-#include <utility>
+#include <memory>
+#include <string>
 #include <vector>
 
 struct ShaderLabVertex

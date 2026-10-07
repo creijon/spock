@@ -8,6 +8,8 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <cstddef>
+#include <memory>
 #include <vector>
 
 namespace spock

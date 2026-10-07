@@ -5,8 +5,8 @@
 
 #include "foundry.hpp"
 
+#include <exception>
 #include <limits>
-#include <stdexcept>
 #include <tuple>
 #include <utility>
 

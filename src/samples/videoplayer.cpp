@@ -18,7 +18,7 @@
 #include "spock/shaders.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
 extern "C"
 {
@@ -29,6 +29,8 @@ extern "C"
 }
 
 #include <array>
+#include <chrono>
+#include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <iterator>

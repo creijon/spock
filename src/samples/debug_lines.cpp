@@ -10,9 +10,13 @@
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 
-#include <array>
-#include <cmath>
 #include <glm/gtc/constants.hpp>
+#include <vulkan/vulkan_raii.hpp>
+
+#include <array>
+#include <chrono>
+#include <cmath>
+#include <memory>
 #include <random>
 #include <utility>
 #include <vector>

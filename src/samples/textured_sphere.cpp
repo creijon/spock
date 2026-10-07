@@ -15,14 +15,13 @@
 #include "spock/shaders.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
-#include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
-#include <cstring>
 #include <iterator>
-#include <stdexcept>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>

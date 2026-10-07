@@ -3,6 +3,8 @@
 
 #include "utils.hpp"
 
+#include <cstdio>
+
 // Platform detection and headers
 #if defined(_WIN32) || defined(_WIN64)
 #define PLATFORM_WINDOWS
@@ -13,7 +15,6 @@
 #include <os/log.h>
 #else
 #define PLATFORM_LINUX
-#include <cstdio>
 #endif
 
 namespace spock

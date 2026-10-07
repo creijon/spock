@@ -10,7 +10,7 @@
 #include <vulkan/vulkan_raii.hpp>
 
 #include <chrono>
-#include <string>
+#include <memory>
 #include <vector>
 
 using namespace std::chrono_literals;

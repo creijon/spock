@@ -8,14 +8,19 @@
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/foundry.hpp"
+#include "spock/helpers.hpp"
 #include "spock/math.hpp"
 #include "spock/renderer.hpp"
 #include "spock/shaders.hpp"
 #include "spock/wrappers.hpp"
 
-#include "vulkan/vulkan.hpp"
+#include <vulkan/vulkan_raii.hpp>
 
+#include <chrono>
+#include <cstddef>
 #include <iterator>
+#include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 

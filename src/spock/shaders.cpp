@@ -7,11 +7,11 @@
 #include "glslang/Public/ResourceLimits.h"
 #include "glslang/Public/ShaderLang.h"
 
-#include <vulkan/vulkan.hpp>
-
-#include <algorithm>
+#include <cassert>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
+#include <vector>
 
 namespace spock
 {

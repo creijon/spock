@@ -9,8 +9,11 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include <cstring>
 #include <memory>
+#include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace spock
 {
