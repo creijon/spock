@@ -18,15 +18,17 @@
 - Widgets for moving objects in a scene 
 
 
-## Critical Fixes
+## Fixes
+
+### Priority:
+
+- Per-frame resources are overwritten while the GPU may still be reading them. (See below).
+
+### Unsorted:
 
 - Vulkan version
 
   - Query the supported instance version
-
-- Queue management
-
-  - Transfer queues should be exposed
 
 - Presenter error handling around VK_ERROR_SURFACE_LOST_KHR etc
 
@@ -42,12 +44,6 @@
 
 - No persistent debug messenger is created.  The callback is only chained into InstanceCreateInfo, so it only covers vkCreateInstance/vkDestroyInstance, and the message filtering in debugUtilsMessengerCallback never applies after that.  makeDebugUtilsMessengerCreateInfoEXT() is unused.
 
-- Per-frame resources are overwritten while the GPU may still be reading them.
-
-  - DebugLines rewrites its single vertex buffer every frame, with up to 3 frames in flight.
-  - The splat sample picks its per-frame buffers with (m_frameCount + 1) % m_framesInFlight in update(), which runs before the frame fence wait, and drifts from m_inFlightIndex after a resize or a failed acquire.
-  - The Renderer needs a hook to update per-frame data after the fence wait, using the in-flight index.
-
 - Window scroll offset is never reset after a wheel event, so the splat camera keeps zooming every frame (and re-sorts every frame) after a single scroll.
 
 - TextureWrapper linear-tiling path ignores the image rowPitch and writes tightly packed rows, so textures skew when rowPitch != width * 4.
@@ -61,6 +57,10 @@
 
 - setImageLayout() assumes an eGeneral source layout was written by the host, so the barrier is wrong after compute or transfer writes.
 
+### Done:
+
+- Transfer queues should be exposed DONE
+
 - Physical device selection DONE
 
   - Enumerate devices
@@ -70,7 +70,6 @@
   - Report on the device selected
 
   This also will include fixing the extension negotiation.
-
 
 ## Refactoring
 
@@ -114,6 +113,39 @@
 
 - Fences and semaphores aren't stable.  Move all the synchronisation primitives into Presenter. DONE
 
+
+### Per Frame Resources
+
+The issue is that per-frame resources are overwritten while the GPU may still be reading them:
+
+  - DebugLines rewrites its single vertex buffer every frame, with up to 3 frames in flight.
+  - The splat sample picks its per-frame buffers with (m_frameCount + 1) % m_framesInFlight in update(), which runs before the frame fence wait, and drifts from m_inFlightIndex after a resize or a failed acquire.
+  - The Renderer needs a hook to update per-frame data after the fence wait, using the in-flight index.
+
+The solution:
+
+A `FrameState` class, holding a bundle of per-frame GPU resources (buffers, command buffers, descriptor sets).
+These are managed in a pool with a lifecycle tied to GPU synchronization:
+
+1. Acquire a `FrameState` from the pool
+2. Record commands and upload data into it
+3. Submit to GPU with a fence
+4. When the fence signals, return the `FrameState` to the pool for reuse
+
+```
+struct FrameState
+{
+    vk::raii::CommandBuffer commandBuffer{nullptr};
+    vk::raii::Fence fence{nullptr};
+    vk::raii::Semaphore presentSemaphore{nullptr};
+
+    uint32_t imageIndex;  // Index of the swapchain image
+    
+    // Any other per-frame resources are in the derived class:
+    // BufferWrapper uploadBuffer;
+    // vk::raii::DescriptorSet descriptorSet;
+};
+```
 
 ## Possibilities
 

@@ -66,7 +66,7 @@ namespace spock
                                }));
             enabledLayers.push_back(layer.data());
         }
- 
+
         // Enable standard validation layer to find as much errors as possible!
         if (std::none_of(layers.begin(), layers.end(),
                          [](std::string const &layer)
@@ -256,6 +256,27 @@ namespace spock
         return createDescriptorSetLayout(device, shaderStage, descriptorTypes, flags);
     }
 
+    vk::raii::Framebuffer createFramebuffer(
+        vk::raii::Device const& device,
+        vk::raii::RenderPass const& renderPass,
+        vk::raii::ImageView const& imageView,
+        vk::raii::ImageView const* depthImageView,
+        vk::Extent2D const& extent)
+    {
+        vk::ImageView attachments[2];
+        attachments[1] = (depthImageView) ? *depthImageView : vk::ImageView();
+
+        vk::FramebufferCreateInfo framebufferCreateInfo(
+            vk::FramebufferCreateFlags(),
+            renderPass,
+            depthImageView ? 2 : 1,
+            attachments, extent.width, extent.height, 1);
+
+        attachments[0] = imageView;
+
+        return vk::raii::Framebuffer(device, framebufferCreateInfo);
+    }
+
     std::vector<vk::raii::Framebuffer> createFramebuffers(
         vk::raii::Device const &device,
         vk::raii::RenderPass const &renderPass,
@@ -263,17 +284,11 @@ namespace spock
         vk::raii::ImageView const *depthImageView,
         vk::Extent2D const &extent)
     {
-        vk::ImageView attachments[2];
-        attachments[1] = (depthImageView) ? *depthImageView : vk::ImageView();
-
-        vk::FramebufferCreateInfo framebufferCreateInfo(
-            vk::FramebufferCreateFlags(), renderPass, depthImageView ? 2 : 1, attachments, extent.width, extent.height, 1);
         std::vector<vk::raii::Framebuffer> framebuffers;
         framebuffers.reserve(imageViews.size());
         for (auto const &imageView : imageViews)
         {
-            attachments[0] = imageView;
-            framebuffers.push_back(vk::raii::Framebuffer(device, framebufferCreateInfo));
+            framebuffers.push_back(createFramebuffer(device, renderPass, imageView, depthImageView, extent));
         }
 
         return framebuffers;

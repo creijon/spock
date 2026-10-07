@@ -226,8 +226,10 @@ protected:
             spock::VertexFormatWrapper<CubeVertex>());
     }
 
-    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
+    void render(spock::FrameState &frame) override
     {
+        auto& commandBuffer = frame.commandBuffer;
+
         // Bind the pipeline, texture descriptor set, and vertex buffer.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {m_descriptorSet}, nullptr);

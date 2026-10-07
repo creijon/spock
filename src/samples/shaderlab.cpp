@@ -135,6 +135,11 @@ public:
         }
     }
 
+    void setTime(std::chrono::microseconds time)
+    {
+        m_time = time;
+    }
+
     void setMousePos(vk::Offset2D const &mousePos)
     {
         m_mousePos.x = mousePos.x;
@@ -150,10 +155,12 @@ public:
     }
 
 protected:
-    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
+    void render(spock::FrameState &frame) override
     {
         // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
         if (m_graphicsPipeline == nullptr) return;
+
+        auto& commandBuffer = frame.commandBuffer;
 
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
@@ -164,7 +171,7 @@ protected:
         PushConstants pushConstants{
             glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y),
             glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
-            std::chrono::duration_cast<Seconds>(time).count(),
+            std::chrono::duration_cast<Seconds>(m_time).count(),
             (int)m_frameCount};
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eAllGraphics, pushConstants);
 
@@ -180,6 +187,7 @@ private:
 
     spock::BufferWrapper m_vertexBuffer;
 
+    std::chrono::microseconds m_time{0};
     vk::Offset2D m_mousePos{0, 0};
     vk::Offset2D m_mouseClickPos{0, 0};
 };
@@ -202,6 +210,7 @@ protected:
     void update() override
     {
         ShaderLabRenderer* renderer = static_cast<ShaderLabRenderer*>(m_renderer.get());
+        renderer->setTime(m_time);
 
         // Store the mouse position and click position for use in the next frame.
         vk::Offset2D mousePos{0, 0};

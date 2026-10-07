@@ -11,6 +11,7 @@
 namespace spock
 {
     class Foundry;
+    class FrameState;
 
     class Presenter
     {
@@ -27,16 +28,12 @@ namespace spock
         Presenter() = default;
         Presenter(const Presenter &) = delete;
         Presenter(Presenter && other) noexcept;
+        // The GPU must have finished using this Presenter's resources before move assignment.
         Presenter const& operator=(Presenter && other);
 
         std::vector<vk::raii::ImageView> const& imageViews() const
         {
             return m_imageViews;
-        }
-
-        uint32_t imageIndex() const
-        {
-            return m_imageIndex;
         }
 
         vk::Format colorFormat() const
@@ -51,13 +48,23 @@ namespace spock
             return m_extent;
         }
 
-        vk::Result acquireFrame(uint32_t frameIndex);
-        vk::Result submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex);
-        vk::Result presentFrame(uint32_t frameIndex);
+        // Call after creating the render pass and optional depth attachment.
+        // The GPU must be idle before replacing or clearing existing framebuffers.
+        void createFramebuffers(vk::raii::RenderPass const &renderPass, vk::raii::ImageView const *depthImageView = nullptr);
+        void clearFramebuffers();
+
+        vk::raii::Framebuffer const &framebuffer(uint32_t imageIndex) const
+        {
+            return m_frameBuffers.at(imageIndex);
+        }
+
+        vk::Result acquireFrame(FrameState &frame);
+        vk::Result submitCommands(FrameState &frame);
+        vk::Result presentFrame(FrameState &frame);
 
     private:
         // The Foundry has to be the first member since it holds the lifetime of the device and this
-        // must be maintained until after the swapchain is destroyed.s
+        // must be maintained until after the swapchain is destroyed.
         std::shared_ptr<const Foundry> m_foundry;
         vk::raii::SwapchainKHR m_swapchain{nullptr};
         vk::Format m_colorFormat{};
@@ -65,14 +72,9 @@ namespace spock
     
         std::vector<vk::Image> m_images;
         std::vector<vk::raii::ImageView> m_imageViews;
-        uint32_t m_imageIndex{0};
+        // Destroy framebuffers before the swapchain image views they reference.
+        std::vector<vk::raii::Framebuffer> m_frameBuffers;
 
-        // Sized to framesInFlight, and indexed by the frame index the caller
-        // passes to acquireFrame/submitCommands/presentFrame -- NOT by the
-        // swapchain image index, since the two can differ and must not be
-        // conflated.
-        std::vector<vk::raii::Semaphore> m_imageSemaphores;
         std::vector<vk::raii::Semaphore> m_renderSemaphores;
-        std::vector<vk::raii::Fence> m_frameFences;
     };
 } // namespace spock

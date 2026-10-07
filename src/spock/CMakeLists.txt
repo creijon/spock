@@ -13,6 +13,7 @@ set(SOURCE
     ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_watcher.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/foundry.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/frame_state.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/loader.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.cpp
@@ -33,6 +34,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/file_watcher.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/foundry.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/frame_state.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/loader.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/math.hpp

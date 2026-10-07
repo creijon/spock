@@ -4,7 +4,7 @@
 #pragma once
 
 #include "foundry.hpp"
-#include "presenter.hpp"
+#include "frame_state.hpp"
 #include "wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
@@ -17,6 +17,9 @@ using namespace std::chrono_literals;
 
 namespace spock
 {
+    class FrameState;
+    class Presenter;
+
     class Renderer
     {
     public:
@@ -25,35 +28,32 @@ namespace spock
             vk::Extent2D const &extents,
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,
-            bool useDepthBuffer = true);
+            bool useDepthBuffer = true,
+            FrameStatePool::CreateFrameFunc const &createFrameFunc = nullptr);
 
         virtual ~Renderer();
 
-        vk::Result renderFrame(std::chrono::microseconds time);
+        vk::Result renderFrame();
         void resizeWindow(vk::Extent2D const &extents);
         void waitIdle() const;
 
     protected:
-        virtual void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) = 0;
+        // The frame's fence has completed; its per-frame buffers are safe to update here.
+        virtual void render(FrameState &frame) = 0;
 
         std::shared_ptr<const Foundry> m_foundry;
+        std::unique_ptr<Presenter> m_presenter;
+        std::unique_ptr<FrameStatePool> m_framePool;
 
-        // Per-frame resources used for double buffering.
-        std::vector<vk::raii::CommandBuffer> m_commandBuffers;
+        // Presenter framebuffers are cleared before these attachments are replaced or destroyed.
+        DepthBufferWrapper m_depthBuffer;
+        vk::raii::RenderPass m_renderPass{nullptr};
+        bool m_useDepthBuffer{true};
 
         vk::Extent2D m_extents;
 
-        std::unique_ptr<Presenter> m_presenter{nullptr};
-
-        // Declared after the presenter so the framebuffers are destroyed before the swapchain image views.
-        DepthBufferWrapper m_depthBuffer;
-        vk::raii::RenderPass m_renderPass{nullptr};
-        std::vector<vk::raii::Framebuffer> m_frameBuffers;
-        bool m_useDepthBuffer{true};
-
         uint32_t m_frameCount{0};
         uint32_t m_inFlightIndex{0};
-        uint32_t m_framesSinceResize{0};
 
         const vk::ClearColorValue m_clearColor;
         const vk::ClearDepthStencilValue m_clearDepthStencil;

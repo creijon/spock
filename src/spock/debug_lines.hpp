@@ -17,10 +17,7 @@ namespace spock
     class Foundry;
 
     // Simple debug line renderer.
-    // TODO: this currently uses a single large vertex buffer to upload the lines to a vertex
-    // shader, but this is inefficient.  There should be a pool of vertex buffers with identical
-    // sizes which are used and recycled once the GPU has finished with them, taking into account
-    // the frames in flight of the renderer.
+    // Geometry and pipeline are shared; the caller supplies frame-owned upload resources.
     class DebugLines
     {
     public:
@@ -37,6 +34,12 @@ namespace spock
             glm::vec4 color;
         };
 
+        struct FrameData
+        {
+            explicit FrameData(std::shared_ptr<const Foundry> const &foundry, size_t maxLineCount = 1024);
+            BufferWrapper vertexBuffer;
+        };
+
         DebugLines(
             std::shared_ptr<const Foundry> const &foundry,
             vk::raii::RenderPass const& renderPass,
@@ -45,8 +48,10 @@ namespace spock
         void clear();
         void addLine(glm::vec3 const& start, glm::vec3 const& end, glm::vec4 const& color);
 
+        // FrameData must belong to a frame whose fence has completed.
         void draw(
             vk::raii::CommandBuffer const& commandBuffer,
+            FrameData &frameData,
             glm::mat4 const& viewProjection);
 
         size_t lineCount() const
@@ -57,8 +62,7 @@ namespace spock
     private:
         vk::raii::PipelineLayout m_pipelineLayout{nullptr};
         vk::raii::Pipeline m_pipeline{nullptr};
-        BufferWrapper m_vertexBuffer;
         std::vector<Vertex> m_vertices;
-        bool m_verticesDirty{false};
+        size_t m_maxLineCount;
     };
 } // namespace spock

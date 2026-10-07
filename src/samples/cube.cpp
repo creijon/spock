@@ -185,8 +185,9 @@ protected:
             spock::VertexFormatWrapper<CubeVertex>());
     }
 
-    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
+    void render(spock::FrameState &frame) override
     {
+        auto &commandBuffer = frame.commandBuffer;
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindVertexBuffers(0, { m_vertexBuffer.buffer() }, { 0 });
