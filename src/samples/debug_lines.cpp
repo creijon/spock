@@ -133,6 +133,18 @@ namespace
     const glm::vec4 SPHERE_LINE_COLOR{0.4f, 0.4f, 0.45f, 1.0f};
 }
 
+class DebugLinesFrameState : public spock::FrameState
+{
+public:
+    explicit DebugLinesFrameState(std::shared_ptr<const spock::Foundry> const &foundry)
+        : spock::FrameState(foundry->device(), foundry->commandPool())
+        , lines(foundry)
+    {
+    }
+
+    spock::DebugLines::FrameData lines;
+};
+
 class DebugLinesRenderer : public spock::Renderer
 {
 public:
@@ -143,24 +155,29 @@ public:
             foundry,
             extents,
             {0.02f, 0.02f, 0.05f, 1.0f},
-            {1.0f, 0})
+            {1.0f, 0},
+            true,
+            [](std::shared_ptr<const spock::Foundry> const &foundry) {
+                return std::make_unique<DebugLinesFrameState>(foundry);
+            })
         , m_debugLines(foundry, m_renderPass)
         , m_cubes(makeOrbitingCubes(CUBE_COUNT))
         , m_sphereLines(makeSphereLines(ORBIT_RADIUS, SPHERE_SEGMENTS))
     {
     }
 
-	void setTime(std::chrono::microseconds time)
-	{
-		m_time = std::chrono::duration_cast<std::chrono::seconds>(time);
-	}
+    ~DebugLinesRenderer() override
+    {
+        waitIdle();
+    }
 
-
+    void setTime(std::chrono::microseconds time)
+    {
+        m_time = std::chrono::duration<float>(time);
+    }
 protected:
     void render(spock::FrameState &frame) override
     {
-        using Seconds = std::chrono::duration<float>;
-
         m_debugLines.clear();
 
         for (size_t i = 0; i < m_sphereLines.size(); i += 2)
@@ -195,14 +212,17 @@ protected:
         glm::mat4x4 viewProjection = spock::viewProjMatrix(
             m_extents, eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-        m_debugLines.draw(frame.commandBuffer, viewProjection);
+        m_debugLines.draw(
+			frame.commandBuffer,
+			static_cast<DebugLinesFrameState&>(frame).lines,
+			viewProjection);
     }
 
 private:
     spock::DebugLines m_debugLines;
     std::vector<OrbitingCube> m_cubes;
     std::vector<glm::vec3> m_sphereLines;
-    std::chrono::seconds m_time{0};
+    std::chrono::duration<float> m_time{0};
 };
 
 class DebugLinesApp : public spock::App

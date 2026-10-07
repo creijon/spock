@@ -7,10 +7,6 @@
 #include "presenter.hpp"
 #include "helpers.hpp"
 
-#include <chrono>
-#include <iostream>
-#include <utility>
-
 namespace spock
 {
     Renderer::Renderer(
@@ -38,9 +34,6 @@ namespace spock
     {
         m_inFlightIndex = 0;
 
-        // For resizing we need to clear out the previous framebuffers and command buffers before the swapchain.
-//        m_commandBuffers.clear();
-//        m_frameBuffers.clear();
         m_depthBuffer = DepthBufferWrapper();
         m_renderPass = nullptr;
 
@@ -71,27 +64,13 @@ namespace spock
             m_useDepthBuffer ? m_depthBuffer.format() : vk::Format::eUndefined);
 
         m_framePool->allocateFrames(m_framesInFlight);
-        /*
-        m_framePool->allocateFrames(
-            m_renderPass,
-            m_presenter->imageViews(),
-            m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr,
-            m_extents);
-*/
+
         m_frameBuffers = createFramebuffers(
             m_foundry->device(),
             m_renderPass,
             m_presenter->imageViews(),
             m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr,
             m_extents);
-/*
-        m_commandBuffers.reserve(m_framesInFlight);
-
-        for (size_t i = 0; i < m_framesInFlight; i++)
-        {
-            m_commandBuffers.emplace_back(createCommandBuffer(m_foundry->device(), m_foundry->commandPool()));
-        }
-*/
     }
 
     void Renderer::waitIdle() const
@@ -101,19 +80,18 @@ namespace spock
 
     vk::Result Renderer::renderFrame()
     {
-        FrameState &frameState = m_framePool->acquireFrame();
-        vk::Result acquireResult = m_presenter->acquireFrame(frameState);
+        ActiveFrameState frameState = m_framePool->acquireFrame();
+        vk::Result acquireResult = m_presenter->acquireFrame(frameState.get());
 
         // If image acquisition failed, return the unused frame and skip rendering and presentation.
         // The semaphore was not signaled by the swapchain, so we cannot wait on it.
         if (acquireResult != vk::Result::eSuccess && acquireResult != vk::Result::eSuboptimalKHR)
         {
-            m_framePool->releaseFrame(frameState);
             return acquireResult;
         }
 
         // Begin the render pass.
-        auto& commandBuffer = frameState.commandBuffer;
+        auto& commandBuffer = frameState.get().commandBuffer;
 
         commandBuffer.begin({});
 
@@ -121,8 +99,7 @@ namespace spock
 
         vk::RenderPassBeginInfo renderPassBeginInfo(
             m_renderPass,
-            m_frameBuffers[frameState.imageIndex],
-            //frameState.frameBuffer,
+            m_frameBuffers[frameState.get().imageIndex],
             vk::Rect2D(vk::Offset2D(0, 0), m_extents),
             clearValues);
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
@@ -138,17 +115,15 @@ namespace spock
         commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
 
         // The derived class renders its scene into the command buffer.
-        render(frameState);
+        render(frameState.get());
 
         // End the render pass and submit the command buffer.
         commandBuffer.endRenderPass();
         commandBuffer.end();
 
-        m_presenter->submitCommands(frameState);
+        m_presenter->submitCommands(frameState.get());
 
-        vk::Result result = m_presenter->presentFrame(frameState);
-
-        m_framePool->releaseFrame(frameState);
+        vk::Result result = m_presenter->presentFrame(frameState.get());
 
         m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
         m_frameCount++;

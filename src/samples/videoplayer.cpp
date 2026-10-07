@@ -579,7 +579,7 @@ protected:
 
         // Bind the pipeline and vertex buffers.
         auto& commandBuffer = frame.commandBuffer;
-    
+
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {decodedFrame.descriptorSet}, nullptr);
         commandBuffer.bindVertexBuffers(0, { m_vertexBuffer.buffer() }, { 0 });

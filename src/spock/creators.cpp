@@ -66,7 +66,7 @@ namespace spock
                                }));
             enabledLayers.push_back(layer.data());
         }
- 
+
         // Enable standard validation layer to find as much errors as possible!
         if (std::none_of(layers.begin(), layers.end(),
                          [](std::string const &layer)
@@ -271,11 +271,9 @@ namespace spock
             renderPass,
             depthImageView ? 2 : 1,
             attachments, extent.width, extent.height, 1);
-        std::vector<vk::raii::Framebuffer> framebuffers;
-
 
         attachments[0] = imageView;
-        
+
         return vk::raii::Framebuffer(device, framebufferCreateInfo);
     }
 

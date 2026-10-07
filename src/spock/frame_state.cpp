@@ -6,31 +6,15 @@
 #include "creators.hpp"
 #include "foundry.hpp"
 
-#include <cassert>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 namespace
 {
-    std::unique_ptr<spock::FrameState>
-    defaultCreateFrame(std::shared_ptr<const spock::Foundry> const &foundry)
-/*
-        std::shared_ptr<const spock::Foundry> const &foundry,
-        vk::raii::RenderPass const &renderPass,
-        vk::raii::ImageView const &colorImageView,
-        vk::raii::ImageView const *depthImageView,
-        vk::Extent2D const &extents)
-*/
-        {
+    std::unique_ptr<spock::FrameState> defaultCreateFrame(std::shared_ptr<const spock::Foundry> const &foundry)
+    {
         return std::make_unique<spock::FrameState>(foundry->device(), foundry->commandPool());
-        /*
-            spock::createFramebuffer(
-                foundry->device(),
-                renderPass,
-                colorImageView,
-                depthImageView,
-                extents));
-        */
     }
 }
 
@@ -58,40 +42,65 @@ namespace spock
         }
     }
 
+    FrameStatePool::~FrameStatePool() noexcept
+    {
+        if (!m_frames.empty())
+        {
+            try
+            {
+                m_foundry->waitIdle();
+            }
+            catch (vk::SystemError const &)
+            {
+                // Device loss must not escape resource cleanup during destruction.
+            }
+        }
+    }
+
     void FrameStatePool::reset()
     {
+        if (m_acquired)
+        {
+            throw std::logic_error("FrameStatePool: cannot reset while a frame is borrowed");
+        }
+        if (!m_frames.empty()) m_foundry->waitIdle();
         m_frames.clear();
         m_nextFrame = 0;
     }
 
     void FrameStatePool::allocateFrames(uint32_t frameCount)
-    /*
-        vk::raii::RenderPass const &renderPass,
-        std::vector<vk::raii::ImageView> const &colorImageViews,
-        vk::raii::ImageView const *depthImageView,
-        vk::Extent2D const &extents)
-        */
     {
-        reset();   // Should already be clear, but just to be sure.
-        m_frames.reserve(frameCount);
+        if (m_acquired)
+        {
+            throw std::logic_error("FrameStatePool: cannot reallocate while a frame is borrowed");
+        }
+        if (frameCount == 0)
+        {
+            throw std::invalid_argument("FrameStatePool: frame count must be positive");
+        }
+
+        // Retire old frames before the factory allocates replacements from shared resource pools.
+        reset();
+        std::vector<std::unique_ptr<FrameState>> frames;
+        frames.reserve(frameCount);
         for (uint32_t i = 0; i < frameCount; ++i)
         {
-            m_frames.push_back(m_createFrameFunc(m_foundry));
-            /*
-                m_foundry,
-                renderPass,
-                colorImageViews[i],
-                depthImageView,
-                extents));
-                */
+            auto frame = m_createFrameFunc(m_foundry);
+            if (!frame) throw std::invalid_argument("FrameStatePool: frame factory returned nullptr");
+            frames.push_back(std::move(frame));
         }
+        m_frames = std::move(frames);
     }
 
-    FrameState &FrameStatePool::acquireFrame()
+    ActiveFrameState FrameStatePool::acquireFrame()
     {
+        if (m_acquired)
+        {
+            throw std::logic_error("FrameStatePool: a frame is already borrowed");
+        }
         if (m_frames.empty())
         {
-            throw std::runtime_error("FrameStatePool: no frames have been allocated");
+            throw std::logic_error("FrameStatePool: no frames have been allocated");
         }
         FrameState &frame = *m_frames[m_nextFrame];
 
@@ -104,12 +113,14 @@ namespace spock
             throw std::runtime_error("FrameStatePool: waiting for the frame fence failed: " + vk::to_string(waitResult));
         }
 
-        return frame;
+        m_acquired = true;
+
+        return {(*this), frame};
     }
 
     void FrameStatePool::releaseFrame(FrameState &frame)
     {
-        assert(&frame == m_frames[m_nextFrame].get() && "FrameStatePool: frames must be released in the order they were acquired");
+        m_acquired = false;
         m_nextFrame = (m_nextFrame + 1) % m_frames.size();
     }
 } // namespace spock

@@ -55,14 +55,16 @@ void main()
         };
     }
 
+    DebugLines::FrameData::FrameData(std::shared_ptr<const Foundry> const &foundry, size_t maxLineCount)
+        : vertexBuffer(foundry, maxLineCount * 2 * sizeof(Vertex), vk::BufferUsageFlagBits::eVertexBuffer)
+    {
+    }
+
     DebugLines::DebugLines(
         std::shared_ptr<const Foundry> const &foundry,
         vk::raii::RenderPass const& renderPass,
         size_t maxLineCount)
-        : m_vertexBuffer(
-            foundry,
-            maxLineCount * 2 * sizeof(Vertex),
-            vk::BufferUsageFlagBits::eVertexBuffer)
+        : m_maxLineCount(maxLineCount)
     {
         m_vertices.reserve(maxLineCount * 2);
 
@@ -97,7 +99,6 @@ void main()
     void DebugLines::clear()
     {
         m_vertices.clear();
-        m_verticesDirty = true;
     }
 
     void DebugLines::addLine(
@@ -105,18 +106,18 @@ void main()
         glm::vec3 const& end,
         glm::vec4 const& color)
     {
-        if (m_vertices.size() + 2 > m_vertices.capacity())
+        if (m_vertices.size() / 2 >= m_maxLineCount)
         {
             throw std::length_error("DebugLines capacity exceeded");
         }
 
         m_vertices.push_back({start, color});
         m_vertices.push_back({end, color});
-        m_verticesDirty = true;
     }
 
     void DebugLines::draw(
         vk::raii::CommandBuffer const& commandBuffer,
+        FrameData &frameData,
         glm::mat4 const& viewProjection)
     {
         if (m_vertices.empty())
@@ -124,18 +125,19 @@ void main()
             return;
         }
 
-        if (m_verticesDirty)
+        if (m_vertices.size() * sizeof(Vertex) > frameData.vertexBuffer.size())
         {
-            m_vertexBuffer.upload(m_vertices);
-            m_verticesDirty = false;
+            throw std::length_error("DebugLines frame buffer capacity exceeded");
         }
+        // The caller has waited for this frame's fence; other frames keep their own copies.
+        frameData.vertexBuffer.upload(m_vertices);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline);
         pushConstants(
             commandBuffer,
             m_pipelineLayout,
             vk::ShaderStageFlagBits::eVertex,
             PushConstants{viewProjection});
-        commandBuffer.bindVertexBuffers(0, {*m_vertexBuffer.buffer()}, {0});
+        commandBuffer.bindVertexBuffers(0, {*frameData.vertexBuffer.buffer()}, {0});
         commandBuffer.draw(static_cast<uint32_t>(m_vertices.size()), 1, 0, 0);
     }
 } // namespace spock
