@@ -38,15 +38,14 @@ namespace spock
         void waitIdle() const;
 
     protected:
+        // The frame's fence has completed; its per-frame buffers are safe to update here.
         virtual void render(FrameState &frame) = 0;
 
         std::shared_ptr<const Foundry> m_foundry;
         std::unique_ptr<Presenter> m_presenter;
         std::unique_ptr<FrameStatePool> m_framePool;
 
-        std::vector<vk::raii::Framebuffer> m_frameBuffers; // TODO: move to the FrameState?
-
-        // Declared after the presenter so the framebuffers are destroyed before the swapchain image views.
+        // Presenter framebuffers are cleared before these attachments are replaced or destroyed.
         DepthBufferWrapper m_depthBuffer;
         vk::raii::RenderPass m_renderPass{nullptr};
         bool m_useDepthBuffer{true};

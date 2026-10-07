@@ -3,6 +3,7 @@
 
 #include "presenter.hpp"
 
+#include "creators.hpp"
 #include "foundry.hpp"
 #include "frame_state.hpp"
 
@@ -62,6 +63,7 @@ namespace spock
         , m_extent(other.m_extent)
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
+        , m_frameBuffers(std::move(other.m_frameBuffers))
         , m_renderSemaphores(std::move(other.m_renderSemaphores))
     {
     }
@@ -70,16 +72,33 @@ namespace spock
     {
         if (this != &other)
         {
+            // Retire dependent objects before dropping their views, swapchain, or device owner.
+            m_frameBuffers.clear();
+            m_renderSemaphores.clear();
+            m_imageViews.clear();
+            m_images.clear();
+            m_swapchain = nullptr;
             m_foundry = std::move(other.m_foundry);
             m_swapchain = std::move(other.m_swapchain);
             m_colorFormat = other.m_colorFormat;
             m_extent = other.m_extent;
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
+            m_frameBuffers = std::move(other.m_frameBuffers);
             m_renderSemaphores = std::move(other.m_renderSemaphores);
         }
 
         return *this;
+    }
+
+    void Presenter::createFramebuffers(vk::raii::RenderPass const &renderPass, vk::raii::ImageView const *depthImageView)
+    {
+        m_frameBuffers = spock::createFramebuffers(m_foundry->device(), renderPass, m_imageViews, depthImageView, m_extent);
+    }
+
+    void Presenter::clearFramebuffers()
+    {
+        m_frameBuffers.clear();
     }
 
     vk::Result Presenter::acquireFrame(FrameState &frame)

@@ -28,17 +28,19 @@ namespace spock
     Renderer::~Renderer()
     {
         waitIdle();
+        // Renderer owns the render pass and depth attachment referenced by Presenter's framebuffers.
+        if (m_presenter) m_presenter->clearFramebuffers();
     }
 
     void Renderer::resizeWindow(vk::Extent2D const &extents)
     {
         m_inFlightIndex = 0;
 
+        // Reset waits for GPU completion before any render targets are destroyed.
+        m_framePool->reset();
+        if (m_presenter) m_presenter->clearFramebuffers();
         m_depthBuffer = DepthBufferWrapper();
         m_renderPass = nullptr;
-
-        // Reset the FrameStatePool to clear out the command buffers, frame buffers etc.
-        m_framePool->reset();
 
         // The old presenter is kept alive until its replacement exists so its swapchain can be handed over.
         // Assigning the new one then destroys the old one, including its retired swapchain.
@@ -64,13 +66,7 @@ namespace spock
             m_useDepthBuffer ? m_depthBuffer.format() : vk::Format::eUndefined);
 
         m_framePool->allocateFrames(m_framesInFlight);
-
-        m_frameBuffers = createFramebuffers(
-            m_foundry->device(),
-            m_renderPass,
-            m_presenter->imageViews(),
-            m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr,
-            m_extents);
+        m_presenter->createFramebuffers(m_renderPass, m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr);
     }
 
     void Renderer::waitIdle() const
@@ -99,7 +95,7 @@ namespace spock
 
         vk::RenderPassBeginInfo renderPassBeginInfo(
             m_renderPass,
-            m_frameBuffers[frameState.get().imageIndex],
+            m_presenter->framebuffer(frameState.get().imageIndex),
             vk::Rect2D(vk::Offset2D(0, 0), m_extents),
             clearValues);
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
