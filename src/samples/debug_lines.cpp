@@ -151,10 +151,9 @@ public:
     }
 
 protected:
-    void render(vk::raii::CommandBuffer const& commandBuffer, std::chrono::microseconds time) override
+    void render(std::shared_ptr<spock::FrameState> const &frame) override
     {
         using Seconds = std::chrono::duration<float>;
-        float t = std::chrono::duration_cast<Seconds>(time).count();
 
         m_debugLines.clear();
 
@@ -165,10 +164,10 @@ protected:
 
         for (auto const& cube : m_cubes)
         {
-            glm::quat orbitRotation = glm::angleAxis(t * cube.orbitSpeed, cube.orbitAxis);
+            glm::quat orbitRotation = glm::angleAxis(m_time.count() * cube.orbitSpeed, cube.orbitAxis);
             glm::vec3 center = orbitRotation * cube.orbitStart;
 
-            glm::quat spinRotation = glm::angleAxis(t * cube.spinSpeed, cube.spinAxis);
+            glm::quat spinRotation = glm::angleAxis(m_time.count() * cube.spinSpeed, cube.spinAxis);
 
             glm::vec3 corners[8];
             for (int i = 0; i < 8; ++i)
@@ -182,7 +181,7 @@ protected:
             }
         }
 
-        float cameraAngle = t * 0.15f;
+        float cameraAngle = m_time.count() * 0.15f;
         glm::vec3 eye(
             std::sin(cameraAngle) * CAMERA_DISTANCE,
             CAMERA_HEIGHT,
@@ -190,13 +189,14 @@ protected:
         glm::mat4x4 viewProjection = spock::viewProjMatrix(
             m_extents, eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-        m_debugLines.draw(commandBuffer, viewProjection);
+        m_debugLines.draw(frame->commandBuffer, viewProjection);
     }
 
 private:
     spock::DebugLines m_debugLines;
     std::vector<OrbitingCube> m_cubes;
     std::vector<glm::vec3> m_sphereLines;
+    std::chrono::seconds m_time{0};
 };
 
 class DebugLinesApp : public spock::App

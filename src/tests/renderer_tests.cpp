@@ -25,7 +25,7 @@ namespace
         using spock::Renderer::Renderer;
 
     protected:
-        void render(vk::raii::CommandBuffer const &, std::chrono::microseconds) override
+        void render(std::shared_ptr<spock::FrameState> const &frame) override
         {
         }
     };

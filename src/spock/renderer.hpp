@@ -4,7 +4,7 @@
 #pragma once
 
 #include "foundry.hpp"
-#include "presenter.hpp"
+#include "frame_state.hpp"
 #include "wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
@@ -17,6 +17,9 @@ using namespace std::chrono_literals;
 
 namespace spock
 {
+    class FrameState;
+    class Presenter;
+
     class Renderer
     {
     public:
@@ -25,7 +28,8 @@ namespace spock
             vk::Extent2D const &extents,
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,
-            bool useDepthBuffer = true);
+            bool useDepthBuffer = true,
+            FrameStatePool::CreateFrameFunc const &createFrameFunc = nullptr);
 
         virtual ~Renderer();
 
@@ -34,22 +38,22 @@ namespace spock
         void waitIdle() const;
 
     protected:
-        virtual void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) = 0;
+        virtual void render(std::shared_ptr<FrameState> const &frame) = 0;
+
+        virtual void onFrameCompleted(std::shared_ptr<FrameState> const &frame, std::chrono::microseconds time);
 
         std::shared_ptr<const Foundry> m_foundry;
+        std::unique_ptr<Presenter> m_presenter;
+        std::unique_ptr<FrameStatePool> m_framePool;
 
-        // Per-frame resources used for double buffering.
-        std::vector<vk::raii::CommandBuffer> m_commandBuffers;
-
-        vk::Extent2D m_extents;
-
-        std::unique_ptr<Presenter> m_presenter{nullptr};
+        std::vector<vk::raii::Framebuffer> m_frameBuffers; // TODO: move to the FrameState?
 
         // Declared after the presenter so the framebuffers are destroyed before the swapchain image views.
         DepthBufferWrapper m_depthBuffer;
         vk::raii::RenderPass m_renderPass{nullptr};
-        std::vector<vk::raii::Framebuffer> m_frameBuffers;
         bool m_useDepthBuffer{true};
+
+        vk::Extent2D m_extents;
 
         uint32_t m_frameCount{0};
         uint32_t m_inFlightIndex{0};

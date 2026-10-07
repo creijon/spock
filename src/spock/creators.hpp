@@ -61,6 +61,14 @@ namespace spock
         uint32_t bufferCount,
         vk::DescriptorSetLayoutCreateFlags flags = {});
 
+    // Create framebuffer for an image view and optional depth image view.
+    vk::raii::Framebuffer createFramebuffer(
+        vk::raii::Device const& device,
+        vk::raii::RenderPass const& renderPass,
+        vk::raii::ImageView const& imageView,
+        vk::raii::ImageView const* depthImageView,
+        vk::Extent2D const& extent);
+
     // Create framebuffer objects for every swapchain image view and optional depth image view.
     std::vector<vk::raii::Framebuffer> createFramebuffers(
         vk::raii::Device const &device,

@@ -4,6 +4,7 @@
 #include "presenter.hpp"
 
 #include "foundry.hpp"
+#include "frame_state.hpp"
 
 #include <exception>
 #include <limits>
@@ -45,26 +46,12 @@ namespace spock
             m_imageViews.emplace_back(device, imageViewCreateInfo);
         }
 
-        // Synchronisation primitives.
-        // imageSemaphores and frameFences are indexed by frame index (caller's in-flight index).
-        // renderSemaphores must be indexed by swapchain image index.
-        m_imageSemaphores.reserve(framesInFlight);
-        m_frameFences.reserve(framesInFlight);
+        // render semaphores must be indexed by swapchain image index.
         m_renderSemaphores.reserve(m_images.size());
 
-        vk::FenceCreateInfo fenceInfo{vk::FenceCreateFlagBits::eSignaled};
-        vk::SemaphoreCreateInfo semaphoreInfo{};
-
-        for (size_t i = 0; i < framesInFlight; i++)
-        {
-            m_imageSemaphores.push_back(device.createSemaphore(semaphoreInfo));
-            m_frameFences.push_back(device.createFence(fenceInfo));
-        }
-
-        // Create semaphores for each swapchain image
         for (size_t i = 0; i < m_images.size(); i++)
         {
-            m_renderSemaphores.push_back(device.createSemaphore(semaphoreInfo));
+            m_renderSemaphores.push_back(device.createSemaphore(vk::SemaphoreCreateInfo{}));
         }
     }
 
@@ -75,10 +62,7 @@ namespace spock
         , m_extent(other.m_extent)
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
-        , m_imageIndex(other.m_imageIndex)
-        , m_imageSemaphores(std::move(other.m_imageSemaphores))
         , m_renderSemaphores(std::move(other.m_renderSemaphores))
-        , m_frameFences(std::move(other.m_frameFences))
     {
     }
 
@@ -92,37 +76,20 @@ namespace spock
             m_extent = other.m_extent;
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
-            m_imageIndex = other.m_imageIndex;
-            m_imageSemaphores = std::move(other.m_imageSemaphores);
             m_renderSemaphores = std::move(other.m_renderSemaphores);
-            m_frameFences = std::move(other.m_frameFences);
         }
 
         return *this;
     }
 
-    vk::Result Presenter::acquireFrame(uint32_t frameIndex)
+    vk::Result Presenter::acquireFrame(std::shared_ptr<FrameState> const &frame)
     {
-        // Wait without a timeout. The command buffer for this frame index is about to be re-recorded,
-        // so returning while the previous submission is still executing is never acceptable.
-        vk::Result waitResult = m_foundry->device().waitForFences(
-            { m_frameFences[frameIndex] },
-            VK_TRUE,
-            std::numeric_limits<uint64_t>::max());
-        if (waitResult != vk::Result::eSuccess)
-        {
-            throw std::runtime_error("Presenter: waiting for the frame fence failed: " + vk::to_string(waitResult));
-        }
-
-        // The fence is deliberately not reset here. That happens in submitCommands(), immediately before
-        // the submit that will signal it again. If the acquire below fails, the caller skips the submit,
-        // and the fence stays signalled so the next wait on this frame index returns straight away.
         try
         {
             vk::Result result = vk::Result::eSuccess;
-            std::tie(result, m_imageIndex) = m_swapchain.acquireNextImage(
+            std::tie(result, frame->imageIndex) = m_swapchain.acquireNextImage(
                 std::numeric_limits<uint64_t>::max(),
-                m_imageSemaphores[frameIndex]);
+                frame->semaphore);
             return result;
         }
         catch (std::exception const &)
@@ -132,30 +99,30 @@ namespace spock
         }
     }
 
-    vk::Result Presenter::submitCommands(vk::raii::CommandBuffer const& commandBuffer, uint32_t frameIndex)
+    vk::Result Presenter::submitCommands(std::shared_ptr<FrameState> const& frame)
     {
         vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         vk::SubmitInfo submitInfo(
-            *m_imageSemaphores[frameIndex],
+            *frame->semaphore,
             waitStages,
-            *commandBuffer,
-            *m_renderSemaphores[m_imageIndex]);
+            *frame->commandBuffer,
+            *m_renderSemaphores[frame->imageIndex]);
 
-        m_foundry->device().resetFences({ m_frameFences[frameIndex] });
-        m_foundry->graphicsQueue().submit(submitInfo, m_frameFences[frameIndex]);
+        m_foundry->device().resetFences({ frame->fence });
+        m_foundry->graphicsQueue().submit(submitInfo, frame->fence);
 
         return vk::Result::eSuccess;
     }
 
-    vk::Result Presenter::presentFrame(uint32_t frameIndex)
+    vk::Result Presenter::presentFrame(std::shared_ptr<FrameState> const &frame)
     {
         try
         {
             // Present the rendered image to the swapchain.
             vk::PresentInfoKHR presentInfo;
-            presentInfo.setWaitSemaphores(*m_renderSemaphores[m_imageIndex]);
+            presentInfo.setWaitSemaphores(*m_renderSemaphores[frame->imageIndex]);
             presentInfo.setSwapchains(*m_swapchain);
-            presentInfo.setPImageIndices(&m_imageIndex);
+            presentInfo.setPImageIndices(&frame->imageIndex);
 
             return m_foundry->presentQueue().presentKHR(presentInfo);
         }

@@ -244,8 +244,9 @@ protected:
             vk::CullModeFlagBits::eNone);
     }
 
-    void render(vk::raii::CommandBuffer const& commandBuffer, std::chrono::microseconds time) override
+    void render(std::shared_ptr<spock::FrameState> const &frame) override
     {
+        auto& commandBuffer = frame->commandBuffer;
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eVertex, m_cameraConstants);
         commandBuffer.bindVertexBuffers(

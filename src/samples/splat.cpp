@@ -256,10 +256,12 @@ public:
     bool initialising() const { return m_frameCount < m_framesInFlight; }
 
 protected:
-    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
+    void render(std::shared_ptr<spock::FrameState> const &frame) override
     {
         // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
         if (m_graphicsPipeline == nullptr) return;
+
+        auto& commandBuffer = frame->commandBuffer;
 
         // Bind the pipeline and vertex buffers.
         PerFrameData& frameData = m_frameData[m_frameCount % m_framesInFlight];

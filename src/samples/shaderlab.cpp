@@ -150,10 +150,12 @@ public:
     }
 
 protected:
-    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
+    void render(std::shared_ptr<spock::FrameState> const &frame) override
     {
         // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
         if (m_graphicsPipeline == nullptr) return;
+
+        auto& commandBuffer = frame->commandBuffer;
 
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
@@ -164,7 +166,7 @@ protected:
         PushConstants pushConstants{
             glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y),
             glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
-            std::chrono::duration_cast<Seconds>(time).count(),
+            std::chrono::duration_cast<Seconds>(m_time).count(),
             (int)m_frameCount};
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eAllGraphics, pushConstants);
 
@@ -180,8 +182,9 @@ private:
 
     spock::BufferWrapper m_vertexBuffer;
 
+    std::chrono::seconds m_time{0};
     vk::Offset2D m_mousePos{0, 0};
-    vk::Offset2D m_mouseClickPos{0, 0};
+    vk::Offset2D m_mouseClickPos{0, 0};;
 };
 
 class ShaderLabApp : public spock::App

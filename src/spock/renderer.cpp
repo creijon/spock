@@ -4,6 +4,7 @@
 #include "renderer.hpp"
 
 #include "creators.hpp"
+#include "presenter.hpp"
 #include "helpers.hpp"
 
 #include <chrono>
@@ -17,12 +18,14 @@ namespace spock
         vk::Extent2D const &extents,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
-        bool useDepthBuffer)
+        bool useDepthBuffer,
+        FrameStatePool::CreateFrameFunc const &createFrameFunc)
         : m_foundry(foundry)
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
     {
+        m_framePool = std::make_unique<FrameStatePool>(foundry, createFrameFunc);
         resizeWindow(extents);
     }
 
@@ -37,10 +40,13 @@ namespace spock
         m_framesSinceResize = 0;
 
         // For resizing we need to clear out the previous framebuffers and command buffers before the swapchain.
-        m_frameBuffers.clear();
-        m_renderPass = nullptr;
+//        m_commandBuffers.clear();
+//        m_frameBuffers.clear();
         m_depthBuffer = DepthBufferWrapper();
-        m_commandBuffers.clear();
+        m_renderPass = nullptr;
+
+        // Reset the FrameStatePool to clear out the command buffers, frame buffers etc.
+        m_framePool->reset();
 
         // The old presenter is kept alive until its replacement exists so its swapchain can be handed over.
         // Assigning the new one then destroys the old one, including its retired swapchain.
@@ -64,19 +70,29 @@ namespace spock
             m_foundry->device(),
             m_presenter->colorFormat(),
             m_useDepthBuffer ? m_depthBuffer.format() : vk::Format::eUndefined);
+
+        m_framePool->allocateFrames(m_framesInFlight);
+        /*
+        m_framePool->allocateFrames(
+            m_renderPass,
+            m_presenter->imageViews(),
+            m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr,
+            m_extents);
+*/
         m_frameBuffers = createFramebuffers(
             m_foundry->device(),
             m_renderPass,
             m_presenter->imageViews(),
             m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr,
             m_extents);
-
+/*
         m_commandBuffers.reserve(m_framesInFlight);
 
         for (size_t i = 0; i < m_framesInFlight; i++)
         {
             m_commandBuffers.emplace_back(createCommandBuffer(m_foundry->device(), m_foundry->commandPool()));
         }
+*/
     }
 
     void Renderer::waitIdle() const
@@ -86,18 +102,18 @@ namespace spock
 
     vk::Result Renderer::renderFrame(std::chrono::microseconds time)
     {
-        vk::Result acquireResult = m_presenter->acquireFrame(m_inFlightIndex);
+        auto frameState = m_framePool->acquireFrame();
+        vk::Result acquireResult = m_presenter->acquireFrame(frameState);
 
         // If frame acquisition failed, skip rendering and present this frame.
         // The semaphore was not signaled by the swapchain, so we cannot wait on it.
         if (acquireResult != vk::Result::eSuccess && acquireResult != vk::Result::eSuboptimalKHR)
         {
-            m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
             return acquireResult;
         }
 
         // Begin the render pass.
-        auto& commandBuffer = m_commandBuffers[m_inFlightIndex];
+        auto& commandBuffer = frameState->commandBuffer;
 
         commandBuffer.begin({});
 
@@ -105,7 +121,8 @@ namespace spock
 
         vk::RenderPassBeginInfo renderPassBeginInfo(
             m_renderPass,
-            m_frameBuffers[m_presenter->imageIndex()],
+            m_frameBuffers[frameState->imageIndex],
+            //frameState->frameBuffer,
             vk::Rect2D(vk::Offset2D(0, 0), m_extents),
             clearValues);
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
@@ -121,15 +138,17 @@ namespace spock
         commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
 
         // The derived class renders its scene into the command buffer.
-        render(commandBuffer, time);
+        render(frameState);
 
         // End the render pass and submit the command buffer.
         commandBuffer.endRenderPass();
         commandBuffer.end();
 
-        m_presenter->submitCommands(commandBuffer, m_inFlightIndex);
+        m_presenter->submitCommands(frameState);
 
-        vk::Result result = m_presenter->presentFrame(m_inFlightIndex);
+        vk::Result result = m_presenter->presentFrame(frameState);
+
+        m_framePool->releaseFrame(frameState);
 
         m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
         m_frameCount++;
@@ -137,5 +156,11 @@ namespace spock
 
         return result;
     }
+
+    void Renderer::onFrameCompleted(std::shared_ptr<FrameState> const &frame, std::chrono::microseconds time)
+    {
+        // The Presenter calls this after the GPU has finished rendering and presenting the frame.
+    }
+
 
 } // namespace spock

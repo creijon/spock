@@ -563,23 +563,25 @@ protected:
             false);
     }
 
-    void render(vk::raii::CommandBuffer const &commandBuffer, std::chrono::microseconds time) override
+    void render(std::shared_ptr<spock::FrameState> const &frame) override
     {
         // The presenter has waited for this frame's fence, so the GPU is no longer reading its textures.
-        FrameResources &frame = m_frames[m_inFlightIndex];
+        FrameResources &decodedFrame = m_frames[m_inFlightIndex];
         AVFrame const *videoFrame = m_decoder->currentFrame();
-        if (videoFrame && frame.serial != m_decoder->serial())
+        if (videoFrame && decodedFrame.serial != m_decoder->serial())
         {
             for (uint32_t p = 0; p < PLANE_COUNT; ++p)
             {
-                frame.planes[p].upload(videoFrame->data[p], videoFrame->linesize[p]);
+                decodedFrame.planes[p].upload(videoFrame->data[p], videoFrame->linesize[p]);
             }
-            frame.serial = m_decoder->serial();
+            decodedFrame.serial = m_decoder->serial();
         }
 
         // Bind the pipeline and vertex buffers.
+        auto& commandBuffer = frame->commandBuffer;
+    
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
-        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {frame.descriptorSet}, nullptr);
+        commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {decodedFrame.descriptorSet}, nullptr);
         commandBuffer.bindVertexBuffers(0, { m_vertexBuffer.buffer() }, { 0 });
 
         // Letterbox or pillbox the video.

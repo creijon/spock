@@ -336,7 +336,7 @@ protected:
         std::cout << message;
     }
 
-    void render(vk::raii::CommandBuffer const &, std::chrono::microseconds) override
+    void render(std::shared_ptr<spock::FrameState> const &frame) override
     {
         // Nothing to render, should make a headless renderer.
     }
