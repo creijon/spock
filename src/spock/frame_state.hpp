@@ -5,9 +5,10 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <cstddef>
 #include <functional>
-#include <queue>
 #include <memory>
+#include <vector>
 
 namespace spock
 {
@@ -32,7 +33,7 @@ namespace spock
     class FrameStatePool final
     {
     public:
-        using CreateFrameFunc = std::function<std::shared_ptr<FrameState>(std::shared_ptr<const Foundry> const&)>;
+        using CreateFrameFunc = std::function<std::unique_ptr<FrameState>(std::shared_ptr<const Foundry> const&)>;
 /*
             std::shared_ptr<const Foundry> const&,
             vk::raii::RenderPass const&,
@@ -53,17 +54,18 @@ namespace spock
             vk::Extent2D const &extents);
         */
 
-        // Acquire the next available frame state
-        // Blocks if all frames are still in flight
-        std::shared_ptr<FrameState> acquireFrame();
+        // Acquire the next frame state in the rotation.
+        // Blocks until the GPU has finished with it, so its resources are safe to rewrite.
+        FrameState &acquireFrame();
 
-        // Called after GPU signals the fence for this frame
-        // Safely returns resources to the pool
-        void releaseFrame(std::shared_ptr<FrameState> frame);
+        // Return the acquired frame state once it has been submitted (or abandoned).
+        // The pool keeps ownership; the fence is waited on again before the frame is reused.
+        void releaseFrame(FrameState &frame);
 
     private:
         std::shared_ptr<const Foundry> m_foundry;
         CreateFrameFunc m_createFrameFunc;
-        std::deque<std::shared_ptr<FrameState>> m_frames;
+        std::vector<std::unique_ptr<FrameState>> m_frames;
+        std::size_t m_nextFrame{0};
     };
 } // namespace spock

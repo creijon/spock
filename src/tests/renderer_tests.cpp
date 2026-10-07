@@ -25,7 +25,7 @@ namespace
         using spock::Renderer::Renderer;
 
     protected:
-        void render(std::shared_ptr<spock::FrameState> const &frame) override
+        void render(spock::FrameState &frame) override
         {
         }
     };

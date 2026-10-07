@@ -38,7 +38,7 @@ namespace spock
         void waitIdle() const;
 
     protected:
-        virtual void render(std::shared_ptr<FrameState> const &frame) = 0;
+        virtual void render(FrameState &frame) = 0;
 
         std::shared_ptr<const Foundry> m_foundry;
         std::unique_ptr<Presenter> m_presenter;

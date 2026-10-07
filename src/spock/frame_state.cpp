@@ -6,9 +6,13 @@
 #include "creators.hpp"
 #include "foundry.hpp"
 
+#include <cassert>
+#include <limits>
+#include <stdexcept>
+
 namespace
 {
-    std::shared_ptr<spock::FrameState>
+    std::unique_ptr<spock::FrameState>
     defaultCreateFrame(std::shared_ptr<const spock::Foundry> const &foundry)
 /*
         std::shared_ptr<const spock::Foundry> const &foundry,
@@ -18,7 +22,7 @@ namespace
         vk::Extent2D const &extents)
 */
         {
-        return std::make_shared<spock::FrameState>(foundry->device(), foundry->commandPool());
+        return std::make_unique<spock::FrameState>(foundry->device(), foundry->commandPool());
         /*
             spock::createFramebuffer(
                 foundry->device(),
@@ -56,7 +60,8 @@ namespace spock
 
     void FrameStatePool::reset()
     {
-        m_frames = {};
+        m_frames.clear();
+        m_nextFrame = 0;
     }
 
     void FrameStatePool::allocateFrames(uint32_t frameCount)
@@ -67,7 +72,8 @@ namespace spock
         vk::Extent2D const &extents)
         */
     {
-        m_frames.clear();   // Should already be clear, but just to be sure.
+        reset();   // Should already be clear, but just to be sure.
+        m_frames.reserve(frameCount);
         for (uint32_t i = 0; i < frameCount; ++i)
         {
             m_frames.push_back(m_createFrameFunc(m_foundry));
@@ -81,30 +87,29 @@ namespace spock
         }
     }
 
-    std::shared_ptr<FrameState> FrameStatePool::acquireFrame()
+    FrameState &FrameStatePool::acquireFrame()
     {
         if (m_frames.empty())
         {
-            // TODO: should block until a frame is released, but for now just return nullptr to indicate no frames are available.
-            return nullptr;
+            throw std::runtime_error("FrameStatePool: no frames have been allocated");
         }
-        auto frame = m_frames.front();
+        FrameState &frame = *m_frames[m_nextFrame];
 
         vk::Result waitResult = m_foundry->device().waitForFences(
-            { frame->fence },
+            { frame.fence },
             VK_TRUE,
             std::numeric_limits<uint64_t>::max());
         if (waitResult != vk::Result::eSuccess)
         {
-            throw std::runtime_error("Presenter: waiting for the frame fence failed: " + vk::to_string(waitResult));
+            throw std::runtime_error("FrameStatePool: waiting for the frame fence failed: " + vk::to_string(waitResult));
         }
 
-        m_frames.pop_front();
         return frame;
     }
 
-    void FrameStatePool::releaseFrame(std::shared_ptr<FrameState> frame)
+    void FrameStatePool::releaseFrame(FrameState &frame)
     {
-        m_frames.push_back(frame);
+        assert(&frame == m_frames[m_nextFrame].get() && "FrameStatePool: frames must be released in the order they were acquired");
+        m_nextFrame = (m_nextFrame + 1) % m_frames.size();
     }
 } // namespace spock

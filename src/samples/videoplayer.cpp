@@ -563,7 +563,7 @@ protected:
             false);
     }
 
-    void render(std::shared_ptr<spock::FrameState> const &frame) override
+    void render(spock::FrameState &frame) override
     {
         // The presenter has waited for this frame's fence, so the GPU is no longer reading its textures.
         FrameResources &decodedFrame = m_frames[m_inFlightIndex];
@@ -578,7 +578,7 @@ protected:
         }
 
         // Bind the pipeline and vertex buffers.
-        auto& commandBuffer = frame->commandBuffer;
+        auto& commandBuffer = frame.commandBuffer;
     
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);
         commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, m_pipelineLayout, 0, {decodedFrame.descriptorSet}, nullptr);

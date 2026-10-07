@@ -82,14 +82,14 @@ namespace spock
         return *this;
     }
 
-    vk::Result Presenter::acquireFrame(std::shared_ptr<FrameState> const &frame)
+    vk::Result Presenter::acquireFrame(FrameState &frame)
     {
         try
         {
             vk::Result result = vk::Result::eSuccess;
-            std::tie(result, frame->imageIndex) = m_swapchain.acquireNextImage(
+            std::tie(result, frame.imageIndex) = m_swapchain.acquireNextImage(
                 std::numeric_limits<uint64_t>::max(),
-                frame->semaphore);
+                frame.semaphore);
             return result;
         }
         catch (std::exception const &)
@@ -99,30 +99,30 @@ namespace spock
         }
     }
 
-    vk::Result Presenter::submitCommands(std::shared_ptr<FrameState> const& frame)
+    vk::Result Presenter::submitCommands(FrameState &frame)
     {
         vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         vk::SubmitInfo submitInfo(
-            *frame->semaphore,
+            *frame.semaphore,
             waitStages,
-            *frame->commandBuffer,
-            *m_renderSemaphores[frame->imageIndex]);
+            *frame.commandBuffer,
+            *m_renderSemaphores[frame.imageIndex]);
 
-        m_foundry->device().resetFences({ frame->fence });
-        m_foundry->graphicsQueue().submit(submitInfo, frame->fence);
+        m_foundry->device().resetFences({ frame.fence });
+        m_foundry->graphicsQueue().submit(submitInfo, frame.fence);
 
         return vk::Result::eSuccess;
     }
 
-    vk::Result Presenter::presentFrame(std::shared_ptr<FrameState> const &frame)
+    vk::Result Presenter::presentFrame(FrameState &frame)
     {
         try
         {
             // Present the rendered image to the swapchain.
             vk::PresentInfoKHR presentInfo;
-            presentInfo.setWaitSemaphores(*m_renderSemaphores[frame->imageIndex]);
+            presentInfo.setWaitSemaphores(*m_renderSemaphores[frame.imageIndex]);
             presentInfo.setSwapchains(*m_swapchain);
-            presentInfo.setPImageIndices(&frame->imageIndex);
+            presentInfo.setPImageIndices(&frame.imageIndex);
 
             return m_foundry->presentQueue().presentKHR(presentInfo);
         }

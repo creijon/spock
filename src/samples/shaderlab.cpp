@@ -155,12 +155,12 @@ public:
     }
 
 protected:
-    void render(std::shared_ptr<spock::FrameState> const &frame) override
+    void render(spock::FrameState &frame) override
     {
         // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
         if (m_graphicsPipeline == nullptr) return;
 
-        auto& commandBuffer = frame->commandBuffer;
+        auto& commandBuffer = frame.commandBuffer;
 
         // Bind the pipeline and vertex buffers.
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_graphicsPipeline);

@@ -101,7 +101,7 @@ namespace spock
 
     vk::Result Renderer::renderFrame()
     {
-        auto frameState = m_framePool->acquireFrame();
+        FrameState &frameState = m_framePool->acquireFrame();
         vk::Result acquireResult = m_presenter->acquireFrame(frameState);
 
         // If image acquisition failed, return the unused frame and skip rendering and presentation.
@@ -113,7 +113,7 @@ namespace spock
         }
 
         // Begin the render pass.
-        auto& commandBuffer = frameState->commandBuffer;
+        auto& commandBuffer = frameState.commandBuffer;
 
         commandBuffer.begin({});
 
@@ -121,8 +121,8 @@ namespace spock
 
         vk::RenderPassBeginInfo renderPassBeginInfo(
             m_renderPass,
-            m_frameBuffers[frameState->imageIndex],
-            //frameState->frameBuffer,
+            m_frameBuffers[frameState.imageIndex],
+            //frameState.frameBuffer,
             vk::Rect2D(vk::Offset2D(0, 0), m_extents),
             clearValues);
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);

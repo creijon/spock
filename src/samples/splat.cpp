@@ -151,7 +151,7 @@ public:
             {1.0f, 0},
             false,
             [](std::shared_ptr<const spock::Foundry> const &foundry) {
-                return std::make_shared<SplatFrameState>(foundry);
+                return std::make_unique<SplatFrameState>(foundry);
             })
     {
     }
@@ -279,12 +279,12 @@ public:
     }
 
 protected:
-    void render(std::shared_ptr<spock::FrameState> const &frame) override
+    void render(spock::FrameState &frame) override
     {
         // The graphics pipeline might be null if the shader compilation failed, so don't try to render in that case.
         if (m_graphicsPipeline == nullptr) return;
 
-        auto& frameData = static_cast<SplatFrameState&>(*frame);
+        auto& frameData = static_cast<SplatFrameState&>(frame);
         frameData.createResources(m_foundry, m_descriptorSetLayout, m_splatStorage, m_splatCount);
         frameData.update(m_frameConstants, m_sorting, m_sortingRevision);
 

@@ -47,9 +47,9 @@ namespace spock
             return m_extent;
         }
 
-        vk::Result acquireFrame(std::shared_ptr<FrameState> const &frame);
-        vk::Result submitCommands(std::shared_ptr<FrameState> const &frame);
-        vk::Result presentFrame(std::shared_ptr<FrameState> const &frame);
+        vk::Result acquireFrame(FrameState &frame);
+        vk::Result submitCommands(FrameState &frame);
+        vk::Result presentFrame(FrameState &frame);
 
     private:
         // The Foundry has to be the first member since it holds the lifetime of the device and this

@@ -157,7 +157,7 @@ public:
 
 
 protected:
-    void render(std::shared_ptr<spock::FrameState> const &frame) override
+    void render(spock::FrameState &frame) override
     {
         using Seconds = std::chrono::duration<float>;
 
@@ -195,7 +195,7 @@ protected:
         glm::mat4x4 viewProjection = spock::viewProjMatrix(
             m_extents, eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
-        m_debugLines.draw(frame->commandBuffer, viewProjection);
+        m_debugLines.draw(frame.commandBuffer, viewProjection);
     }
 
 private:

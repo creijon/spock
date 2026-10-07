@@ -336,7 +336,7 @@ protected:
         std::cout << message;
     }
 
-    void render(std::shared_ptr<spock::FrameState> const &frame) override
+    void render(spock::FrameState &frame) override
     {
         // Nothing to render, should make a headless renderer.
     }
