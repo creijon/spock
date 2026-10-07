@@ -33,14 +33,12 @@ namespace spock
 
         virtual ~Renderer();
 
-        vk::Result renderFrame(std::chrono::microseconds time);
+        vk::Result renderFrame();
         void resizeWindow(vk::Extent2D const &extents);
         void waitIdle() const;
 
     protected:
         virtual void render(std::shared_ptr<FrameState> const &frame) = 0;
-
-        virtual void onFrameCompleted(std::shared_ptr<FrameState> const &frame, std::chrono::microseconds time);
 
         std::shared_ptr<const Foundry> m_foundry;
         std::unique_ptr<Presenter> m_presenter;
@@ -57,7 +55,6 @@ namespace spock
 
         uint32_t m_frameCount{0};
         uint32_t m_inFlightIndex{0};
-        uint32_t m_framesSinceResize{0};
 
         const vk::ClearColorValue m_clearColor;
         const vk::ClearDepthStencilValue m_clearDepthStencil;

@@ -50,7 +50,7 @@ TEST_CASE("Renderer renders and presents frames against a headless surface", "[g
 
     for (int frame = 0; frame < 3; frame++)
     {
-        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        vk::Result result = renderer.renderFrame();
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
 }
@@ -69,12 +69,12 @@ TEST_CASE("Renderer::resizeWindow rebuilds the swapchain and framebuffers at a n
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0));
 
-    CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
+    CHECK_NOTHROW(renderer.renderFrame());
 
     renderer.waitIdle();
     CHECK_NOTHROW(renderer.resizeWindow(vk::Extent2D(128, 96)));
 
-    vk::Result result = renderer.renderFrame(std::chrono::microseconds(16666));
+    vk::Result result = renderer.renderFrame();
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }
 
@@ -93,6 +93,6 @@ TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
         vk::ClearDepthStencilValue(1.0f, 0),
         /*useDepthBuffer=*/false);
 
-    vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
+    vk::Result result = renderer.renderFrame();
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }

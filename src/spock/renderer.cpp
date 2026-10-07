@@ -37,7 +37,6 @@ namespace spock
     void Renderer::resizeWindow(vk::Extent2D const &extents)
     {
         m_inFlightIndex = 0;
-        m_framesSinceResize = 0;
 
         // For resizing we need to clear out the previous framebuffers and command buffers before the swapchain.
 //        m_commandBuffers.clear();
@@ -100,15 +99,16 @@ namespace spock
         m_foundry->waitIdle();
     }
 
-    vk::Result Renderer::renderFrame(std::chrono::microseconds time)
+    vk::Result Renderer::renderFrame()
     {
         auto frameState = m_framePool->acquireFrame();
         vk::Result acquireResult = m_presenter->acquireFrame(frameState);
 
-        // If frame acquisition failed, skip rendering and present this frame.
+        // If image acquisition failed, return the unused frame and skip rendering and presentation.
         // The semaphore was not signaled by the swapchain, so we cannot wait on it.
         if (acquireResult != vk::Result::eSuccess && acquireResult != vk::Result::eSuboptimalKHR)
         {
+            m_framePool->releaseFrame(frameState);
             return acquireResult;
         }
 
@@ -152,15 +152,7 @@ namespace spock
 
         m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
         m_frameCount++;
-        m_framesSinceResize++;
 
         return result;
     }
-
-    void Renderer::onFrameCompleted(std::shared_ptr<FrameState> const &frame, std::chrono::microseconds time)
-    {
-        // The Presenter calls this after the GPU has finished rendering and presenting the frame.
-    }
-
-
 } // namespace spock

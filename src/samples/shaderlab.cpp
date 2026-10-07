@@ -135,6 +135,11 @@ public:
         }
     }
 
+	void setTime(std::chrono::microseconds time)
+	{
+		m_time = std::chrono::duration_cast<std::chrono::seconds>(time);
+	}
+
     void setMousePos(vk::Offset2D const &mousePos)
     {
         m_mousePos.x = mousePos.x;
@@ -205,6 +210,7 @@ protected:
     void update() override
     {
         ShaderLabRenderer* renderer = static_cast<ShaderLabRenderer*>(m_renderer.get());
+		renderer->setTime(m_time);
 
         // Store the mouse position and click position for use in the next frame.
         vk::Offset2D mousePos{0, 0};

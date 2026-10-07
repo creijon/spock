@@ -150,6 +150,12 @@ public:
     {
     }
 
+	void setTime(std::chrono::microseconds time)
+	{
+		m_time = std::chrono::duration_cast<std::chrono::seconds>(time);
+	}
+
+
 protected:
     void render(std::shared_ptr<spock::FrameState> const &frame) override
     {
@@ -215,6 +221,8 @@ protected:
 
     void update() override
     {
+        DebugLinesRenderer* renderer = static_cast<DebugLinesRenderer*>(m_renderer.get());
+        renderer->setTime(m_time);
     }
 };
 
