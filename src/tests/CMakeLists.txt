@@ -24,6 +24,7 @@ add_executable(spock_tests
     math_tests.cpp
     renderer_tests.cpp
     shaders_tests.cpp
+    spherical_harmonics_tests.cpp
     test_setup.cpp
     utils_extended_tests.cpp
     utils_tests.cpp

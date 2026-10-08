@@ -44,6 +44,8 @@ add_sample_target(compute ${CMAKE_CURRENT_SOURCE_DIR}/compute.cpp)
 add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/debug_lines.cpp)
 add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/textured_cube.cpp)
 add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/textured_sphere.cpp)
+add_sample_target(spherical_harmonics ${CMAKE_CURRENT_SOURCE_DIR}/spherical_harmonics.cpp)
+target_include_directories(spherical_harmonics PRIVATE ${CMAKE_SOURCE_DIR}/deps/stb)
 
 # The video player needs FFmpeg, so it is only built when the libraries are found.
 find_package(PkgConfig)
@@ -69,4 +71,5 @@ set_target_properties(
     debug_lines
     textured_cube
     textured_sphere
+    spherical_harmonics
     PROPERTIES FOLDER "samples")
