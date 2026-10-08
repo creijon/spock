@@ -32,15 +32,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib")
 
-add_library(${BINARY_NAME} STATIC)
-
 find_package(OpenGL REQUIRED)
 find_package(Vulkan REQUIRED)
 find_package(VulkanHeaders CONFIG)
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL  "GLFW lib only")
 set(GLFW_INSTALL OFF CACHE BOOL  "GLFW lib only")
-set(GLAD_GL "")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -49,43 +46,25 @@ if(MSVC)
 endif()
 
 add_subdirectory("deps")
-add_subdirectory("src")
 
-if( WIN32 )
-    target_compile_definitions( ${BINARY_NAME} PUBLIC VK_USE_PLATFORM_WIN32_KHR )
-elseif( APPLE )
-    target_compile_definitions( ${BINARY_NAME} PUBLIC VK_USE_PLATFORM_METAL_EXT )
-elseif( UNIX )
-    if ( VULKAN_HPP_USE_WAYLAND )
-        target_compile_definitions( ${BINARY_NAME} PUBLIC VK_USE_PLATFORM_WAYLAND_KHR )
-    else()
-        target_compile_definitions( ${BINARY_NAME} PUBLIC VK_USE_PLATFORM_XCB_KHR )
-    endif()
-else()
-    message( FATAL_ERROR, "Vulkan-Hpp: unhandled platform!" )
-endif()
-if( NOT MSVC )
-    target_compile_options( ${BINARY_NAME} PUBLIC -fno-strict-aliasing )
-endif()
+if (SPOCK_BUILD_TESTS)
+    # Catch2 is shared by the spock and geo test suites.
+    include(FetchContent)
 
-target_sources(${BINARY_NAME} PRIVATE ${GLAD_GL} ${SOURCE} ${HEADERS})
-target_include_directories(
-    ${BINARY_NAME} PUBLIC
-    ${INCLUDE_PATHS}
-    ${OPENGL_INCLUDE_DIRS}
-    ${Vulkan_INCLUDE_DIRS}
-    ${GLFW_GAD_INCLUDE_DIRS}
-    "deps/glm")
-target_link_libraries(
-    ${BINARY_NAME} PUBLIC
-    ${OPENGL_LIBRARIES}
-    ${Vulkan_LIBRARIES}
-    Vulkan::Headers
-	efsw
-    glfw
-    glslang::glslang
-    glslang::glslang-default-resource-limits
-    glslang::SPIRV)
+    FetchContent_Declare(
+        Catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG v3.8.1
+    )
+    FetchContent_MakeAvailable(Catch2)
+
+    list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+    include(CTest)
+endif ()
+
+add_subdirectory("spock")
+add_subdirectory("geo")
+add_subdirectory("samples")
 
 if(MSVC)
     if(${CMAKE_VERSION} VERSION_LESS "3.6.0")

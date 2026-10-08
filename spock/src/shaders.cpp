@@ -1,0 +1,164 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
+#include "spock/shaders.hpp"
+
+#include "glslang/SPIRV/GlslangToSpv.h"
+#include "glslang/Public/ResourceLimits.h"
+#include "glslang/Public/ShaderLang.h"
+
+#include <cassert>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
+#include <vector>
+
+namespace spock
+{
+    void ensureGlslangInitialised()
+    {
+        static struct GlslangProcess
+        {
+            GlslangProcess() { glslang::InitializeProcess(); }
+            ~GlslangProcess() { glslang::FinalizeProcess(); }
+        } const process;
+        (void)process;
+    }
+
+    struct ShaderConversion
+    {
+        EShLanguage stage;
+        char const* string;
+    };
+
+    static ShaderConversion translateShaderStage(vk::ShaderStageFlagBits stage)
+    {
+        switch (stage)
+        {
+        case vk::ShaderStageFlagBits::eVertex:
+            return { EShLangVertex, "vertex" };
+        case vk::ShaderStageFlagBits::eTessellationControl:
+            return { EShLangTessControl, "tesselation control" };
+        case vk::ShaderStageFlagBits::eTessellationEvaluation:
+            return { EShLangTessEvaluation, "tesselation evaluation" };
+        case vk::ShaderStageFlagBits::eGeometry:
+            return { EShLangGeometry, "geometry" };
+        case vk::ShaderStageFlagBits::eFragment:
+            return { EShLangFragment, "fragment" };
+        case vk::ShaderStageFlagBits::eCompute:
+            return { EShLangCompute, "compute" };
+        case vk::ShaderStageFlagBits::eRaygenNV:
+            return { EShLangRayGenNV, "raygen" };
+        case vk::ShaderStageFlagBits::eAnyHitNV:
+            return { EShLangAnyHitNV, "any hit" };
+        case vk::ShaderStageFlagBits::eClosestHitNV:
+            return { EShLangClosestHitNV, "closest hit" };
+        case vk::ShaderStageFlagBits::eMissNV:
+            return { EShLangMissNV, "miss" };
+        case vk::ShaderStageFlagBits::eIntersectionNV:
+            return { EShLangIntersectNV, "intersect" };
+        case vk::ShaderStageFlagBits::eCallableNV:
+            return { EShLangCallableNV, "callable" };
+        case vk::ShaderStageFlagBits::eTaskNV:
+            return { EShLangTaskNV, "task" };
+        case vk::ShaderStageFlagBits::eMeshNV:
+            return { EShLangMeshNV, "mesh" };
+        default:
+            assert(false && "Unknown shader stage");
+            return { EShLangCount, "unknown" };
+        }
+    }
+
+    static bool convertGLSLtoSPV(
+        const vk::ShaderStageFlagBits shaderType,
+        std::string const &glslShader,
+        std::vector<uint32_t> &spvShader,
+        std::string& log,
+        std::string& debugLog)
+    {
+        EShLanguage stage = translateShaderStage(shaderType).stage;
+
+        const char *shaderStrings[1];
+        shaderStrings[0] = glslShader.data();
+
+        glslang::TShader shader(stage);
+        shader.setStrings(shaderStrings, 1);
+
+        // Target Vulkan 1.1 / SPIR-V 1.3.
+        shader.setEnvInput(glslang::EShSourceGlsl, stage, glslang::EShClientVulkan, 100);
+        shader.setEnvClient(glslang::EShClientVulkan, glslang::EShTargetVulkan_1_1);
+        shader.setEnvTarget(glslang::EShTargetSpv, glslang::EShTargetSpv_1_3);
+
+        // Enable SPIR-V and Vulkan rules when parsing GLSL
+        EShMessages messages = (EShMessages)(EShMsgSpvRules | EShMsgVulkanRules);
+
+        if (!shader.parse(GetDefaultResources(), 100, false, messages))
+        {
+            log = shader.getInfoLog();
+            debugLog = shader.getInfoDebugLog();
+            return false; // something didn't work
+        }
+
+        glslang::TProgram program;
+        program.addShader(&shader);
+
+        if (!program.link(messages))
+        {
+            log = program.getInfoLog();
+            debugLog = program.getInfoDebugLog();
+            return false;
+        }
+
+        glslang::GlslangToSpv(*program.getIntermediate(stage), spvShader);
+
+        return true;
+    }
+
+    vk::raii::ShaderModule compileShader(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlagBits shaderStage,
+        std::string const& shaderSource)
+    {
+        ensureGlslangInitialised();
+
+        std::vector<uint32_t> shaderSPV;
+        std::string log;
+        std::string debugLog;
+
+        if (!convertGLSLtoSPV(shaderStage, shaderSource, shaderSPV, log, debugLog))
+        {
+            throw std::runtime_error(log);
+        }
+
+        return vk::raii::ShaderModule(
+            device,
+            vk::ShaderModuleCreateInfo(
+                vk::ShaderModuleCreateFlags(),
+                shaderSPV));
+    }
+
+    vk::raii::ShaderModule loadShader(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlagBits shaderStage,
+        std::string const &path)
+    {
+        std::ifstream t(path);
+
+        if (!t.is_open())
+        {
+            throw std::runtime_error("ERROR: Failed to open shader source: " + path);
+        }
+
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+
+        try
+        {
+            return compileShader(device, shaderStage, buffer.str());
+        }
+        catch (std::exception const& e)
+        {
+            throw std::runtime_error("ERROR: Shader compilation failed: " + path + "\n" + e.what());
+        }
+    }
+} // namespace spock

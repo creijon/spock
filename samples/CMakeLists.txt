@@ -1,0 +1,71 @@
+cmake_minimum_required(VERSION 3.15)
+
+if (CMAKE_SYSTEM_NAME STREQUAL Windows)
+    add_definitions(-D_USE_MATH_DEFINES)
+    add_definitions(-DNOMINMAX)
+ENDIF ()
+
+if (WIN32)
+else()
+find_package(TBB REQUIRED)
+endif()
+
+function(add_sample_target target_name source_file)
+    if (WIN32)
+        add_executable(${target_name} WIN32 ${source_file} ${ARGN})
+    else()
+        add_executable(${target_name} ${source_file} ${ARGN})
+        target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} TBB::tbb)
+    endif()
+    target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} efsw)
+
+    target_compile_definitions(${target_name} PRIVATE
+        SPOCK_DIR="${PROJECT_SOURCE_DIR}"
+    )
+
+    target_include_directories(${target_name} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/deps/glm
+        ${CMAKE_SOURCE_DIR}/deps/efsw/include
+        ${OPENGL_INCLUDE_DIRS}
+        ${Vulkan_INCLUDE_DIRS})
+
+    set_target_properties(${target_name} PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+endfunction()
+
+add_sample_target(cube ${CMAKE_CURRENT_SOURCE_DIR}/src/cube.cpp)
+add_sample_target(quad ${CMAKE_CURRENT_SOURCE_DIR}/src/quad.cpp)
+add_sample_target(shaderlab ${CMAKE_CURRENT_SOURCE_DIR}/src/shaderlab.cpp)
+add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/src/instancing.cpp)
+add_sample_target(splat ${CMAKE_CURRENT_SOURCE_DIR}/src/splat.cpp)
+add_sample_target(compute ${CMAKE_CURRENT_SOURCE_DIR}/src/compute.cpp)
+add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/src/debug_lines.cpp)
+add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_cube.cpp)
+add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_sphere.cpp)
+
+# The video player needs FFmpeg, so it is only built when the libraries are found.
+find_package(PkgConfig)
+if (PKG_CONFIG_FOUND)
+    pkg_check_modules(FFMPEG IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
+endif()
+
+if (FFMPEG_FOUND)
+    add_sample_target(videoplayer ${CMAKE_CURRENT_SOURCE_DIR}/src/videoplayer.cpp)
+    target_link_libraries(videoplayer PRIVATE PkgConfig::FFMPEG)
+    set_target_properties(videoplayer PROPERTIES FOLDER "samples")
+else()
+    message(STATUS "FFmpeg not found, skipping the videoplayer sample")
+endif()
+
+set_target_properties(
+    cube
+    quad
+    shaderlab
+    instancing
+    splat
+    compute
+    debug_lines
+    textured_cube
+    textured_sphere
+    PROPERTIES FOLDER "samples")

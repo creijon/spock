@@ -37,9 +37,9 @@ The sample targets link against the shared `spock` library so the reusable rende
 
 ## Geometry library
 
-`src/geo` is a small standalone 2D/3D intersection-testing library, used for spatial queries such as triangle-vs-AABB overlap testing (e.g. for Sparse Voxel Octree generation from triangle meshes).
+`geo` is a small standalone 2D/3D intersection-testing library, used for spatial queries such as triangle-vs-AABB overlap testing (e.g. for Sparse Voxel Octree generation from triangle meshes).
 
-`geo3d::Intersect` provides four interchangeable triangle-vs-AABB tests, benchmarked in `src/tests/geo_intersect3d_tests.cpp` (release build, ns/call):
+`geo3d::Intersect` provides four interchangeable triangle-vs-AABB tests, benchmarked in `geo/tests/geo_intersect3d_tests.cpp` (release build, ns/call):
 
 | Scenario                                    | testAM | testSS | testNoBB | test |
 |---------------------------------------------|--------|--------|----------|------|
@@ -52,11 +52,11 @@ The sample targets link against the shared `spock` library so the reusable rende
 - `testNoBB` — a novel early-exit algorithm, fastest when queries are mostly intersecting (e.g. SVO generation).
 - `test` — `testNoBB` with an AABB precheck; a middle ground when disjoint queries are common.
 
-See the comment above `Intersect::testNoBB` in `src/geo/intersect3d.cpp` for the full breakdown.
+See the comment above `Intersect::testNoBB` in `geo/src/intersect3d.cpp` for the full breakdown.
 
 ## Tests
 
-The test suite lives under `src/tests` and uses [Catch2](https://github.com/catchorg/Catch2) (v3, found via `find_package`). It builds as a `spock_tests` executable, controlled by the `SPOCK_BUILD_TESTS` CMake option (`ON` by default).
+The test suites live under `spock/tests` and `geo/tests` and use [Catch2](https://github.com/catchorg/Catch2) (v3, found via `find_package`). They build as the `spock_tests` and `geo_tests` executables, controlled by the `SPOCK_BUILD_TESTS` CMake option (`ON` by default).
 
 Tests fall into two groups:
 - Plain unit tests (`camera_tests.cpp`, `utils_tests.cpp`, `helpers_tests.cpp`, `shaders_tests.cpp` error paths) — pure logic, no GPU required.
@@ -66,8 +66,9 @@ Build and run:
 
 ```bash
 cmake -S . -B build
-cmake --build build --target spock_tests
+cmake --build build --target spock_tests geo_tests
 ./build/bin/spock_tests
+./build/bin/geo_tests
 ```
 
 ## Requirements
@@ -105,4 +106,4 @@ brew install tbb onedpl
 1. Create a class derived from `spock::Renderer` that overrides `render()` and does whatever pipeline/buffer setup it needs in its constructor.
 2. Create a class derived from `spock::App` that overrides `createRenderer()` (to construct your renderer) and `update()` (called once per frame before rendering).
 3. Give it a `main()` that calls `spock::runApp<YourApp>(...)` with your app's constructor arguments — it constructs the app, runs it, and reports any exception that escapes.
-4. Add a new executable target in `src/samples/CMakeLists.txt` via `add_sample_target(your_sample your_sample.cpp)`.
+4. Add a new executable target in `samples/CMakeLists.txt` via `add_sample_target(your_sample src/your_sample.cpp)`.

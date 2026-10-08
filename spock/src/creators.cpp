@@ -1,0 +1,483 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
+#include "spock/creators.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <cstring>
+#include <numeric>
+#include <utility>
+
+namespace spock
+{
+    // Convert requested extension names into raw const char* pointers while
+    // checking that they are available on the target implementation.
+    std::vector<char const *> gatherExtensions(
+        std::vector<std::string> const &extensions,
+        std::vector<vk::ExtensionProperties> const &extensionProperties)
+    {
+        std::vector<char const *> enabledExtensions;
+
+        enabledExtensions.reserve(extensions.size());
+
+        for (auto const &ext : extensions)
+        {
+            assert(std::any_of(extensionProperties.begin(), extensionProperties.end(),
+                               [ext](vk::ExtensionProperties const &ep)
+                               {
+                                   return ext == ep.extensionName;
+                               }));
+            enabledExtensions.push_back(ext.data());
+        }
+
+        if (std::none_of(extensions.begin(), extensions.end(),
+                         [](std::string const &extension)
+                         {
+                             return extension == VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+                         }) &&
+            std::any_of(extensionProperties.begin(), extensionProperties.end(),
+                        [](vk::ExtensionProperties const &ep)
+                        {
+                            return (strcmp(VK_EXT_DEBUG_UTILS_EXTENSION_NAME, ep.extensionName) == 0);
+                        }))
+        {
+            enabledExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+        }
+
+        return enabledExtensions;
+    }
+
+    // Convert requested validation layer names into raw const char* pointers
+    // while checking that they exist in the available layer list.
+    std::vector<char const *> gatherLayers(
+        std::vector<std::string> const &layers,
+        std::vector<vk::LayerProperties> const &layerProperties)
+    {
+        std::vector<char const *> enabledLayers;
+        enabledLayers.reserve(layers.size());
+        for (auto const &layer : layers)
+        {
+            assert(std::any_of(layerProperties.begin(), layerProperties.end(),
+                               [layer](vk::LayerProperties const &lp)
+                               {
+                                   return layer == lp.layerName;
+                               }));
+            enabledLayers.push_back(layer.data());
+        }
+
+        // Enable standard validation layer to find as much errors as possible!
+        if (std::none_of(layers.begin(), layers.end(),
+                         [](std::string const &layer)
+                         {
+                             return layer == "VK_LAYER_KHRONOS_validation";
+                         }) &&
+            std::any_of(layerProperties.begin(), layerProperties.end(),
+                        [](vk::LayerProperties const &lp)
+                        {
+                            return (strcmp("VK_LAYER_KHRONOS_validation", lp.layerName) == 0);
+                        }))
+        {
+            enabledLayers.push_back("VK_LAYER_KHRONOS_validation");
+        }
+
+        return enabledLayers;
+    }
+
+    // Create a Vulkan instance with the requested application name, layers,
+    // extensions, and API version. In debug mode, also enable debug utils.
+    vk::raii::Instance createInstance(
+        vk::raii::Context const &context,
+        std::string const &appName,
+        std::vector<std::string> const &layers,
+        std::vector<std::string> const &extensions,
+        uint32_t apiVersion)
+    {
+        vk::ApplicationInfo applicationInfo(appName.c_str(), 1, "Spock", 1, apiVersion);
+
+        vk::InstanceCreateFlags createFlags{};
+
+#if defined(__APPLE__)
+        createFlags |= vk::InstanceCreateFlagBits::eEnumeratePortabilityKHR;
+#endif
+
+#if defined(NDEBUG)
+        std::vector<char const *> enabledLayers = gatherLayers(layers, {});
+        std::vector<char const *> enabledExtensions =
+            gatherExtensions(extensions, {});
+        vk::StructureChain<vk::InstanceCreateInfo> instanceCreateInfoChain(
+            {createFlags, &applicationInfo, enabledLayers, enabledExtensions});
+#else
+        std::vector<char const *> enabledLayers =
+            gatherLayers(layers, context.enumerateInstanceLayerProperties());
+        std::vector<char const *> enabledExtensions = gatherExtensions(
+            extensions, context.enumerateInstanceExtensionProperties());
+
+        vk::DebugUtilsMessageSeverityFlagsEXT severityFlags(
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+            vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+        vk::DebugUtilsMessageTypeFlagsEXT messageTypeFlags(
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+            vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+        vk::StructureChain<vk::InstanceCreateInfo,
+                           vk::DebugUtilsMessengerCreateInfoEXT>
+            instanceCreateInfoChain(
+                {createFlags, &applicationInfo, enabledLayers, enabledExtensions},
+                {{},
+                 severityFlags,
+                 messageTypeFlags,
+                 &debugUtilsMessengerCallback});
+#endif
+
+        return vk::raii::Instance(
+            context, instanceCreateInfoChain.get<vk::InstanceCreateInfo>());
+    }
+
+    // Create a basic render pass with a single color attachment and an optional
+    // depth attachment. loadOp applies to color only; depth is always cleared and discarded.
+    vk::raii::RenderPass createRenderPass(
+        vk::raii::Device const &device,
+        vk::Format colorFormat,
+        vk::Format depthFormat,
+        vk::AttachmentLoadOp loadOp,
+        vk::ImageLayout colorFinalLayout)
+    {
+        std::vector<vk::AttachmentDescription> attachmentDescriptions;
+
+        assert(colorFormat != vk::Format::eUndefined);
+        attachmentDescriptions.emplace_back(
+            vk::AttachmentDescriptionFlags(),
+            colorFormat,
+            vk::SampleCountFlagBits::e1,
+            loadOp,
+            vk::AttachmentStoreOp::eStore,
+            vk::AttachmentLoadOp::eDontCare,
+            vk::AttachmentStoreOp::eDontCare,
+            vk::ImageLayout::eUndefined,
+            colorFinalLayout);
+
+        if (depthFormat != vk::Format::eUndefined)
+        {
+            attachmentDescriptions.emplace_back(
+                vk::AttachmentDescriptionFlags(),
+                depthFormat,
+                vk::SampleCountFlagBits::e1,
+                vk::AttachmentLoadOp::eClear,
+                vk::AttachmentStoreOp::eDontCare,
+                vk::AttachmentLoadOp::eDontCare,
+                vk::AttachmentStoreOp::eDontCare,
+                vk::ImageLayout::eUndefined,
+                vk::ImageLayout::eDepthStencilAttachmentOptimal);
+        }
+
+        vk::AttachmentReference colorAttachment(0, vk::ImageLayout::eColorAttachmentOptimal);
+        vk::AttachmentReference depthAttachment(1, vk::ImageLayout::eDepthStencilAttachmentOptimal);
+
+        vk::SubpassDescription subpassDescription(
+            vk::SubpassDescriptionFlags(),
+            vk::PipelineBindPoint::eGraphics,
+            {},
+            colorAttachment,
+            {},
+            (depthFormat != vk::Format::eUndefined) ? &depthAttachment : nullptr);
+
+        vk::SubpassDependency dependency(
+            VK_SUBPASS_EXTERNAL, 0,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
+            vk::PipelineStageFlagBits::eColorAttachmentOutput |
+                vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
+            vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+            vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead |
+                vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+        vk::RenderPassCreateInfo renderPassCreateInfo(
+            vk::RenderPassCreateFlags(), attachmentDescriptions, subpassDescription, dependency);
+
+        return vk::raii::RenderPass(device, renderPassCreateInfo);
+    }
+
+    // Allocate and return a primary command buffer from the given command pool.
+    vk::raii::CommandBuffer createCommandBuffer(
+        vk::raii::Device const &device,
+        vk::raii::CommandPool const &commandPool)
+    {
+        vk::CommandBufferAllocateInfo commandBufferAllocateInfo(
+            commandPool,
+            vk::CommandBufferLevel::ePrimary,
+            1);
+        return std::move(vk::raii::CommandBuffers(device, commandBufferAllocateInfo).front());
+    }
+
+    // Create a descriptor pool with enough descriptor sets to cover the provided pool sizes.
+    vk::raii::DescriptorPool createDescriptorPool(
+        vk::raii::Device const &device,
+        std::vector<vk::DescriptorPoolSize> const &poolSizes)
+    {
+        assert(!poolSizes.empty());
+        uint32_t maxSets = std::accumulate(
+            poolSizes.begin(), poolSizes.end(), 0, [](uint32_t sum, vk::DescriptorPoolSize const &dps)
+            { return sum + dps.descriptorCount; });
+        assert(0 < maxSets);
+
+        vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo(vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet, maxSets, poolSizes);
+        return vk::raii::DescriptorPool(device, descriptorPoolCreateInfo);
+    }
+
+    vk::raii::DescriptorSetLayout createDescriptorSetLayout(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlags shaderStage,
+        std::vector<vk::DescriptorType> const& bufferTypes,
+        vk::DescriptorSetLayoutCreateFlags flags)
+    {
+        std::vector<vk::DescriptorSetLayoutBinding> bindings;
+
+        uint32_t binding = 0;
+        for (const auto& bufferType : bufferTypes)
+        {
+            bindings.emplace_back(binding, bufferType, 1, shaderStage);
+            binding++;
+        }
+        vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo(flags, bindings);
+        return vk::raii::DescriptorSetLayout(device, descriptorSetLayoutCreateInfo);
+    }
+
+    vk::raii::DescriptorSetLayout createDescriptorSetLayout(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlags shaderStage,
+        vk::DescriptorType bufferType,
+        uint32_t bufferCount,
+        vk::DescriptorSetLayoutCreateFlags flags)
+    {
+        std::vector< vk::DescriptorType> descriptorTypes(bufferCount, bufferType);
+
+        return createDescriptorSetLayout(device, shaderStage, descriptorTypes, flags);
+    }
+
+    vk::raii::Framebuffer createFramebuffer(
+        vk::raii::Device const& device,
+        vk::raii::RenderPass const& renderPass,
+        vk::raii::ImageView const& imageView,
+        vk::raii::ImageView const* depthImageView,
+        vk::Extent2D const& extent)
+    {
+        vk::ImageView attachments[2];
+        attachments[1] = (depthImageView) ? *depthImageView : vk::ImageView();
+
+        vk::FramebufferCreateInfo framebufferCreateInfo(
+            vk::FramebufferCreateFlags(),
+            renderPass,
+            depthImageView ? 2 : 1,
+            attachments, extent.width, extent.height, 1);
+
+        attachments[0] = imageView;
+
+        return vk::raii::Framebuffer(device, framebufferCreateInfo);
+    }
+
+    std::vector<vk::raii::Framebuffer> createFramebuffers(
+        vk::raii::Device const &device,
+        vk::raii::RenderPass const &renderPass,
+        std::vector<vk::raii::ImageView> const &imageViews,
+        vk::raii::ImageView const *depthImageView,
+        vk::Extent2D const &extent)
+    {
+        std::vector<vk::raii::Framebuffer> framebuffers;
+        framebuffers.reserve(imageViews.size());
+        for (auto const &imageView : imageViews)
+        {
+            framebuffers.push_back(createFramebuffer(device, renderPass, imageView, depthImageView, extent));
+        }
+
+        return framebuffers;
+    }
+
+    // Create a graphics pipeline configured for the given vertex format,
+    // shaders, render pass, and optional depth testing.
+    vk::raii::Pipeline createGraphicsPipeline(
+        vk::raii::Device const &device,
+        std::vector<vk::PipelineShaderStageCreateInfo> const &shaderStagesInfo,
+        vk::raii::PipelineLayout const &pipelineLayout,
+        vk::raii::RenderPass const &renderPass,
+        VertexFormat const& vertexFormat,
+        vk::PrimitiveTopology primitiveTopology,
+        vk::CullModeFlagBits cullMode,
+        bool depthBuffered)
+    {
+        std::vector<vk::VertexInputAttributeDescription> vertexAttributeDescriptions;
+
+        vk::PipelineInputAssemblyStateCreateInfo inputAssemblyInfo(
+            vk::PipelineInputAssemblyStateCreateFlags(),
+            primitiveTopology);
+
+        vk::PipelineViewportStateCreateInfo viewportInfo(
+            vk::PipelineViewportStateCreateFlags(), 1, nullptr, 1, nullptr);
+
+        vk::PipelineRasterizationStateCreateInfo rasterizationInfo(
+            vk::PipelineRasterizationStateCreateFlags(),
+            false,
+            false,
+            vk::PolygonMode::eFill,
+            cullMode,
+            vk::FrontFace::eClockwise,
+            false,
+            0.0f,
+            0.0f,
+            0.0f,
+            1.0f);
+
+        vk::PipelineMultisampleStateCreateInfo multisampleInfo({}, vk::SampleCountFlagBits::e1);
+
+        vk::StencilOpState stencilOpState(
+            vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::StencilOp::eKeep, vk::CompareOp::eAlways);
+        vk::PipelineDepthStencilStateCreateInfo depthStencilInfo(
+            vk::PipelineDepthStencilStateCreateFlags(),
+            depthBuffered,
+            depthBuffered,
+            vk::CompareOp::eLessOrEqual,
+            false,
+            false,
+            stencilOpState,
+            stencilOpState);
+
+        vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachment(
+            true,
+            vk::BlendFactor::eSrcAlpha,
+            vk::BlendFactor::eOneMinusSrcAlpha,
+            vk::BlendOp::eAdd,
+            vk::BlendFactor::eOne,
+            vk::BlendFactor::eZero,
+            vk::BlendOp::eAdd,
+            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
+        vk::PipelineColorBlendStateCreateInfo colorBlendInfo(
+            vk::PipelineColorBlendStateCreateFlags(),
+            false,
+            vk::LogicOp::eNoOp,
+            pipelineColorBlendAttachment,
+            {{1.0f, 1.0f, 1.0f, 1.0f}});
+
+        std::array<vk::DynamicState, 2> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+        vk::PipelineDynamicStateCreateInfo dynamicStateInfo(vk::PipelineDynamicStateCreateFlags(), dynamicStates);
+        vk::PipelineVertexInputStateCreateInfo vertexInputInfo{vertexFormat};
+
+        vk::GraphicsPipelineCreateInfo graphicsPipelineInfo(
+            vk::PipelineCreateFlags(),
+            shaderStagesInfo,
+            &vertexInputInfo,
+            &inputAssemblyInfo,
+            nullptr,
+            &viewportInfo,
+            &rasterizationInfo,
+            &multisampleInfo,
+            &depthStencilInfo,
+            &colorBlendInfo,
+            &dynamicStateInfo,
+            pipelineLayout,
+            renderPass);
+
+        // TODO: might need to pass in VkPipelineCacheCreateFlagBits at some stage.
+        vk::raii::PipelineCache cache(device, vk::PipelineCacheCreateInfo());
+
+        return vk::raii::Pipeline(device, cache, graphicsPipelineInfo);
+    }
+
+    // Create a compute pipeline from a single compute shader stage and pipeline layout.
+    vk::raii::Pipeline createComputePipeline(
+        vk::raii::Device const &device,
+        vk::PipelineShaderStageCreateInfo const &shaderStageInfo,
+        vk::raii::PipelineLayout const &pipelineLayout)
+    {
+        vk::ComputePipelineCreateInfo computePipelineInfo(
+            vk::PipelineCreateFlags(),
+            shaderStageInfo,
+            pipelineLayout);
+
+        // TODO: might need to pass in VkPipelineCacheCreateFlagBits at some stage.
+        vk::raii::PipelineCache cache(device, vk::PipelineCacheCreateInfo());
+
+        return vk::raii::Pipeline(device, cache, computePipelineInfo);
+    }
+
+    vk::raii::Sampler createSampler(
+        vk::raii::Device const &device,
+        vk::Filter filter,
+        vk::SamplerAddressMode addressMode)
+    {
+        return {
+            device,
+            {{},
+            filter,
+            filter,
+            vk::SamplerMipmapMode::eLinear,
+            addressMode,
+            addressMode,
+            addressMode,
+            0.0f,
+            false,
+            16.0f,
+            false,
+            vk::CompareOp::eNever,
+            0.0f,
+            0.0f,
+            vk::BorderColor::eFloatOpaqueBlack}};
+    }
+
+    // Upload buffer and texture bindings into the descriptor set. Buffer data is
+    // placed sequentially starting at bindingOffset followed by any textures.
+    void updateDescriptorSets(
+        vk::raii::Device const& device,
+        vk::raii::DescriptorSet const& descriptorSet,
+        std::vector<std::reference_wrapper<BufferWrapper const>> const& bufferData,
+        std::vector<std::reference_wrapper<TextureWrapper const>> const& textureData,
+        uint32_t bindingOffset)
+    {
+        std::vector<vk::DescriptorBufferInfo> bufferInfos;
+        bufferInfos.reserve(bufferData.size());
+
+        std::vector<vk::BufferView> bufferViews;
+        bufferViews.reserve(bufferData.size());
+
+        std::vector<vk::WriteDescriptorSet> writeDescriptorSets;
+        writeDescriptorSets.reserve(bufferData.size() + textureData.size());
+        uint32_t dstBinding = bindingOffset;
+        for (BufferWrapper const& bd : bufferData)
+        {
+            vk::Buffer buffer = bd.buffer();
+            bool hasBufferView = bd.bufferView() != nullptr;
+            bufferInfos.emplace_back(buffer, 0, bd.size());
+            bufferViews.push_back(hasBufferView ? *bd.bufferView() : vk::BufferView{});
+            writeDescriptorSets.emplace_back(
+                descriptorSet,
+                dstBinding++,
+                0,
+                1,
+                bd.type(),
+                nullptr,
+                &bufferInfos.back(),
+                hasBufferView ? &bufferViews.back() : nullptr);
+        }
+
+        std::vector<vk::DescriptorImageInfo> imageInfos;
+        imageInfos.reserve(textureData.size());
+        for (TextureWrapper const& thd : textureData)
+        {
+            imageInfos.emplace_back(
+                thd.sampler(),
+                thd.image().imageView(),
+                vk::ImageLayout::eShaderReadOnlyOptimal);
+            writeDescriptorSets.emplace_back(
+                descriptorSet,
+                dstBinding++,
+                0,
+                1,
+                vk::DescriptorType::eCombinedImageSampler,
+                &imageInfos.back(),
+                nullptr,
+                nullptr);
+        }
+
+        device.updateDescriptorSets(writeDescriptorSets, nullptr);
+    }
+} // namespace spock

@@ -1,0 +1,111 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include "wrappers.hpp"
+
+#include <vulkan/vulkan_raii.hpp>
+
+#include <functional>
+#include <string>
+#include <vector>
+
+namespace spock
+{
+    // Create a Vulkan instance with optional validation layers and requested
+    // extensions.
+    vk::raii::Instance createInstance(
+        vk::raii::Context const &context,
+        std::string const &appName,
+        std::vector<std::string> const &layers = {},
+        std::vector<std::string> const &extensions = {},
+        uint32_t apiVersion = VK_API_VERSION_1_4);
+
+    // Allocate a primary command buffer from the given command pool.
+    vk::raii::CommandBuffer createCommandBuffer(
+        vk::raii::Device const &device,
+        vk::raii::CommandPool const &commandPool);
+
+    // Create a simple render pass that supports color and optional depth attachments.
+    // loadOp applies to the color attachment only; depth is always cleared and discarded.
+    vk::raii::RenderPass createRenderPass(
+        vk::raii::Device const &device,
+        vk::Format colorFormat,
+        vk::Format depthFormat,
+        vk::AttachmentLoadOp loadOp = vk::AttachmentLoadOp::eClear,
+        vk::ImageLayout colorFinalLayout = vk::ImageLayout::ePresentSrcKHR);
+
+    // Create a descriptor pool that can allocate descriptor sets for the given bindings.
+    vk::raii::DescriptorPool createDescriptorPool(
+        vk::raii::Device const &device,
+        std::vector<vk::DescriptorPoolSize> const &poolSizes);
+
+    // Create a descriptor set layout for a given shader stage.
+    // bufferTypes specify the type and number of buffers (eUniformBuffer or eStorageBuffer)
+    // they are created in order with bindings starting at 0.
+    vk::raii::DescriptorSetLayout createDescriptorSetLayout(
+        vk::raii::Device const &device,
+        vk::ShaderStageFlags shaderStage,
+        std::vector<vk::DescriptorType> const &bufferTypes,
+        vk::DescriptorSetLayoutCreateFlags flags = {});
+
+    // Create a descriptor set layout for a given shader stage.
+    // bufferTypes specifies the type (eg eUniformBuffer or eStorageBuffer)
+    // bufferCount specifies the number of buffers required
+    // they are created with bindings starting at 0.
+    vk::raii::DescriptorSetLayout createDescriptorSetLayout(
+        vk::raii::Device const& device,
+        vk::ShaderStageFlags shaderStage,
+        vk::DescriptorType bufferType,
+        uint32_t bufferCount,
+        vk::DescriptorSetLayoutCreateFlags flags = {});
+
+    // Create framebuffer for an image view and optional depth image view.
+    vk::raii::Framebuffer createFramebuffer(
+        vk::raii::Device const& device,
+        vk::raii::RenderPass const& renderPass,
+        vk::raii::ImageView const& imageView,
+        vk::raii::ImageView const* depthImageView,
+        vk::Extent2D const& extent);
+
+    // Create framebuffer objects for every swapchain image view and optional depth image view.
+    std::vector<vk::raii::Framebuffer> createFramebuffers(
+        vk::raii::Device const &device,
+        vk::raii::RenderPass const &renderPass,
+        std::vector<vk::raii::ImageView> const &imageViews,
+        vk::raii::ImageView const *pDepthImageView,
+        vk::Extent2D const &extent);
+
+    // Create a graphics pipeline using the provided shaders, vertex inputs, and render pass.
+    vk::raii::Pipeline createGraphicsPipeline(
+        vk::raii::Device const &device,
+        std::vector<vk::PipelineShaderStageCreateInfo> const& shaderStagesInfo,
+        vk::raii::PipelineLayout const &pipelineLayout,
+        vk::raii::RenderPass const &renderPass,
+        VertexFormat const &vertexFormat,
+        vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList,
+        vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eBack,
+        bool depthBuffered = true);
+
+    // Create a compute pipeline from a single compute shader stage.
+    vk::raii::Pipeline createComputePipeline(
+        vk::raii::Device const &device,
+        vk::PipelineShaderStageCreateInfo const &shaderStageInfo,
+        vk::raii::PipelineLayout const &pipelineLayout);
+
+    // Helper to simplify the creation of samplers.
+    // TODO: add additional parameters with sensible defaults.
+    vk::raii::Sampler createSampler(
+        vk::raii::Device const &device,
+        vk::Filter filter,
+        vk::SamplerAddressMode addressMode);
+
+    // Update a descriptor set with uniform buffer bindings and optional textures.
+    void updateDescriptorSets(
+        vk::raii::Device const& device,
+        vk::raii::DescriptorSet const& descriptorSet,
+        std::vector<std::reference_wrapper<BufferWrapper const>> const& bufferData,
+        std::vector<std::reference_wrapper<TextureWrapper const>> const& textureData,
+        uint32_t bindingOffset = 0);
+} // namespace spock

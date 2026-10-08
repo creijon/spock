@@ -1,0 +1,419 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
+#include "gpu_fixture.hpp"
+
+#include "spock/creators.hpp"
+#include "spock/helpers.hpp"
+#include "spock/shaders.hpp"
+#include "spock/wrappers.hpp"
+
+#include <catch2/catch_test_macros.hpp>
+
+#include <cstring>
+#include <string>
+#include <vector>
+
+using namespace spock_test;
+
+TEST_CASE("a headless Vulkan device can be created for GPU-backed tests", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    CHECK(*fixture->foundry->device() != VK_NULL_HANDLE);
+}
+
+TEST_CASE("Foundry::createSwapchain builds a swapchain for the headless surface", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    spock::SwapchainInfo swapchain = fixture->foundry->createSwapchain(
+        vk::Extent2D{256, 256},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2);
+
+    CHECK(*swapchain.swapchain != VK_NULL_HANDLE);
+    CHECK(swapchain.colorFormat != vk::Format::eUndefined);
+    CHECK(swapchain.extent.width > 0);
+    CHECK(swapchain.extent.height > 0);
+
+    // The requested count is a minimum; the driver may hand back more images, but never fewer.
+    CHECK(swapchain.swapchain.getImages().size() >= 2);
+}
+
+TEST_CASE("Foundry::createSwapchain recreates a swapchain from the old one", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    spock::SwapchainInfo oldSwapchain = fixture->foundry->createSwapchain(
+        vk::Extent2D{256, 256},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2);
+
+    spock::SwapchainInfo newSwapchain = fixture->foundry->createSwapchain(
+        vk::Extent2D{128, 128},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2,
+        *oldSwapchain.swapchain);
+
+    CHECK(*newSwapchain.swapchain != VK_NULL_HANDLE);
+    CHECK(*newSwapchain.swapchain != *oldSwapchain.swapchain);
+    CHECK(newSwapchain.swapchain.getImages().size() >= 2);
+
+    // The retired swapchain must still be destroyable while its replacement is alive.
+    CHECK_NOTHROW(oldSwapchain.swapchain.clear());
+}
+
+TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    vk::raii::Buffer buffer(fixture->foundry->device(), vk::BufferCreateInfo({}, 256, vk::BufferUsageFlagBits::eUniformBuffer));
+
+    vk::raii::DeviceMemory memory = spock::allocateDeviceMemory(
+        fixture->foundry->device(),
+        fixture->foundry->physicalDevice().getMemoryProperties(),
+        buffer.getMemoryRequirements(),
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+    CHECK(*memory != VK_NULL_HANDLE);
+    CHECK_NOTHROW(buffer.bindMemory(memory, 0));
+}
+
+TEST_CASE("BufferWrapper uploads round-trip through mapped device memory", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    struct Uniforms
+    {
+        float values[4];
+    };
+
+    spock::BufferWrapper buffer(
+        fixture->foundry,
+        sizeof(Uniforms),
+        vk::BufferUsageFlagBits::eUniformBuffer,
+        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+
+    Uniforms written{{1.0f, 2.0f, 3.0f, 4.0f}};
+    buffer.upload(written);
+
+    Uniforms readBack{};
+    void *mapped = buffer.deviceMemory().mapMemory(0, sizeof(Uniforms));
+    std::memcpy(&readBack, mapped, sizeof(Uniforms));
+    buffer.deviceMemory().unmapMemory();
+
+    CHECK(readBack.values[0] == 1.0f);
+    CHECK(readBack.values[1] == 2.0f);
+    CHECK(readBack.values[2] == 3.0f);
+    CHECK(readBack.values[3] == 4.0f);
+}
+
+TEST_CASE("BufferWrapper uploads a vector of elements", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    std::vector<uint32_t> written{10, 20, 30, 40, 50};
+
+    spock::BufferWrapper buffer(
+        fixture->foundry,
+        written.size() * sizeof(uint32_t),
+        vk::BufferUsageFlagBits::eStorageBuffer);
+
+    buffer.upload(written);
+
+    std::vector<uint32_t> readBack(written.size());
+    void *mapped = buffer.deviceMemory().mapMemory(0, written.size() * sizeof(uint32_t));
+    std::memcpy(readBack.data(), mapped, written.size() * sizeof(uint32_t));
+    buffer.deviceMemory().unmapMemory();
+
+    CHECK(readBack == written);
+}
+
+TEST_CASE("BufferWrapper uploads through an existing persistent mapping", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    std::vector<uint32_t> written{10, 20, 30, 40, 50};
+
+    spock::BufferWrapper buffer(
+        fixture->foundry,
+        written.size() * sizeof(uint32_t),
+        vk::BufferUsageFlagBits::eStorageBuffer);
+
+    // Vulkan doesn't allow memory to be mapped twice, so upload() has to write through this mapping.
+    void *mapped = buffer.map();
+    REQUIRE(mapped != nullptr);
+
+    buffer.upload(written);
+
+    std::vector<uint32_t> readBack(written.size());
+    std::memcpy(readBack.data(), mapped, written.size() * sizeof(uint32_t));
+    CHECK(readBack == written);
+
+    buffer.upload(uint32_t{99});
+    CHECK(static_cast<uint32_t const *>(mapped)[0] == 99);
+
+    buffer.unmap();
+}
+
+TEST_CASE("DepthBufferWrapper creates a bound image, memory and image view", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    spock::DepthBufferWrapper depthBuffer(
+        fixture->foundry,
+        vk::Format::eD16Unorm,
+        vk::Extent2D(64, 64));
+
+    CHECK(depthBuffer.format() == vk::Format::eD16Unorm);
+    CHECK(*depthBuffer.image() != VK_NULL_HANDLE);
+    CHECK(*depthBuffer.imageView() != VK_NULL_HANDLE);
+    CHECK(*depthBuffer.deviceMemory() != VK_NULL_HANDLE);
+}
+
+TEST_CASE("TextureWrapper constructs and accepts image data via setImage", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    spock::TextureWrapper texture(
+        fixture->foundry,
+        vk::Extent2D(4, 4),
+        spock::createSampler(fixture->foundry->device(), vk::Filter::eLinear, vk::SamplerAddressMode::eRepeat));
+    CHECK(*texture.sampler() != VK_NULL_HANDLE);
+
+    CHECK_NOTHROW(fixture->foundry->submit(
+        [&](vk::CommandBuffer commandBuffer)
+        {
+            texture.setImage(
+                commandBuffer,
+                [](void *data, vk::Extent2D const &extent)
+                {
+                    std::memset(data, 0xFF, static_cast<size_t>(extent.width) * extent.height * 4);
+                });
+        }));
+}
+
+TEST_CASE("compileShader produces a usable shader module from valid GLSL", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    static const std::string vertexSource = R"(
+#version 450
+layout(location = 0) in vec4 pos;
+void main() { gl_Position = pos; }
+)";
+
+    vk::raii::ShaderModule module = spock::compileShader(fixture->foundry->device(), vk::ShaderStageFlagBits::eVertex, vertexSource);
+
+    CHECK(*module != VK_NULL_HANDLE);
+}
+
+TEST_CASE("createRenderPass and createFramebuffers build a color+depth render target", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    vk::Extent2D extent(64, 64);
+    vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
+
+    vk::raii::Image colorImage(
+        fixture->foundry->device(),
+        vk::ImageCreateInfo(
+            {},
+            vk::ImageType::e2D,
+            colorFormat,
+            vk::Extent3D(extent, 1),
+            1,
+            1,
+            vk::SampleCountFlagBits::e1,
+            vk::ImageTiling::eOptimal,
+            vk::ImageUsageFlagBits::eColorAttachment));
+    vk::raii::DeviceMemory colorMemory = spock::allocateDeviceMemory(
+        fixture->foundry->device(),
+        fixture->foundry->physicalDevice().getMemoryProperties(),
+        colorImage.getMemoryRequirements(),
+        vk::MemoryPropertyFlagBits::eDeviceLocal);
+    colorImage.bindMemory(colorMemory, 0);
+
+    std::vector<vk::raii::ImageView> colorImageViews;
+    colorImageViews.emplace_back(
+        fixture->foundry->device(),
+        vk::ImageViewCreateInfo({}, colorImage, vk::ImageViewType::e2D, colorFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}));
+
+    spock::DepthBufferWrapper depthBuffer(fixture->foundry, vk::Format::eD16Unorm, extent);
+
+    vk::raii::RenderPass renderPass = spock::createRenderPass(fixture->foundry->device(), colorFormat, depthBuffer.format());
+    CHECK(*renderPass != VK_NULL_HANDLE);
+
+    std::vector<vk::raii::Framebuffer> framebuffers = spock::createFramebuffers(
+        fixture->foundry->device(), renderPass, colorImageViews, &depthBuffer.imageView(), extent);
+
+    REQUIRE(framebuffers.size() == 1);
+    CHECK(*framebuffers[0] != VK_NULL_HANDLE);
+}
+
+TEST_CASE("createCommandBuffer allocates a primary command buffer", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    vk::raii::CommandBuffer commandBuffer =
+        spock::createCommandBuffer(fixture->foundry->device(), fixture->foundry->commandPool());
+
+    CHECK(*commandBuffer != VK_NULL_HANDLE);
+    CHECK_NOTHROW(commandBuffer.begin(vk::CommandBufferBeginInfo()));
+    CHECK_NOTHROW(commandBuffer.end());
+}
+
+TEST_CASE("Foundry owns a compute command pool and queue and can submit one-time commands to them", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    CHECK(*fixture->foundry->computeCommandPool() != VK_NULL_HANDLE);
+    CHECK(*fixture->foundry->computeQueue() != VK_NULL_HANDLE);
+
+    bool recorded = false;
+    CHECK_NOTHROW(fixture->foundry->submitCompute(
+        [&](vk::CommandBuffer const &commandBuffer)
+        {
+            recorded = true;
+            // A no-op barrier is enough to prove a real command buffer was
+            // recorded and submitted through the compute queue.
+            commandBuffer.pipelineBarrier(
+                vk::PipelineStageFlagBits::eTopOfPipe,
+                vk::PipelineStageFlagBits::eBottomOfPipe,
+                vk::DependencyFlags(),
+                nullptr,
+                nullptr,
+                nullptr);
+        }));
+    CHECK(recorded);
+}
+
+TEST_CASE("createDescriptorSetLayout, createDescriptorPool and updateDescriptorSets wire up a uniform buffer binding", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    vk::raii::DescriptorSetLayout descriptorSetLayout = spock::createDescriptorSetLayout(
+        fixture->foundry->device(),
+        vk::ShaderStageFlagBits::eVertex,
+        {vk::DescriptorType::eUniformBuffer});
+    CHECK(*descriptorSetLayout != VK_NULL_HANDLE);
+
+    vk::raii::DescriptorPool descriptorPool = spock::createDescriptorPool(
+        fixture->foundry->device(),
+        {{vk::DescriptorType::eUniformBuffer, 1}});
+    CHECK(*descriptorPool != VK_NULL_HANDLE);
+
+    vk::raii::DescriptorSets descriptorSets(
+        fixture->foundry->device(), vk::DescriptorSetAllocateInfo(descriptorPool, *descriptorSetLayout));
+    vk::raii::DescriptorSet descriptorSet = std::move(descriptorSets.front());
+
+    spock::BufferWrapper uniformBuffer(
+        fixture->foundry, sizeof(float) * 16, vk::BufferUsageFlagBits::eUniformBuffer);
+
+    CHECK_NOTHROW(spock::updateDescriptorSets(fixture->foundry->device(), descriptorSet, {uniformBuffer}, {}));
+}
+
+TEST_CASE("createGraphicsPipeline builds a pipeline from compiled shaders and a push-constant layout", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    static const std::string vertexSource = R"(
+#version 450
+layout(push_constant) uniform PushConstants { mat4 mvp; } pc;
+layout(location = 0) in vec4 pos;
+void main() { gl_Position = pc.mvp * pos; }
+)";
+    static const std::string fragmentSource = R"(
+#version 450
+layout(location = 0) out vec4 outColor;
+void main() { outColor = vec4(1.0); }
+)";
+
+    vk::raii::ShaderModule vertexModule = spock::compileShader(fixture->foundry->device(), vk::ShaderStageFlagBits::eVertex, vertexSource);
+    vk::raii::ShaderModule fragmentModule = spock::compileShader(fixture->foundry->device(), vk::ShaderStageFlagBits::eFragment, fragmentSource);
+
+    vk::Format colorFormat = vk::Format::eR8G8B8A8Unorm;
+    vk::raii::RenderPass renderPass = spock::createRenderPass(fixture->foundry->device(), colorFormat, vk::Format::eUndefined);
+
+    vk::PushConstantRange pushConstantRange(vk::ShaderStageFlagBits::eVertex, 0, sizeof(float) * 16);
+    vk::raii::PipelineLayout pipelineLayout(fixture->foundry->device(), vk::PipelineLayoutCreateInfo({}, {}, pushConstantRange));
+
+    std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo = {
+            {{}, vk::ShaderStageFlagBits::eVertex, *vertexModule, "main"},
+            {{}, vk::ShaderStageFlagBits::eFragment, *fragmentModule, "main"} };
+
+    spock::VertexFormat vertexFormat{{ { vk::Format::eR32G32B32A32Sfloat, 0 } }, sizeof(float) * 4};
+
+    vk::raii::Pipeline pipeline = spock::createGraphicsPipeline(
+        fixture->foundry->device(),
+        shaderStagesInfo,
+        pipelineLayout,
+        renderPass,
+        vertexFormat,
+        vk::PrimitiveTopology::eTriangleList,
+        vk::CullModeFlagBits::eNone,
+        false);
+
+    CHECK(*pipeline != VK_NULL_HANDLE);
+}

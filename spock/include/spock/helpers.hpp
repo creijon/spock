@@ -1,0 +1,132 @@
+// Copyright (c) 2026 Jon Creighton
+// SPDX-License-Identifier: MIT
+
+#pragma once
+
+#include <vulkan/vulkan_raii.hpp>
+
+#include <cassert>
+#include <cstring>
+#include <vector>
+
+namespace spock
+{
+    // Clamp the requested swapchain image count between the supported min and max.
+    uint32_t clampSurfaceImageCount(
+        uint32_t desiredImageCount,
+        uint32_t minImageCount,
+        uint32_t maxImageCount);
+
+    // Record an image layout transition barrier for a single image, covering its first layerCount array layers.
+    void setImageLayout(
+        vk::CommandBuffer const &commandBuffer,
+        vk::Image image,
+        vk::Format format,
+        vk::ImageLayout oldImageLayout,
+        vk::ImageLayout newImageLayout,
+        uint32_t layerCount = 1);
+
+    vk::raii::DeviceMemory allocateDeviceMemory(
+        vk::raii::Device const &device,
+        vk::PhysicalDeviceMemoryProperties const &memoryProperties,
+        vk::MemoryRequirements const &memoryRequirements,
+        vk::MemoryPropertyFlags memoryPropertyFlags);
+
+    // Allocate a temporary command buffer and submit a single one-time command.
+    template <typename Func>
+    void oneTimeSubmit(
+        vk::raii::Device const &device,
+        vk::CommandPool const &commandPool,
+        vk::Queue const &queue,
+        Func const &func)
+    {
+        auto commandBuffers =
+            device.allocateCommandBuffers(vk::CommandBufferAllocateInfo(commandPool, vk::CommandBufferLevel::ePrimary, 1));
+        vk::CommandBuffer commandBuffer = *(commandBuffers.front());
+        commandBuffer.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
+        func(commandBuffer);
+        commandBuffer.end();
+        queue.submit(vk::SubmitInfo(0, nullptr, nullptr, 1, &commandBuffer), nullptr);
+        queue.waitIdle();
+    }
+
+    // Choose a surface format from the available list, preferring SRGB color space.
+    vk::SurfaceFormatKHR pickSurfaceFormat(
+        std::vector<vk::SurfaceFormatKHR> const &formats);
+
+    vk::PresentModeKHR pickPresentMode(
+        std::vector<vk::PresentModeKHR> const &presentModes);
+
+    VKAPI_ATTR vk::Bool32 VKAPI_CALL debugUtilsMessengerCallback(
+        vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+        vk::DebugUtilsMessageTypeFlagsEXT messageTypes,
+        vk::DebugUtilsMessengerCallbackDataEXT const *pCallbackData,
+        [[maybe_unused]] void *pUserData);
+
+    vk::DebugUtilsMessengerCreateInfoEXT makeDebugUtilsMessengerCreateInfoEXT();
+
+    // Copy count elements into memory that is already mapped, placing them stride bytes apart.
+    template <typename T>
+    void copyToMapped(
+        void *mapped,
+        T const *pData,
+        size_t count,
+        vk::DeviceSize stride = sizeof(T))
+    {
+        assert(sizeof(T) <= stride);
+        uint8_t *deviceData = static_cast<uint8_t *>(mapped);
+        if (stride == sizeof(T))
+        {
+            memcpy(deviceData, pData, count * sizeof(T));
+        }
+        else
+        {
+            for (size_t i = 0; i < count; i++)
+            {
+                memcpy(deviceData, &pData[i], sizeof(T));
+                deviceData += stride;
+            }
+        }
+    }
+
+    // Map deviceMemory, copy count elements into it stride bytes apart, then unmap it.
+    // Vulkan doesn't allow the memory to be mapped already, so for a BufferWrapper that
+    // may have been mapped with map(), use BufferWrapper::upload() instead.
+    template <typename T>
+    void copyToDevice(
+        vk::raii::DeviceMemory const &deviceMemory,
+        T const *pData,
+        size_t count,
+        vk::DeviceSize stride = sizeof(T))
+    {
+        copyToMapped(deviceMemory.mapMemory(0, count * stride), pData, count, stride);
+        deviceMemory.unmapMemory();
+    }
+
+    // Copy a single value into device memory.
+    template <typename T>
+    void copyToDevice(
+        vk::raii::DeviceMemory const &deviceMemory,
+        T const &data)
+    {
+        copyToDevice<T>(deviceMemory, &data, 1);
+    }
+
+    template <typename T>
+    void pushConstants(
+        vk::raii::CommandBuffer const& commandBuffer,
+        vk::raii::PipelineLayout const& pipelineLayout,
+        vk::ShaderStageFlags stageFlags,
+        T const& constants)
+    {
+        vk::ArrayProxyNoTemporaries<const uint8_t> dataSpan{
+            sizeof(T),
+            reinterpret_cast<const uint8_t*>(&constants) };
+
+        commandBuffer.pushConstants<uint8_t>(
+            pipelineLayout,
+            stageFlags,
+            0,
+            dataSpan);
+    }
+}
