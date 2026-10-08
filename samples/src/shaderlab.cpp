@@ -74,6 +74,7 @@ public:
             { 1.0f, 0 })
     {
         createResources();
+        createPipeline();
     }
 
     void createResources()
@@ -99,12 +100,12 @@ public:
     {
         try
         {
-            if (shaderStages & vk::ShaderStageFlagBits::eVertex)
+            if (!m_vertShader || (shaderStages & vk::ShaderStageFlagBits::eVertex))
             {
                 m_vertShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
-            if (shaderStages & vk::ShaderStageFlagBits::eFragment)
+            if (!m_fragShader || (shaderStages & vk::ShaderStageFlagBits::eFragment))
             {
                 m_fragShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }

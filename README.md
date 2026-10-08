@@ -6,14 +6,20 @@
 - Cross platform: Linux, Windows and MacOS currently supported.
 - Thin abstraction: use Vulkan_Hpp RAII to simplify Vulkan API but not hide it.
 
+## Architectural Overview
+
+`Spock` is organized as a layered rendering framework rather than a single monolithic demo. The reusable engine code lives under `spock/`, while example applications live under `samples/` and a smaller geometry-focused utility library lives under `geo/`.
+
+I hope that this structure makes the project easier to use: the framework handles windowing, Vulkan setup, frame lifecycle, shader compilation, resource management, and helper systems, while each sample demonstrates a focused use case such as a simple cube renderer, instancing, shader hot-reloading, or more complex examples such as Gaussian splatting.
+
 ## Samples
 
-There are a set of samples which demonstrate functions of Vulkan and the framework.  These will continue to be expanded.
+There are a set of samples which demonstrate functions of Vulkan and the framework. These will continue to be expanded.
 
 - `cube` — a completely self-contained renderer: the cube geometry and both shaders are defined inline below, with no external asset or shader files to load.
-- `shaderlab` - demonstrates automatic shader compilation and hot-reloading. As an example, the default shaders implement a simple ShaderToy-like interface, where the fragment shader can be experimented with in real-time.
+- `shaderlab` - demonstrates automatic shader compilation and hot-reloading. As an example, the default shaders implement a simple ShaderToy-like interface, where the fragment shader can be experimented with at runtime.
 - `instancing` - renders a 16x16 grid of sprites. The vertex buffer contains a single quad and the instance buffer contains position and color data for each instance.
-- `splat` - demonstrates instanced rendering and the use of uniform and storage buffers.  It implements a basic form of 3D Gaussian Splatting, derived from the tutorial: “3D Gaussian Splatting in a Weekend” by Benjamin Feldman https://bfeldman.me/3dgs-weekend/  Some of the code is adapted from the original tutorial.
+- `splat` - demonstrates instanced rendering and the use of uniform and storage buffers. It implements a basic form of 3D Gaussian Splatting, derived from the tutorial: “3D Gaussian Splatting for Real-Time Radiance Fields.”
 
 ## Building
 
@@ -56,11 +62,11 @@ See the comment above `Intersect::testNoBB` in `geo/src/intersect3d.cpp` for the
 
 ## Tests
 
-The test suites live under `spock/tests` and `geo/tests` and use [Catch2](https://github.com/catchorg/Catch2) (v3, found via `find_package`). They build as the `spock_tests` and `geo_tests` executables, controlled by the `SPOCK_BUILD_TESTS` CMake option (`ON` by default).
+The test suites live under `spock/tests` and `geo/tests` and use [Catch2](https://github.com/catchorg/Catch2) (v3, found via `find_package`). They build as the `spock_tests` and `geo_tests` executables.
 
 Tests fall into two groups:
 - Plain unit tests (`camera_tests.cpp`, `utils_tests.cpp`, `helpers_tests.cpp`, `shaders_tests.cpp` error paths) — pure logic, no GPU required.
-- GPU-backed integration tests, tagged `[gpu]` (`gpu_tests.cpp`, `renderer_tests.cpp`) — these create a real, headless Vulkan instance/device (via `VK_EXT_headless_surface`, so no window or display is needed) and exercise `creators.*`, `wrappers.*`, and a full `Renderer` render/present loop. If no usable Vulkan driver is found, these skip themselves instead of failing.
+- GPU-backed integration tests, tagged `[gpu]` (`gpu_tests.cpp`, `renderer_tests.cpp`) — these create a real, headless Vulkan instance/device (via `VK_EXT_headless_surface`, so no window or display is required).
 
 Build and run:
 
@@ -95,7 +101,7 @@ Bundled as git submodules under `deps/` and built as part of the project — no 
 
 MacOS requires the MoltenVK SDK for Vulkan support, which can be downloaded from the [lunarg](https://vulkan.lunarg.com/sdk/home) site.
 
-Some of the samples require TBB and OneDPL libraries for parallel sort.  These can be installed with brew:
+Some of the samples require TBB and OneDPL libraries for parallel sort. These can be installed with brew:
 
 ```bash
 brew install tbb onedpl
