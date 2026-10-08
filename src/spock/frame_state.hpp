@@ -30,7 +30,7 @@ namespace spock
         uint32_t imageIndex{0}; // The index of this frame in the swapchain.
     };
 
-    class ActiveFrameState;
+    class FrameStateGuard;
 
     class FrameStatePool final
     {
@@ -49,10 +49,10 @@ namespace spock
         // Acquire the next frame state in the rotation.
         // Blocks until the GPU has finished with it, so its resources are safe to rewrite.
         // Only one frame may be borrowed at a time. Calls must be serialized by the caller.
-        ActiveFrameState acquireFrame();
+        FrameStateGuard acquireFrame();
 
     private:
-        friend class ActiveFrameState;
+        friend class FrameStateGuard;
 
         // Return the acquired frame state once it has been submitted (or abandoned).
         // The pool keeps ownership; the fence is waited on again before the frame is reused.
@@ -65,15 +65,15 @@ namespace spock
         bool m_acquired{false};
     };
 
-    class ActiveFrameState final
+    class FrameStateGuard final
     {
     public:
-        ActiveFrameState(FrameStatePool& pool, FrameState& frame)
+        FrameStateGuard(FrameStatePool& pool, FrameState& frame)
             : m_pool(pool)
             , m_frame(frame)
         {}
 
-        ~ActiveFrameState()
+        ~FrameStateGuard()
         {
             m_pool.releaseFrame(m_frame);
         }

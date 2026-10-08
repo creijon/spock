@@ -76,7 +76,7 @@ namespace spock
 
     vk::Result Renderer::renderFrame()
     {
-        ActiveFrameState frameState = m_framePool->acquireFrame();
+        FrameStateGuard frameState = m_framePool->acquireFrame();
         vk::Result acquireResult = m_presenter->acquireFrame(frameState.get());
 
         // If image acquisition failed, return the unused frame and skip rendering and presentation.

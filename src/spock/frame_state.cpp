@@ -92,7 +92,7 @@ namespace spock
         m_frames = std::move(frames);
     }
 
-    ActiveFrameState FrameStatePool::acquireFrame()
+    FrameStateGuard FrameStatePool::acquireFrame()
     {
         if (m_acquired)
         {
