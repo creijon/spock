@@ -33,12 +33,11 @@ namespace spock
 
         virtual ~Renderer();
 
-        vk::Result renderFrame();
+        vk::Result renderFrame(std::chrono::microseconds frameTime);
         void resizeWindow(vk::Extent2D const &extents);
         void waitIdle() const;
 
     protected:
-        // The frame's fence has completed; its per-frame buffers are safe to update here.
         virtual void render(FrameState &frame) = 0;
 
         std::shared_ptr<const Foundry> m_foundry;
@@ -52,6 +51,7 @@ namespace spock
 
         vk::Extent2D m_extents;
 
+        std::chrono::microseconds m_frameTime{0};
         uint32_t m_frameCount{0};
         uint32_t m_inFlightIndex{0};
 

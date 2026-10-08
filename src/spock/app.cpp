@@ -76,7 +76,7 @@ void App::run()
 
         // Update and render frame.
         update();
-        vk::Result result = m_renderer->renderFrame();
+        vk::Result result = m_renderer->renderFrame(m_time);
 
         // Check for window resize.
         vk::Extent2D fbExtents = m_window.framebufferSize();

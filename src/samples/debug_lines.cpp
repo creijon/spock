@@ -171,10 +171,6 @@ public:
         waitIdle();
     }
 
-    void setTime(std::chrono::microseconds time)
-    {
-        m_time = std::chrono::duration<float>(time);
-    }
 protected:
     void render(spock::FrameState &frame) override
     {
@@ -185,12 +181,13 @@ protected:
             m_debugLines.addLine(m_sphereLines[i], m_sphereLines[i + 1], SPHERE_LINE_COLOR);
         }
 
+        float timeSeconds = std::chrono::duration_cast<std::chrono::duration<float>>(m_frameTime).count();
+
         for (auto const& cube : m_cubes)
         {
-            glm::quat orbitRotation = glm::angleAxis(m_time.count() * cube.orbitSpeed, cube.orbitAxis);
+            glm::quat orbitRotation = glm::angleAxis(timeSeconds * cube.orbitSpeed, cube.orbitAxis);
             glm::vec3 center = orbitRotation * cube.orbitStart;
-
-            glm::quat spinRotation = glm::angleAxis(m_time.count() * cube.spinSpeed, cube.spinAxis);
+            glm::quat spinRotation = glm::angleAxis(timeSeconds * cube.spinSpeed, cube.spinAxis);
 
             glm::vec3 corners[8];
             for (int i = 0; i < 8; ++i)
@@ -204,11 +201,10 @@ protected:
             }
         }
 
-        float cameraAngle = m_time.count() * 0.15f;
         glm::vec3 eye(
-            std::sin(cameraAngle) * CAMERA_DISTANCE,
+            std::sin(timeSeconds * 0.15f) * CAMERA_DISTANCE,
             CAMERA_HEIGHT,
-            std::cos(cameraAngle) * CAMERA_DISTANCE);
+            std::cos(timeSeconds * 0.15f) * CAMERA_DISTANCE);
         glm::mat4x4 viewProjection = spock::viewProjMatrix(
             m_extents, eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -222,7 +218,6 @@ private:
     spock::DebugLines m_debugLines;
     std::vector<OrbitingCube> m_cubes;
     std::vector<glm::vec3> m_sphereLines;
-    std::chrono::duration<float> m_time{0};
 };
 
 class DebugLinesApp : public spock::App
@@ -241,8 +236,6 @@ protected:
 
     void update() override
     {
-        DebugLinesRenderer* renderer = static_cast<DebugLinesRenderer*>(m_renderer.get());
-        renderer->setTime(m_time);
     }
 };
 

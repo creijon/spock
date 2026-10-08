@@ -100,7 +100,7 @@ namespace spock
         }
         if (m_frames.empty())
         {
-            throw std::logic_error("FrameStatePool: no frames have been allocated");
+            throw std::runtime_error("FrameStatePool: no frames have been allocated");
         }
         FrameState &frame = *m_frames[m_nextFrame];
 

@@ -41,9 +41,11 @@ namespace
     };
 }
 
-TEST_CASE("FrameStatePool rejects empty acquisition and zero allocation", "[frame-state]")
+TEST_CASE("FrameStatePool rejects empty acquisition and zero allocation", "[gpu][frame-state]")
 {
-    spock::FrameStatePool pool(nullptr);
+    auto fixture = spock_test::createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device");
+    spock::FrameStatePool pool(fixture->foundry);
     CHECK_THROWS_AS(pool.acquireFrame(), std::runtime_error);
     CHECK_THROWS_AS(pool.allocateFrames(0), std::invalid_argument);
     CHECK_NOTHROW(pool.reset());
@@ -67,9 +69,11 @@ TEST_CASE("FrameStatePool enforces borrowing and rotates abandoned frames", "[gp
     CHECK_THROWS_AS(pool.acquireFrame(), std::runtime_error);
 }
 
-TEST_CASE("FrameStatePool rejects null factories", "[frame-state]")
+TEST_CASE("FrameStatePool rejects null frame factories", "[gpu][frame-state]")
 {
-    spock::FrameStatePool pool(nullptr, [](auto const &) -> std::unique_ptr<spock::FrameState> {
+    auto fixture = spock_test::createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device");
+    spock::FrameStatePool pool(fixture->foundry, [](auto const &) -> std::unique_ptr<spock::FrameState> {
         return nullptr;
     });
     CHECK_THROWS_AS(pool.allocateFrames(2), std::invalid_argument);

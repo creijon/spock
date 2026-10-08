@@ -135,11 +135,6 @@ public:
         }
     }
 
-    void setTime(std::chrono::microseconds time)
-    {
-        m_time = time;
-    }
-
     void setMousePos(vk::Offset2D const &mousePos)
     {
         m_mousePos.x = mousePos.x;
@@ -171,7 +166,7 @@ protected:
         PushConstants pushConstants{
             glm::vec4((float)m_mousePos.x, (float)m_mousePos.y, (float)m_mouseClickPos.x, (float)m_mouseClickPos.y),
             glm::vec3((float)m_extents.width, (float)m_extents.height, 1.0f),
-            std::chrono::duration_cast<Seconds>(m_time).count(),
+            std::chrono::duration_cast<std::chrono::duration<float>>(m_frameTime).count(),
             (int)m_frameCount};
         spock::pushConstants(commandBuffer, m_pipelineLayout, vk::ShaderStageFlagBits::eAllGraphics, pushConstants);
 
@@ -187,7 +182,6 @@ private:
 
     spock::BufferWrapper m_vertexBuffer;
 
-    std::chrono::microseconds m_time{0};
     vk::Offset2D m_mousePos{0, 0};
     vk::Offset2D m_mouseClickPos{0, 0};
 };
@@ -210,7 +204,6 @@ protected:
     void update() override
     {
         ShaderLabRenderer* renderer = static_cast<ShaderLabRenderer*>(m_renderer.get());
-        renderer->setTime(m_time);
 
         // Store the mouse position and click position for use in the next frame.
         vk::Offset2D mousePos{0, 0};

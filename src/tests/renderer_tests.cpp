@@ -57,7 +57,7 @@ TEST_CASE("Renderer renders and presents frames against a headless surface", "[g
 
     for (int frame = 0; frame < 12; frame++)
     {
-        vk::Result result = renderer.renderFrame();
+        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
     CHECK(renderer.frames.size() == 3);
@@ -81,14 +81,14 @@ TEST_CASE("Renderer::resizeWindow rebuilds the swapchain and framebuffers at a n
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0), useDepthBuffer);
 
-    CHECK_NOTHROW(renderer.renderFrame());
+    CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
 
     // Resize itself waits for submitted commands before retiring their attachments.
     CHECK_NOTHROW(renderer.resizeWindow(vk::Extent2D(128, 96)));
 
     for (int frame = 0; frame < 6; ++frame)
     {
-        vk::Result result = renderer.renderFrame();
+        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
 }
@@ -108,7 +108,7 @@ TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
         vk::ClearDepthStencilValue(1.0f, 0),
         /*useDepthBuffer=*/false);
 
-    vk::Result result = renderer.renderFrame();
+    vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }
 
@@ -151,21 +151,21 @@ TEST_CASE("DebugLines retains separate geometry in each acquired frame", "[gpu]"
     if (!fixture) SKIP("No usable headless Vulkan device");
     LinesRenderer renderer(fixture->foundry);
     renderer.lines.addLine({0, 0, 0}, {1, 0, 0}, {1, 0, 0, 1});
-    renderer.renderFrame();
+    renderer.renderFrame(std::chrono::microseconds(0));
     auto *firstFrame = renderer.lastFrame;
     std::array<spock::DebugLines::Vertex, 2> firstVertices;
     std::memcpy(firstVertices.data(), firstFrame->lines.vertexBuffer.map(), sizeof(firstVertices));
     renderer.lines.clear();
     renderer.lines.addLine({0, 0, 0}, {0, 1, 0}, {0, 1, 0, 1});
-    renderer.renderFrame();
+    renderer.renderFrame(std::chrono::microseconds(1 * 16666));
     REQUIRE(renderer.lastFrame != firstFrame);
     CHECK(*renderer.lastFrame->lines.vertexBuffer.buffer() != *firstFrame->lines.vertexBuffer.buffer());
     CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.vertexBuffer.map(), sizeof(firstVertices)) == 0);
     // No new geometry is added: the third frame must still receive the same current lines.
     auto *secondFrame = renderer.lastFrame;
-    renderer.renderFrame();
+    renderer.renderFrame(std::chrono::microseconds(2 * 16666));
     CHECK(std::memcmp(secondFrame->lines.vertexBuffer.map(), renderer.lastFrame->lines.vertexBuffer.map(), sizeof(firstVertices)) == 0);
-    renderer.renderFrame();
+    renderer.renderFrame(std::chrono::microseconds(3 * 16666));
     CHECK(renderer.lastFrame == firstFrame);
     CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.vertexBuffer.map(), sizeof(firstVertices)) != 0);
 }
@@ -176,11 +176,11 @@ TEST_CASE("Renderer returns borrowed frames when command recording throws", "[gp
     if (!fixture) SKIP("No usable headless Vulkan device");
     LinesRenderer renderer(fixture->foundry);
     renderer.throwWhileRecording = true;
-    CHECK_THROWS_AS(renderer.renderFrame(), std::runtime_error);
+    CHECK_THROWS_AS(renderer.renderFrame(std::chrono::microseconds(0)), std::runtime_error);
     // Reset destroys the abandoned commands and signaled acquisition semaphore before retrying.
     CHECK_NOTHROW(renderer.resizeWindow({64, 64}));
     renderer.throwWhileRecording = false;
-    CHECK_NOTHROW(renderer.renderFrame());
+    CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
 }
 
 TEST_CASE("Presenter owns one framebuffer per image across moves and rebuilds", "[gpu]")
