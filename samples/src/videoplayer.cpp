@@ -384,7 +384,7 @@ private:
 struct VideoPlane
 {
     VideoPlane(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D planeExtent)
         : extent(planeExtent)
         , image(
@@ -433,7 +433,7 @@ class VideoRenderer : public spock::Renderer
 {
 public:
     VideoRenderer(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D const& extents,
         std::shared_ptr<const VideoDecoder> const &decoder)
         : spock::Renderer(

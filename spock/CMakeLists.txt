@@ -38,6 +38,7 @@ set(HEADERS
     include/spock/presenter.hpp
     include/spock/renderer.hpp
     include/spock/shaders.hpp
+    include/spock/types.hpp
     include/spock/utils.hpp
     include/spock/window.hpp
     include/spock/wrappers.hpp

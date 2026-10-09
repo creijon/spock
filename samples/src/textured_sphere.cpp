@@ -196,7 +196,7 @@ class TexturedSphereRenderer : public spock::Renderer
 {
 public:
     TexturedSphereRenderer(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
             foundry,

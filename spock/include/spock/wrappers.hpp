@@ -5,6 +5,7 @@
 
 #include "foundry.hpp"
 #include "helpers.hpp"
+#include "types.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -65,7 +66,7 @@ namespace spock
         // If concurrentQueueFamilies has 2 or more entries, the buffer is created with
         // vk::SharingMode::eConcurrent across those families.
         BufferWrapper(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             vk::DeviceSize size,
             vk::BufferUsageFlags usage,
             vk::MemoryPropertyFlags propertyFlags = vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent,
@@ -139,7 +140,7 @@ namespace spock
 
         template <typename DataType>
         void upload(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             std::vector<DataType> const &data) const
         {
             upload(foundry, foundry->commandPool(), foundry->graphicsQueue(), data);
@@ -147,7 +148,7 @@ namespace spock
 
         template <typename DataType>
         void upload(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             vk::raii::CommandPool const& commandPool,
             vk::raii::Queue const &queue,
             std::vector<DataType> const &data) const
@@ -210,7 +211,7 @@ namespace spock
     {
     public:
         ImageWrapper(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             vk::Format format,
             vk::Extent2D extent,
             vk::ImageTiling tiling,
@@ -260,7 +261,7 @@ namespace spock
     {
     public:
         DepthBufferWrapper(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             vk::Format format,
             vk::Extent2D const &extent);
         DepthBufferWrapper() = default;
@@ -273,7 +274,7 @@ namespace spock
     {
     public:
         TextureWrapper(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             vk::Extent2D extent,
             vk::raii::Sampler sampler,
             vk::ImageUsageFlags usageFlags = {},

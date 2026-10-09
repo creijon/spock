@@ -89,7 +89,7 @@ class ComputeRenderer : public spock::Renderer
 {
 public:
     ComputeRenderer(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D const& extents,
         bool multithreaded)
         : spock::Renderer(
@@ -375,12 +375,12 @@ public:
     }
 
 protected:
-    std::shared_ptr<spock::Foundry> createFoundry() const override
+    spock::FoundryPtr createFoundry() const override
     {
         std::vector<char const*> extensions{ VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME };
         vk::PhysicalDeviceSubgroupSizeControlFeatures subgroupSizeControl{ VK_TRUE, VK_TRUE };
 
-        return std::make_shared<spock::Foundry>(
+        return std::make_shared<const spock::Foundry>(
             m_instance,
             m_window.createSurface(m_instance),
             vk::QueueFlagBits::eCompute,

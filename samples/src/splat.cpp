@@ -97,13 +97,13 @@ static const glm::mat4 SPLAT_TO_WORLD = glm::scale(glm::mat4(1.0f), glm::vec3(1.
 class SplatFrameState : public spock::FrameState
 {
 public:
-    explicit SplatFrameState(std::shared_ptr<const spock::Foundry> const &foundry)
+    explicit SplatFrameState(spock::FoundryPtr const &foundry)
         : spock::FrameState(foundry->device(), foundry->commandPool())
     {
     }
 
     void createResources(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::raii::DescriptorPool const &descriptorPool,
         vk::raii::DescriptorSetLayout const &descriptorSetLayout,
         spock::BufferWrapper const &splatStorage,
@@ -139,7 +139,7 @@ class SplatRenderer : public spock::Renderer
 {
 public:
     SplatRenderer(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
             foundry,
@@ -147,7 +147,7 @@ public:
             {0.05f, 0.08f, 0.15f, 1.0f},
             {1.0f, 0},
             false,
-            [](std::shared_ptr<const spock::Foundry> const &foundry) {
+            [](spock::FoundryPtr const &foundry) {
                 return std::make_unique<SplatFrameState>(foundry);
             })
     {
@@ -334,7 +334,7 @@ public:
     }
 
 protected:
-    std::shared_ptr<spock::Foundry> createFoundry() const override
+    spock::FoundryPtr createFoundry() const override
     {
         std::vector<char const*> extensions{
             VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
@@ -356,7 +356,7 @@ protected:
             &float16Int8
         };
 
-        return std::make_shared<spock::Foundry>(
+        return std::make_shared<const spock::Foundry>(
             m_instance,
             m_window.createSurface(m_instance),
             vk::QueueFlagBits::eGraphics,

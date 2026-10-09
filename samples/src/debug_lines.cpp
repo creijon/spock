@@ -136,7 +136,7 @@ namespace
 class DebugLinesFrameState : public spock::FrameState
 {
 public:
-    explicit DebugLinesFrameState(std::shared_ptr<const spock::Foundry> const &foundry)
+    explicit DebugLinesFrameState(spock::FoundryPtr const &foundry)
         : spock::FrameState(foundry->device(), foundry->commandPool())
         , lines(foundry)
     {
@@ -149,7 +149,7 @@ class DebugLinesRenderer : public spock::Renderer
 {
 public:
     DebugLinesRenderer(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
             foundry,
@@ -157,7 +157,7 @@ public:
             {0.02f, 0.02f, 0.05f, 1.0f},
             {1.0f, 0},
             true,
-            [](std::shared_ptr<const spock::Foundry> const &foundry) {
+            [](spock::FoundryPtr const &foundry) {
                 return std::make_unique<DebugLinesFrameState>(foundry);
             })
         , m_debugLines(foundry, m_renderPass)

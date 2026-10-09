@@ -97,7 +97,7 @@ class QuadRenderer : public spock::Renderer
 {
 public:
     QuadRenderer(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
             foundry,

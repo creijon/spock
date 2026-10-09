@@ -54,7 +54,7 @@ namespace spock
     }
 
     BufferWrapper::BufferWrapper(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         vk::DeviceSize size,
         vk::BufferUsageFlags usage,
         vk::MemoryPropertyFlags propertyFlags,
@@ -147,7 +147,7 @@ namespace spock
     }
 
     ImageWrapper::ImageWrapper(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         vk::Format format,
         vk::Extent2D extent,
         vk::ImageTiling tiling,
@@ -207,7 +207,7 @@ namespace spock
     }
 
     DepthBufferWrapper::DepthBufferWrapper(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         vk::Format format,
         vk::Extent2D const &extent)
         : ImageWrapper(
@@ -241,7 +241,7 @@ namespace spock
     }
 
     TextureWrapper::TextureWrapper(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         vk::Extent2D extent,
         vk::raii::Sampler sampler,
         vk::ImageUsageFlags usageFlags,

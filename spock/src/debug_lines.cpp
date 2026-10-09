@@ -55,13 +55,13 @@ void main()
         };
     }
 
-    DebugLines::FrameData::FrameData(std::shared_ptr<const Foundry> const &foundry, size_t maxLineCount)
+    DebugLines::FrameData::FrameData(FoundryPtr const &foundry, size_t maxLineCount)
         : vertexBuffer(foundry, maxLineCount * 2 * sizeof(Vertex), vk::BufferUsageFlagBits::eVertexBuffer)
     {
     }
 
     DebugLines::DebugLines(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         vk::raii::RenderPass const& renderPass,
         size_t maxLineCount)
         : m_maxLineCount(maxLineCount)
