@@ -104,6 +104,7 @@ public:
 
     void createResources(
         std::shared_ptr<const spock::Foundry> const &foundry,
+        vk::raii::DescriptorPool const &descriptorPool,
         vk::raii::DescriptorSetLayout const &descriptorSetLayout,
         spock::BufferWrapper const &splatStorage,
         uint32_t splatCount)
@@ -114,9 +115,6 @@ public:
 
         uniforms = spock::BufferWrapper(foundry, sizeof(FrameConstants), vk::BufferUsageFlagBits::eUniformBuffer);
         sorting = spock::BufferWrapper(foundry, splatCount * sizeof(SortingEntry), vk::BufferUsageFlagBits::eVertexBuffer);
-        descriptorPool = spock::createDescriptorPool(
-            foundry->device(),
-            {{vk::DescriptorType::eUniformBuffer, 1}, {vk::DescriptorType::eStorageBuffer, 1}});
         descriptorSet = std::move(vk::raii::DescriptorSets(foundry->device(), {descriptorPool, *descriptorSetLayout}).front());
         spock::updateDescriptorSets(foundry->device(), descriptorSet, {uniforms, splatStorage}, {});
     }
@@ -133,7 +131,6 @@ public:
 
     spock::BufferWrapper uniforms;
     spock::BufferWrapper sorting;
-    vk::raii::DescriptorPool descriptorPool{nullptr};
     vk::raii::DescriptorSet descriptorSet{nullptr};
     uint64_t sortingRevision{0};
 };
@@ -213,6 +210,11 @@ public:
             {vk::DescriptorType::eUniformBuffer, vk::DescriptorType::eStorageBuffer});
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(m_foundry->device(), { {}, *m_descriptorSetLayout }));
 
+        m_descriptorPool = spock::createDescriptorPool(
+            m_foundry->device(),
+            {{vk::DescriptorType::eUniformBuffer, m_framesInFlight},
+             {vk::DescriptorType::eStorageBuffer, m_framesInFlight}});
+
         // Upload the splat data into a storage buffer.
         m_splatStorage = spock::BufferWrapper(
             m_foundry,
@@ -240,12 +242,12 @@ public:
     {
         try
         {
-            if (!m_vertShader || (shaderStages & vk::ShaderStageFlagBits::eVertex))
+            if ((m_vertShader == nullptr) || (shaderStages & vk::ShaderStageFlagBits::eVertex))
             {
                 m_vertShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
-            if (!m_fragShader || (shaderStages & vk::ShaderStageFlagBits::eFragment))
+            if ((m_fragShader == nullptr) || (shaderStages & vk::ShaderStageFlagBits::eFragment))
             {
                 m_fragShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
@@ -285,7 +287,7 @@ protected:
         if (m_graphicsPipeline == nullptr) return;
 
         auto& frameData = static_cast<SplatFrameState&>(frame);
-        frameData.createResources(m_foundry, m_descriptorSetLayout, m_splatStorage, m_splatCount);
+        frameData.createResources(m_foundry, m_descriptorPool, m_descriptorSetLayout, m_splatStorage, m_splatCount);
         frameData.update(m_frameConstants, m_sorting, m_sortingRevision);
 
         auto& commandBuffer = frameData.commandBuffer;
@@ -301,6 +303,7 @@ protected:
 
 private:
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
+    vk::raii::DescriptorPool m_descriptorPool{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
 

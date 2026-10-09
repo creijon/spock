@@ -100,12 +100,12 @@ public:
     {
         try
         {
-            if (!m_vertShader || (shaderStages & vk::ShaderStageFlagBits::eVertex))
+            if ((m_vertShader == nullptr) || (shaderStages & vk::ShaderStageFlagBits::eVertex))
             {
                 m_vertShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, SHADER_PATH + VERTEX_SHADER);
             }
 
-            if (!m_fragShader || (shaderStages & vk::ShaderStageFlagBits::eFragment))
+            if ((m_fragShader == nullptr) || (shaderStages & vk::ShaderStageFlagBits::eFragment))
             {
                 m_fragShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, SHADER_PATH + FRAGMENT_SHADER);
             }
