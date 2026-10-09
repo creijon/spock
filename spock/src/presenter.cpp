@@ -118,7 +118,7 @@ namespace spock
         }
     }
 
-    vk::Result Presenter::submitCommands(FrameState &frame)
+    vk::Result Presenter::presentFrame(FrameState &frame)
     {
         vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         vk::SubmitInfo submitInfo(
@@ -130,11 +130,6 @@ namespace spock
         m_foundry->device().resetFences({ frame.fence });
         m_foundry->graphicsQueue().submit(submitInfo, frame.fence);
 
-        return vk::Result::eSuccess;
-    }
-
-    vk::Result Presenter::presentFrame(FrameState &frame)
-    {
         try
         {
             // Present the rendered image to the swapchain.

@@ -62,7 +62,6 @@ namespace spock
         }
 
         vk::Result acquireFrame(FrameState &frame);
-        vk::Result submitCommands(FrameState &frame);
         vk::Result presentFrame(FrameState &frame);
 
     private:

@@ -154,12 +154,11 @@ public:
         };
     }
 
-    ~SplatRenderer() override
-    {
-        waitIdle();
-        // Release frame descriptors before destroying the storage buffer they reference.
+	~SplatRenderer() override
+	{
+        // The frames' descriptor sets are freed back to m_descriptorPool, so release them while it still exists.
         m_framePool.reset();
-    }
+	}
 
     void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
     {

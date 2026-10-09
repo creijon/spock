@@ -32,8 +32,6 @@ namespace spock
 
     void Renderer::resizeWindow(vk::Extent2D const &extents)
     {
-        m_inFlightIndex = 0;
-
         // Tearing down the FrameStatePool waits for GPU completion.
         m_framePool.reset();
 
@@ -82,23 +80,22 @@ namespace spock
 
         if (!m_framePool)
         {
-            // If this is the first frame or the window has been resized,
-            // allocate the frames now that the swapchain and render pass exist.
+            // If this is the first frame or the window has been resized, allocate the frames states.
             m_framePool = std::make_unique<FrameStatePool>(m_foundry, m_framesInFlight, m_createFrameFunc);
         }
 
-        FrameStateGuard frameState = m_framePool->acquireFrame();
-        vk::Result acquireResult = m_presenter->acquireFrame(frameState.get());
+        FrameStateGuard frameGuard = m_framePool->acquireFrame();
+		FrameState &frameState = frameGuard.get();
+        vk::Result acquireResult = m_presenter->acquireFrame(frameState);
 
-        // If image acquisition failed, return the unused frame and skip rendering and presentation.
-        // The semaphore was not signaled by the swapchain, so we cannot wait on it.
+        // If image acquisition failed, skip rendering and presentation.
         if (acquireResult != vk::Result::eSuccess && acquireResult != vk::Result::eSuboptimalKHR)
         {
             return acquireResult;
         }
 
         // Begin the render pass.
-        auto& commandBuffer = frameState.get().commandBuffer;
+        auto& commandBuffer = frameState.commandBuffer;
 
         commandBuffer.begin({});
 
@@ -106,7 +103,7 @@ namespace spock
 
         vk::RenderPassBeginInfo renderPassBeginInfo(
             m_renderPass,
-            m_presenter->framebuffer(frameState.get().imageIndex),
+            m_presenter->framebuffer(frameState.imageIndex),
             vk::Rect2D(vk::Offset2D(0, 0), m_extents),
             clearValues);
         commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
@@ -121,18 +118,18 @@ namespace spock
                 1.0f));
         commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
 
-        // The derived class renders its scene into the command buffer.
-        render(frameState.get());
+        // The derived class renders using the current frame state.
+        render(frameState);
 
         // End the render pass and submit the command buffer.
+		// TODO:
+		// Create an RAII wrapper for command buffers that automatically ends the render pass and command buffer on destruction.
+		// That would allow the derived class to throw exceptions during rendering without leaking resources or leaving the command buffer in an invalid state.
         commandBuffer.endRenderPass();
         commandBuffer.end();
 
-        m_presenter->submitCommands(frameState.get());
+        vk::Result result = m_presenter->presentFrame(frameState);
 
-        vk::Result result = m_presenter->presentFrame(frameState.get());
-
-        m_inFlightIndex = (m_inFlightIndex + 1) % m_framesInFlight;
         m_frameCount++;
 
         return result;
