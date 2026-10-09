@@ -31,7 +31,7 @@ namespace spock
     }
 
     FrameStatePool::FrameStatePool(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         CreateFrameFunc const &createFrameFunc)
         : m_foundry(foundry)
         , m_createFrameFunc(createFrameFunc)

@@ -15,7 +15,7 @@
 namespace spock
 {
     Presenter::Presenter(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
         uint32_t framesInFlight,

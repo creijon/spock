@@ -10,7 +10,7 @@
 namespace spock
 {
     Renderer::Renderer(
-        std::shared_ptr<const Foundry> const &foundry,
+        FoundryPtr const &foundry,
         vk::Extent2D const &extents,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,

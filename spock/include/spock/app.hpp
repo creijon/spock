@@ -32,7 +32,7 @@ namespace spock
         void run();
 
     protected:
-        virtual std::shared_ptr<const Foundry> createFoundry() const;
+        virtual FoundryPtr createFoundry() const;
         virtual std::unique_ptr<Renderer> createRenderer() = 0;
 
         // Called once per frame before rendering.
@@ -42,7 +42,7 @@ namespace spock
         vk::raii::Instance m_instance{nullptr};
 
         Window m_window;
-        std::shared_ptr<const Foundry> m_foundry;
+        FoundryPtr m_foundry;
         std::unique_ptr<Renderer> m_renderer;
 
         std::chrono::microseconds m_time{};
