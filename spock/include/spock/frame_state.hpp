@@ -23,9 +23,9 @@ namespace spock
         FrameState(vk::raii::Device const &device, vk::raii::CommandPool const &commandPool);
         virtual ~FrameState() = default;
 
-        vk::raii::CommandBuffer commandBuffer{nullptr};
-        vk::raii::Semaphore semaphore{nullptr};
-        vk::raii::Fence fence{nullptr};
+        vk::raii::CommandBuffer const commandBuffer{nullptr};
+        vk::raii::Semaphore const semaphore{nullptr};
+        vk::raii::Fence const fence{nullptr};
 
         uint32_t imageIndex{0}; // The index of this frame in the swapchain.
     };
@@ -42,18 +42,18 @@ namespace spock
             uint32_t frameCount,
             CreateFrameFunc const &createFrameFunc = nullptr);
         ~FrameStatePool() noexcept;
+        FrameStatePool(FrameStatePool&&) = delete;
 
-        // Acquire the next frame state in the rotation.
-        // Blocks until the GPU has finished with it, so its resources are safe to rewrite.
+        // Acquire the next frame state in the rotation, blocks until the GPU has finished with it.
         // Only one frame may be borrowed at a time. Calls must be serialized by the caller.
-        FrameStateGuard acquireFrame();
+        // Throws std::runtime_error if its fence does not signal in time (a lost submission or a hung GPU).
+        [[nodiscard]] FrameStateGuard acquireFrame();
 
     private:
         friend class FrameStateGuard;
 
         // Return the acquired frame state once it has been submitted (or abandoned).
-        // The pool keeps ownership; the fence is waited on again before the frame is reused.
-        void releaseFrame(FrameState &frame);
+        void releaseFrame(FrameState &frame) noexcept;
 
         FoundryPtr m_foundry;
         std::vector<std::unique_ptr<FrameState>> m_frames;
@@ -64,15 +64,12 @@ namespace spock
     class FrameStateGuard final
     {
     public:
-        FrameStateGuard(FrameStatePool& pool, FrameState& frame)
-            : m_pool(pool)
-            , m_frame(frame)
-        {}
-
         ~FrameStateGuard()
         {
             m_pool.releaseFrame(m_frame);
         }
+
+        FrameStateGuard(FrameStateGuard&&) = delete;
 
         FrameState& get()
         {
@@ -80,6 +77,14 @@ namespace spock
         }
 
     private:
+        // Only the pool creates guards, so every release matches an acquisition.
+        friend class FrameStatePool;
+
+        FrameStateGuard(FrameStatePool& pool, FrameState& frame)
+            : m_pool(pool)
+            , m_frame(frame)
+        {}
+
         FrameStatePool& m_pool;
         FrameState& m_frame;
     };
