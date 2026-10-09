@@ -57,9 +57,9 @@ App::App(
 {
 }
 
-std::shared_ptr<Foundry> App::createFoundry() const
+FoundryPtr App::createFoundry() const
 {
-    return std::make_shared<Foundry>(m_instance, m_window.createSurface(m_instance));
+    return std::make_shared<const Foundry>(m_instance, m_window.createSurface(m_instance));
 }
 
 void App::run()

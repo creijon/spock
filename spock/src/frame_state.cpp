@@ -12,7 +12,7 @@
 
 namespace
 {
-    std::unique_ptr<spock::FrameState> defaultCreateFrame(std::shared_ptr<const spock::Foundry> const &foundry)
+    std::unique_ptr<spock::FrameState> defaultCreateFrame(spock::FoundryPtr const &foundry)
     {
         return std::make_unique<spock::FrameState>(foundry->device(), foundry->commandPool());
     }

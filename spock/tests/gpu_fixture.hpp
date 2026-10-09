@@ -5,6 +5,7 @@
 
 #include "spock/creators.hpp"
 #include "spock/foundry.hpp"
+#include "spock/types.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -26,7 +27,7 @@ namespace spock_test
     {
         vk::raii::Context context;
         vk::raii::Instance instance{nullptr};
-        std::shared_ptr<spock::Foundry> foundry;
+        spock::FoundryPtr foundry;
     };
 
     inline std::unique_ptr<GpuFixture> createGpuFixture()

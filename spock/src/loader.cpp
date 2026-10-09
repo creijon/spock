@@ -44,7 +44,7 @@ ImagePixels loadRgba(std::string const &path, unsigned &width, unsigned &height)
 } // namespace
 
 TextureWrapper Loader::texture(
-    std::shared_ptr<const Foundry> const &foundry,
+    FoundryPtr const &foundry,
     std::string const &path,
     vk::raii::Sampler sampler)
 {
@@ -69,7 +69,7 @@ TextureWrapper Loader::texture(
 }
 
 CubemapWrapper Loader::cubemap(
-    std::shared_ptr<const Foundry> const &foundry,
+    FoundryPtr const &foundry,
     std::array<std::string, CUBEMAP_FACE_COUNT> const &paths,
     vk::raii::Sampler sampler)
 {

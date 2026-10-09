@@ -4,6 +4,7 @@
 #pragma once
 
 #include "math.hpp"
+#include "types.hpp"
 #include "wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
@@ -14,8 +15,6 @@
 
 namespace spock
 {
-    class Foundry;
-
     // Simple debug line renderer.
     // Geometry and pipeline are shared; the caller supplies frame-owned upload resources.
     class DebugLines
@@ -36,12 +35,12 @@ namespace spock
 
         struct FrameData
         {
-            explicit FrameData(std::shared_ptr<const Foundry> const &foundry, size_t maxLineCount = 1024);
+            explicit FrameData(FoundryPtr const &foundry, size_t maxLineCount = 1024);
             BufferWrapper vertexBuffer;
         };
 
         DebugLines(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             vk::raii::RenderPass const& renderPass,
             size_t maxLineCount = 1024);
 
@@ -57,6 +56,11 @@ namespace spock
         size_t lineCount() const
         {
             return m_vertices.size() / 2;
+        }
+        
+        size_t maxLineCount() const
+        {
+            return m_maxLineCount;
         }
 
     private:

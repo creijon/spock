@@ -117,7 +117,7 @@ namespace
     class LinesFrame : public spock::FrameState
     {
     public:
-        explicit LinesFrame(std::shared_ptr<const spock::Foundry> const &foundry)
+        explicit LinesFrame(spock::FoundryPtr const &foundry)
             : spock::FrameState(foundry->device(), foundry->commandPool()), lines(foundry, 2) {}
         spock::DebugLines::FrameData lines;
     };
@@ -125,7 +125,7 @@ namespace
     class LinesRenderer : public spock::Renderer
     {
     public:
-        explicit LinesRenderer(std::shared_ptr<const spock::Foundry> const &foundry)
+        explicit LinesRenderer(spock::FoundryPtr const &foundry)
             : spock::Renderer(foundry, {64, 64}, vk::ClearColorValue(std::array<float, 4>{0, 0, 0, 1}),
                 vk::ClearDepthStencilValue{1, 0}, true,
                 [](auto const &device) { return std::make_unique<LinesFrame>(device); }),

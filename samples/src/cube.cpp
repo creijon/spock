@@ -134,7 +134,7 @@ class CubeRenderer : public spock::Renderer
 {
 public:
     CubeRenderer(
-        std::shared_ptr<const spock::Foundry> const &foundry,
+        spock::FoundryPtr const &foundry,
         vk::Extent2D const& extents)
         : spock::Renderer(
             foundry,

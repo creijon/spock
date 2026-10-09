@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "types.hpp"
+
 #include <vulkan/vulkan_raii.hpp>
 
 #include <cstddef>
@@ -12,8 +14,6 @@
 
 namespace spock
 {
-    class Foundry;
-
     // FrameState is a collection of resources that are used together to render a single frame.
     // The pool owns the state; acquisition waits for its previous submission to complete.
     // Derived classes add resources such as dynamic buffers, descriptor sets, etc.
@@ -35,9 +35,9 @@ namespace spock
     class FrameStatePool final
     {
     public:
-        using CreateFrameFunc = std::function<std::unique_ptr<FrameState>(std::shared_ptr<const Foundry> const&)>;
+        using CreateFrameFunc = std::function<std::unique_ptr<FrameState>(FoundryPtr const&)>;
         FrameStatePool(
-            std::shared_ptr<const Foundry> const &foundry,
+            FoundryPtr const &foundry,
             CreateFrameFunc const &createFrameFunc = nullptr);
         ~FrameStatePool() noexcept;
 
@@ -58,7 +58,7 @@ namespace spock
         // The pool keeps ownership; the fence is waited on again before the frame is reused.
         void releaseFrame(FrameState &frame);
 
-        std::shared_ptr<const Foundry> m_foundry;
+        FoundryPtr m_foundry;
         CreateFrameFunc m_createFrameFunc;
         std::vector<std::unique_ptr<FrameState>> m_frames;
         std::size_t m_nextFrame{0};
