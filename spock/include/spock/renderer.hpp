@@ -28,8 +28,7 @@ namespace spock
             vk::Extent2D const &extents,
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,
-            bool useDepthBuffer = true,
-            FrameStatePool::CreateFrameFunc const &createFrameFunc = nullptr);
+            bool useDepthBuffer = true);
 
         virtual ~Renderer();
 
@@ -43,6 +42,8 @@ namespace spock
         FoundryPtr m_foundry;
         std::unique_ptr<Presenter> m_presenter;
         std::unique_ptr<FrameStatePool> m_framePool;
+        // Set by the derived constructor. Frames are allocated lazily by renderFrame, after construction.
+        FrameStatePool::CreateFrameFunc m_createFrameFunc{nullptr};
 
         // Presenter framebuffers are cleared before these attachments are replaced or destroyed.
         DepthBufferWrapper m_depthBuffer;

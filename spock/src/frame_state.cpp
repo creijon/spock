@@ -6,6 +6,7 @@
 #include "spock/creators.hpp"
 #include "spock/foundry.hpp"
 
+#include <cassert>
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -32,64 +33,40 @@ namespace spock
 
     FrameStatePool::FrameStatePool(
         FoundryPtr const &foundry,
+        uint32_t frameCount,
         CreateFrameFunc const &createFrameFunc)
         : m_foundry(foundry)
-        , m_createFrameFunc(createFrameFunc)
     {
-        if (!m_createFrameFunc)
-        {
-            m_createFrameFunc = defaultCreateFrame;
-        }
-    }
-
-    FrameStatePool::~FrameStatePool() noexcept
-    {
-        if (!m_frames.empty())
-        {
-            try
-            {
-                m_foundry->waitIdle();
-            }
-            catch (vk::SystemError const &)
-            {
-                // Device loss must not escape resource cleanup during destruction.
-            }
-        }
-    }
-
-    void FrameStatePool::reset()
-    {
-        if (m_acquired)
-        {
-            throw std::logic_error("FrameStatePool: cannot reset while a frame is borrowed");
-        }
-        if (!m_frames.empty()) m_foundry->waitIdle();
-        m_frames.clear();
-        m_nextFrame = 0;
-    }
-
-    void FrameStatePool::allocateFrames(uint32_t frameCount)
-    {
-        if (m_acquired)
-        {
-            throw std::logic_error("FrameStatePool: cannot reallocate while a frame is borrowed");
-        }
         if (frameCount == 0)
         {
             throw std::invalid_argument("FrameStatePool: frame count must be positive");
         }
 
-        // Retire old frames before the factory allocates replacements from shared resource pools.
-        reset();
+        CreateFrameFunc createFunc = (createFrameFunc) ? createFrameFunc : defaultCreateFrame;
+
         std::vector<std::unique_ptr<FrameState>> frames;
         frames.reserve(frameCount);
         for (uint32_t i = 0; i < frameCount; ++i)
         {
-            auto frame = m_createFrameFunc(m_foundry);
+            auto frame = createFunc(m_foundry);
             if (!frame) throw std::invalid_argument("FrameStatePool: frame factory returned nullptr");
             frames.push_back(std::move(frame));
         }
         m_frames = std::move(frames);
+    }
+
+    FrameStatePool::~FrameStatePool() noexcept
+    {
+        assert(!m_acquired);
+
+        try
+        {
+            m_foundry->waitIdle();
+        }
+        catch (vk::SystemError const &)
+        {
+            // Device loss must not escape resource cleanup during destruction.
+        }
     }
 
     FrameStateGuard FrameStatePool::acquireFrame()

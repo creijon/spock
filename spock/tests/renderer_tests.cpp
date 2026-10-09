@@ -118,18 +118,26 @@ namespace
     {
     public:
         explicit LinesFrame(spock::FoundryPtr const &foundry)
-            : spock::FrameState(foundry->device(), foundry->commandPool()), lines(foundry, 2) {}
-        spock::DebugLines::FrameData lines;
+            : spock::FrameState(
+                foundry->device(), foundry->commandPool()),
+                lines(foundry, 2 * sizeof(spock::DebugLines::Vertex), vk::BufferUsageFlagBits::eVertexBuffer) {}
+        spock::BufferWrapper lines;
     };
 
     class LinesRenderer : public spock::Renderer
     {
     public:
         explicit LinesRenderer(spock::FoundryPtr const &foundry)
-            : spock::Renderer(foundry, {64, 64}, vk::ClearColorValue(std::array<float, 4>{0, 0, 0, 1}),
-                vk::ClearDepthStencilValue{1, 0}, true,
-                [](auto const &device) { return std::make_unique<LinesFrame>(device); }),
-              lines(foundry, m_renderPass, 2) {}
+            : spock::Renderer(
+                foundry,
+                {64, 64},
+                vk::ClearColorValue(std::array<float, 4>{0, 0, 0, 1}),
+                vk::ClearDepthStencilValue{1, 0})
+            , lines(foundry, m_renderPass, 2)
+        {
+            m_createFrameFunc = [](spock::FoundryPtr const& foundry) { return std::make_unique<LinesFrame>(foundry); };
+        }
+
         ~LinesRenderer() override { waitIdle(); }
         spock::DebugLines lines;
         LinesFrame *lastFrame{nullptr};
@@ -154,20 +162,20 @@ TEST_CASE("DebugLines retains separate geometry in each acquired frame", "[gpu]"
     renderer.renderFrame(std::chrono::microseconds(0));
     auto *firstFrame = renderer.lastFrame;
     std::array<spock::DebugLines::Vertex, 2> firstVertices;
-    std::memcpy(firstVertices.data(), firstFrame->lines.vertexBuffer.map(), sizeof(firstVertices));
+    std::memcpy(firstVertices.data(), firstFrame->lines.map(), sizeof(firstVertices));
     renderer.lines.clear();
     renderer.lines.addLine({0, 0, 0}, {0, 1, 0}, {0, 1, 0, 1});
     renderer.renderFrame(std::chrono::microseconds(1 * 16666));
     REQUIRE(renderer.lastFrame != firstFrame);
-    CHECK(*renderer.lastFrame->lines.vertexBuffer.buffer() != *firstFrame->lines.vertexBuffer.buffer());
-    CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.vertexBuffer.map(), sizeof(firstVertices)) == 0);
+    CHECK(*renderer.lastFrame->lines.buffer() != *firstFrame->lines.buffer());
+    CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.map(), sizeof(firstVertices)) == 0);
     // No new geometry is added: the third frame must still receive the same current lines.
     auto *secondFrame = renderer.lastFrame;
     renderer.renderFrame(std::chrono::microseconds(2 * 16666));
-    CHECK(std::memcmp(secondFrame->lines.vertexBuffer.map(), renderer.lastFrame->lines.vertexBuffer.map(), sizeof(firstVertices)) == 0);
+    CHECK(std::memcmp(secondFrame->lines.map(), renderer.lastFrame->lines.map(), sizeof(firstVertices)) == 0);
     renderer.renderFrame(std::chrono::microseconds(3 * 16666));
     CHECK(renderer.lastFrame == firstFrame);
-    CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.vertexBuffer.map(), sizeof(firstVertices)) != 0);
+    CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.map(), sizeof(firstVertices)) != 0);
 }
 
 TEST_CASE("Renderer returns borrowed frames when command recording throws", "[gpu]")
