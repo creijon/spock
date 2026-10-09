@@ -109,7 +109,7 @@ public:
         spock::BufferWrapper const &splatStorage,
         uint32_t splatCount)
     {
-        // The pool creates frames during Renderer construction and on resize.
+        // The renderer creates frames on the first render after construction, resize or a scene load.
         // Allocate sample resources on first use, after the frame's fence wait.
         if (descriptorSet != nullptr) return;
 
@@ -146,18 +146,19 @@ public:
             extents,
             {0.05f, 0.08f, 0.15f, 1.0f},
             {1.0f, 0},
-            false,
-            [](spock::FoundryPtr const &foundry) {
-                return std::make_unique<SplatFrameState>(foundry);
-            })
+            false)
     {
+        m_createFrameFunc = [](spock::FoundryPtr const& foundry)
+        {
+            return std::make_unique<SplatFrameState>(foundry);
+        };
     }
 
     ~SplatRenderer() override
     {
         waitIdle();
         // Release frame descriptors before destroying the storage buffer they reference.
-        m_framePool->reset();
+        m_framePool.reset();
     }
 
     void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
@@ -201,7 +202,8 @@ public:
     void createResources(SplatScene const& scene)
     {
         waitIdle();
-        m_framePool->allocateFrames(m_framesInFlight);
+        // Drop frames holding resources from the previous scene; renderFrame recreates them with m_createFrameFunc.
+        m_framePool.reset();
         m_splatCount = uint32_t(scene.instances.size());
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(

@@ -136,13 +136,16 @@ namespace
 class DebugLinesFrameState : public spock::FrameState
 {
 public:
-    explicit DebugLinesFrameState(spock::FoundryPtr const &foundry)
+    explicit DebugLinesFrameState(
+        spock::FoundryPtr const &foundry,
+        uint32_t maxLineCount)
         : spock::FrameState(foundry->device(), foundry->commandPool())
-        , lines(foundry)
+        , lines(foundry, maxLineCount * 2 * sizeof(spock::DebugLines::Vertex), vk::BufferUsageFlagBits::eVertexBuffer)
     {
+        
     }
 
-    spock::DebugLines::FrameData lines;
+    spock::BufferWrapper lines;
 };
 
 class DebugLinesRenderer : public spock::Renderer
@@ -156,14 +159,15 @@ public:
             extents,
             {0.02f, 0.02f, 0.05f, 1.0f},
             {1.0f, 0},
-            true,
-            [](spock::FoundryPtr const &foundry) {
-                return std::make_unique<DebugLinesFrameState>(foundry);
-            })
+            true)
         , m_debugLines(foundry, m_renderPass)
-        , m_cubes(makeOrbitingCubes(CUBE_COUNT))
+        , m_cubes(makeOrbitingCubes(CUBE_COUNT))    
         , m_sphereLines(makeSphereLines(ORBIT_RADIUS, SPHERE_SEGMENTS))
     {
+        m_createFrameFunc = [](spock::FoundryPtr const& foundry)
+        {
+            return std::make_unique<DebugLinesFrameState>(foundry, CUBE_COUNT * 12 + SPHERE_SEGMENTS * 3);
+        };
     }
 
     ~DebugLinesRenderer() override
@@ -209,9 +213,9 @@ protected:
             m_extents, eye, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
         m_debugLines.draw(
-			frame.commandBuffer,
-			static_cast<DebugLinesFrameState&>(frame).lines,
-			viewProjection);
+            frame.commandBuffer,
+            static_cast<DebugLinesFrameState&>(frame).lines,
+            viewProjection);
     }
 
 private:

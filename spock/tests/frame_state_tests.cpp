@@ -41,60 +41,45 @@ namespace
     };
 }
 
-TEST_CASE("FrameStatePool rejects empty acquisition and zero allocation", "[gpu][frame-state]")
+TEST_CASE("FrameStatePool rejects a zero frame count", "[gpu][frame-state]")
 {
     auto fixture = spock_test::createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    spock::FrameStatePool pool(fixture->foundry);
-    CHECK_THROWS_AS(pool.acquireFrame(), std::runtime_error);
-    CHECK_THROWS_AS(pool.allocateFrames(0), std::invalid_argument);
-    CHECK_NOTHROW(pool.reset());
+    CHECK_THROWS_AS(spock::FrameStatePool(fixture->foundry, 0), std::invalid_argument);
 }
 
 TEST_CASE("FrameStatePool enforces borrowing and rotates abandoned frames", "[gpu][frame-state]")
 {
     auto fixture = spock_test::createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    spock::FrameStatePool pool(fixture->foundry);
-    pool.allocateFrames(2);
+    spock::FrameStatePool pool(fixture->foundry, 2);
     {
         auto first = pool.acquireFrame();
         CHECK_THROWS_AS(pool.acquireFrame(), std::logic_error);
-        CHECK_THROWS_AS(pool.reset(), std::logic_error);
-        CHECK_THROWS_AS(pool.allocateFrames(2), std::logic_error);
         spock::FrameState foreign(fixture->foundry->device(), fixture->foundry->commandPool());
     }
-
-    pool.reset();
-    CHECK_THROWS_AS(pool.acquireFrame(), std::runtime_error);
 }
 
 TEST_CASE("FrameStatePool rejects null frame factories", "[gpu][frame-state]")
 {
     auto fixture = spock_test::createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    spock::FrameStatePool pool(fixture->foundry, [](auto const &) -> std::unique_ptr<spock::FrameState> {
+    CHECK_THROWS_AS(spock::FrameStatePool(fixture->foundry, 2, [](auto const &) -> std::unique_ptr<spock::FrameState> {
         return nullptr;
-    });
-    CHECK_THROWS_AS(pool.allocateFrames(2), std::invalid_argument);
-    CHECK_THROWS_AS(pool.acquireFrame(), std::runtime_error);
+    }), std::invalid_argument);
 }
 
-TEST_CASE("FrameStatePool reset and destruction wait before destroying GPU resources", "[gpu][frame-state]")
+TEST_CASE("FrameStatePool destruction waits before destroying GPU resources", "[gpu][frame-state]")
 {
     auto fixture = spock_test::createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
     auto event = fixture->foundry->device().createEvent({});
     std::atomic<int> destroyed{0};
-    auto pool = std::make_unique<spock::FrameStatePool>(fixture->foundry, [&destroyed](auto const &foundry) {
+    auto pool = std::make_unique<spock::FrameStatePool>(fixture->foundry, 1, [&destroyed](auto const &foundry) {
         return std::make_unique<TrackedFrame>(foundry, destroyed);
     });
-    pool->allocateFrames(1);
     submitWaitingFrame(*pool, *fixture->foundry, event);
-    std::future<void> waiter;
-    SECTION("reset") { waiter = std::async(std::launch::async, [&pool] { pool->reset(); }); }
-    SECTION("reallocation") { waiter = std::async(std::launch::async, [&pool] { pool->allocateFrames(2); }); }
-    SECTION("destruction") { waiter = std::async(std::launch::async, [owned = std::move(pool)]() mutable { owned.reset(); }); }
+    auto waiter = std::async(std::launch::async, [owned = std::move(pool)]() mutable { owned.reset(); });
     auto status = waiter.wait_for(50ms);
     auto destroyedBeforeSignal = destroyed.load();
     event.set();

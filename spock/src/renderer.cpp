@@ -14,14 +14,12 @@ namespace spock
         vk::Extent2D const &extents,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
-        bool useDepthBuffer,
-        FrameStatePool::CreateFrameFunc const &createFrameFunc)
+        bool useDepthBuffer)
         : m_foundry(foundry)
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
     {
-        m_framePool = std::make_unique<FrameStatePool>(foundry, createFrameFunc);
         resizeWindow(extents);
     }
 
@@ -36,9 +34,13 @@ namespace spock
     {
         m_inFlightIndex = 0;
 
-        // Reset waits for GPU completion before any render targets are destroyed.
-        m_framePool->reset();
-        if (m_presenter) m_presenter->clearFramebuffers();
+        // Tearing down the FrameStatePool waits for GPU completion.
+        m_framePool.reset();
+
+        if (m_presenter)
+        {
+            m_presenter->clearFramebuffers();
+        }
         m_depthBuffer = DepthBufferWrapper();
         m_renderPass = nullptr;
 
@@ -65,7 +67,7 @@ namespace spock
             m_presenter->colorFormat(),
             m_useDepthBuffer ? m_depthBuffer.format() : vk::Format::eUndefined);
 
-        m_framePool->allocateFrames(m_framesInFlight);
+        // Frames are allocated by the next renderFrame, so a derived constructor can set m_createFrameFunc first.
         m_presenter->createFramebuffers(m_renderPass, m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr);
     }
 
@@ -77,6 +79,14 @@ namespace spock
     vk::Result Renderer::renderFrame(std::chrono::microseconds frameTime)
     {
         m_frameTime = frameTime;
+
+        if (!m_framePool)
+        {
+            // If this is the first frame or the window has been resized,
+            // allocate the frames now that the swapchain and render pass exist.
+            m_framePool = std::make_unique<FrameStatePool>(m_foundry, m_framesInFlight, m_createFrameFunc);
+        }
+
         FrameStateGuard frameState = m_framePool->acquireFrame();
         vk::Result acquireResult = m_presenter->acquireFrame(frameState.get());
 

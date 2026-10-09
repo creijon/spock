@@ -33,12 +33,6 @@ namespace spock
             glm::vec4 color;
         };
 
-        struct FrameData
-        {
-            explicit FrameData(FoundryPtr const &foundry, size_t maxLineCount = 1024);
-            BufferWrapper vertexBuffer;
-        };
-
         DebugLines(
             FoundryPtr const &foundry,
             vk::raii::RenderPass const& renderPass,
@@ -50,7 +44,7 @@ namespace spock
         // FrameData must belong to a frame whose fence has completed.
         void draw(
             vk::raii::CommandBuffer const& commandBuffer,
-            FrameData &frameData,
+            BufferWrapper const& frameData,
             glm::mat4 const& viewProjection);
 
         size_t lineCount() const

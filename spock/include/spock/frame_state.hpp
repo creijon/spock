@@ -36,15 +36,12 @@ namespace spock
     {
     public:
         using CreateFrameFunc = std::function<std::unique_ptr<FrameState>(FoundryPtr const&)>;
+
         FrameStatePool(
             FoundryPtr const &foundry,
+            uint32_t frameCount,
             CreateFrameFunc const &createFrameFunc = nullptr);
         ~FrameStatePool() noexcept;
-
-        // Wait for the device to become idle before destroying frames. No frame may be borrowed.
-        // Reset/reallocation invalidates all references to the previous frames.
-        void reset();
-        void allocateFrames(uint32_t frameCount);
 
         // Acquire the next frame state in the rotation.
         // Blocks until the GPU has finished with it, so its resources are safe to rewrite.
@@ -59,7 +56,6 @@ namespace spock
         void releaseFrame(FrameState &frame);
 
         FoundryPtr m_foundry;
-        CreateFrameFunc m_createFrameFunc;
         std::vector<std::unique_ptr<FrameState>> m_frames;
         std::size_t m_nextFrame{0};
         bool m_acquired{false};

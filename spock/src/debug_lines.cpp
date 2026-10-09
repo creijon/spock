@@ -55,11 +55,6 @@ void main()
         };
     }
 
-    DebugLines::FrameData::FrameData(FoundryPtr const &foundry, size_t maxLineCount)
-        : vertexBuffer(foundry, maxLineCount * 2 * sizeof(Vertex), vk::BufferUsageFlagBits::eVertexBuffer)
-    {
-    }
-
     DebugLines::DebugLines(
         FoundryPtr const &foundry,
         vk::raii::RenderPass const& renderPass,
@@ -117,7 +112,7 @@ void main()
 
     void DebugLines::draw(
         vk::raii::CommandBuffer const& commandBuffer,
-        FrameData &frameData,
+        BufferWrapper const& frameData,
         glm::mat4 const& viewProjection)
     {
         if (m_vertices.empty())
@@ -125,19 +120,19 @@ void main()
             return;
         }
 
-        if (m_vertices.size() * sizeof(Vertex) > frameData.vertexBuffer.size())
+        if (m_vertices.size() * sizeof(Vertex) > frameData.size())
         {
             throw std::length_error("DebugLines frame buffer capacity exceeded");
         }
         // The caller has waited for this frame's fence; other frames keep their own copies.
-        frameData.vertexBuffer.upload(m_vertices);
+        frameData.upload(m_vertices);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline);
         pushConstants(
             commandBuffer,
             m_pipelineLayout,
             vk::ShaderStageFlagBits::eVertex,
             PushConstants{viewProjection});
-        commandBuffer.bindVertexBuffers(0, {*frameData.vertexBuffer.buffer()}, {0});
+        commandBuffer.bindVertexBuffers(0, {*frameData.buffer()}, {0});
         commandBuffer.draw(static_cast<uint32_t>(m_vertices.size()), 1, 0, 0);
     }
 } // namespace spock
