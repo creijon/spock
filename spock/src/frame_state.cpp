@@ -7,12 +7,14 @@
 #include "spock/foundry.hpp"
 
 #include <cassert>
-#include <limits>
+#include <chrono>
 #include <stdexcept>
 #include <utility>
 
 namespace
 {
+    constexpr std::chrono::nanoseconds FENCE_TIMEOUT{std::chrono::seconds(5)};
+
     std::unique_ptr<spock::FrameState> defaultCreateFrame(spock::FoundryPtr const &foundry)
     {
         return std::make_unique<spock::FrameState>(foundry->device(), foundry->commandPool());
@@ -75,16 +77,12 @@ namespace spock
         {
             throw std::logic_error("FrameStatePool: a frame is already borrowed");
         }
-        if (m_frames.empty())
-        {
-            throw std::runtime_error("FrameStatePool: no frames have been allocated");
-        }
         FrameState &frame = *m_frames[m_nextFrame];
 
         vk::Result waitResult = m_foundry->device().waitForFences(
             { frame.fence },
             VK_TRUE,
-            std::numeric_limits<uint64_t>::max());
+            static_cast<uint64_t>(FENCE_TIMEOUT.count()));
         if (waitResult != vk::Result::eSuccess)
         {
             throw std::runtime_error("FrameStatePool: waiting for the frame fence failed: " + vk::to_string(waitResult));
@@ -95,8 +93,11 @@ namespace spock
         return {(*this), frame};
     }
 
-    void FrameStatePool::releaseFrame(FrameState &frame)
+    void FrameStatePool::releaseFrame([[maybe_unused]] FrameState &frame) noexcept
     {
+        assert(m_acquired);
+        assert(&frame == m_frames[m_nextFrame].get());
+
         m_acquired = false;
         m_nextFrame = (m_nextFrame + 1) % m_frames.size();
     }

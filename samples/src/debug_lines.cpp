@@ -170,11 +170,6 @@ public:
         };
     }
 
-    ~DebugLinesRenderer() override
-    {
-        waitIdle();
-    }
-
 protected:
     void render(spock::FrameState &frame) override
     {

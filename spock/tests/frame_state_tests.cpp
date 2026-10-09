@@ -11,8 +11,23 @@
 #include <future>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 
 using namespace std::chrono_literals;
+
+// Guards are only created by the pool, and neither pools nor guards can be copied or moved.
+static_assert(!std::is_constructible_v<spock::FrameStateGuard, spock::FrameStatePool &, spock::FrameState &>);
+static_assert(!std::is_copy_constructible_v<spock::FrameStateGuard>);
+static_assert(!std::is_move_constructible_v<spock::FrameStateGuard>);
+static_assert(!std::is_move_assignable_v<spock::FrameStateGuard>);
+static_assert(!std::is_copy_constructible_v<spock::FrameStatePool>);
+static_assert(!std::is_move_constructible_v<spock::FrameStatePool>);
+static_assert(!std::is_move_assignable_v<spock::FrameStatePool>);
+
+// The handles the pool and presenter rely on cannot be reassigned or moved from.
+static_assert(std::is_const_v<decltype(spock::FrameState::commandBuffer)>);
+static_assert(std::is_const_v<decltype(spock::FrameState::semaphore)>);
+static_assert(std::is_const_v<decltype(spock::FrameState::fence)>);
 
 namespace
 {
@@ -56,7 +71,6 @@ TEST_CASE("FrameStatePool enforces borrowing and rotates abandoned frames", "[gp
     {
         auto first = pool.acquireFrame();
         CHECK_THROWS_AS(pool.acquireFrame(), std::logic_error);
-        spock::FrameState foreign(fixture->foundry->device(), fixture->foundry->commandPool());
     }
 }
 

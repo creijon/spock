@@ -54,7 +54,6 @@ namespace spock
 
         std::chrono::microseconds m_frameTime{0};
         uint32_t m_frameCount{0};
-        uint32_t m_inFlightIndex{0};
 
         const vk::ClearColorValue m_clearColor;
         const vk::ClearDepthStencilValue m_clearDepthStencil;

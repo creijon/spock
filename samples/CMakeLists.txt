@@ -51,11 +51,13 @@ if (PKG_CONFIG_FOUND)
 endif()
 
 if (FFMPEG_FOUND)
-    add_sample_target(videoplayer ${CMAKE_CURRENT_SOURCE_DIR}/src/videoplayer.cpp)
-    target_link_libraries(videoplayer PRIVATE PkgConfig::FFMPEG)
-    set_target_properties(videoplayer PROPERTIES FOLDER "samples")
+    add_sample_target(video_player
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_player.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_decoder.cpp)
+    target_link_libraries(video_player PRIVATE PkgConfig::FFMPEG)
+    set_target_properties(video_player PROPERTIES FOLDER "samples")
 else()
-    message(STATUS "FFmpeg not found, skipping the videoplayer sample")
+    message(STATUS "FFmpeg not found, skipping the video_player sample")
 endif()
 
 set_target_properties(
