@@ -48,6 +48,29 @@ namespace spock
         std::vector<vk::VertexInputAttributeDescription> m_attributes;
     };
 
+    // Small RAII wrapper for a command buffer that automatically begins and ends the render pass and command buffer.
+    class CommandBufferWrapper final
+    {
+    public:
+        CommandBufferWrapper(
+            vk::raii::CommandBuffer const &commandBuffer,
+            vk::RenderPassBeginInfo const &renderPassBeginInfo)
+            : m_commandBuffer(commandBuffer)
+        {
+            m_commandBuffer.begin({});
+            m_commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+        }
+
+        ~CommandBufferWrapper()
+        {
+            m_commandBuffer.endRenderPass();
+            m_commandBuffer.end();
+        }
+
+    private:
+        vk::raii::CommandBuffer const &m_commandBuffer;
+    };
+
     // VertexType must provide static method attributes() returning
     // (vk::Format, offset) pairs, where each offset is relative to VertexType.
     template <typename VertexType>

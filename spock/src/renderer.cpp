@@ -94,39 +94,33 @@ namespace spock
             return acquireResult;
         }
 
-        // Begin the render pass.
-        auto& commandBuffer = frameState.commandBuffer;
+        {
+            // Begin the render pass.
+            vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
 
-        commandBuffer.begin({});
+            vk::RenderPassBeginInfo renderPassBeginInfo(
+                m_renderPass,
+                m_presenter->framebuffer(frameState.imageIndex),
+                vk::Rect2D(vk::Offset2D(0, 0), m_extents),
+                clearValues);
 
-        vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
+            CommandBufferWrapper commandBuffer(
+                frameState.commandBuffer,
+                renderPassBeginInfo);
 
-        vk::RenderPassBeginInfo renderPassBeginInfo(
-            m_renderPass,
-            m_presenter->framebuffer(frameState.imageIndex),
-            vk::Rect2D(vk::Offset2D(0, 0), m_extents),
-            clearValues);
-        commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+            // Setup the viewport and scissor rectangle.
+            frameState.commandBuffer.setViewport(
+                0, vk::Viewport(0.0f,
+                    0.0f,
+                    static_cast<float>(m_extents.width),
+                    static_cast<float>(m_extents.height),
+                    0.0f,
+                    1.0f));
+            frameState.commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
 
-        // Setup the viewport and scissor rectangle.
-        commandBuffer.setViewport(
-            0, vk::Viewport(0.0f,
-                0.0f,
-                static_cast<float>(m_extents.width),
-                static_cast<float>(m_extents.height),
-                0.0f,
-                1.0f));
-        commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
-
-        // The derived class renders using the current frame state.
-        render(frameState);
-
-        // End the render pass and submit the command buffer.
-		// TODO:
-		// Create an RAII wrapper for command buffers that automatically ends the render pass and command buffer on destruction.
-		// That would allow the derived class to throw exceptions during rendering without leaking resources or leaving the command buffer in an invalid state.
-        commandBuffer.endRenderPass();
-        commandBuffer.end();
+            // The derived class renders using the current frame state.
+            render(frameState);
+        }
 
         vk::Result result = m_presenter->presentFrame(frameState);
 
