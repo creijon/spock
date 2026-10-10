@@ -1,11 +1,9 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
-// Plays a video file decoded by FFmpeg, based on the QUAD sample.
+// Plays a video file decoded by FFmpeg, based on the Quad sample.
 // Each decoded YUV 4:2:0 frame is written straight into persistently mapped, linearly tiled
 // Y, U and V textures, which the fragment shader samples and converts to RGB.
-// There is one set of textures per frame in flight, so the CPU never writes to a texture
-// the GPU may still be reading.
 //
 // Usage: videoplayer <video file>
 

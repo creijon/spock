@@ -77,7 +77,6 @@ namespace spock
         }
 
     private:
-        // Only the pool creates guards, so every release matches an acquisition.
         friend class FrameStatePool;
 
         FrameStateGuard(FrameStatePool& pool, FrameState& frame)

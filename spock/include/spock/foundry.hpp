@@ -24,7 +24,6 @@ namespace spock
     // Helps to simplify the calling convention for the wrappers, presenter, renderer etc.  But doesn't own them.
     // It lives in the app, next to the renderer.
     // The danger is that it becomes a bit of a god class, so I've kept the functionality to a minimum.
-    // Initially just pass it around and use the accessors, then move functions in where they make sense.
     class Foundry final
     {
     public:
