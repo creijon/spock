@@ -4,6 +4,7 @@
 #pragma once
 
 #include "helpers.hpp"
+#include "types.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -79,14 +80,6 @@ namespace spock
         }
 
     private:
-        void selectPhysicalDeviceAndQueueFamilies(
-            vk::raii::Instance const& instance,
-            vk::QueueFlags requiredQueues,
-            vk::PhysicalDeviceType preferredDevice,
-            std::vector<char const*> const& requiredExtensions);
-
-        std::vector<vk::DeviceQueueCreateInfo> uniqueCreateInfos() const;
-
         vk::raii::PhysicalDevice m_physicalDevice{nullptr};
         vk::raii::SurfaceKHR m_surface{nullptr};
         vk::raii::Device m_device{nullptr};
@@ -100,9 +93,6 @@ namespace spock
         vk::raii::Queue m_computeQueue{nullptr};
         vk::raii::Queue m_transferQueue{nullptr};
 
-        uint32_t m_graphicsFamily{0};
-        uint32_t m_presentFamily{0};
-        uint32_t m_computeFamily{0};
-        uint32_t m_transferFamily{0};
+        QueueFamilies m_queueFamilies;
     };
 }
