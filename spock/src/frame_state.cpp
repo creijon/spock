@@ -46,15 +46,15 @@ namespace spock
 
         CreateFrameFunc createFunc = (createFrameFunc) ? createFrameFunc : defaultCreateFrame;
 
-        std::vector<std::unique_ptr<FrameState>> frames;
-        frames.reserve(frameCount);
+        m_frames.clear();
         for (uint32_t i = 0; i < frameCount; ++i)
         {
-            auto frame = createFunc(m_foundry);
-            if (!frame) throw std::invalid_argument("FrameStatePool: frame factory returned nullptr");
-            frames.push_back(std::move(frame));
+            m_frames.emplace_back(createFunc(m_foundry));
+            if (!m_frames.back())
+            {
+                throw std::invalid_argument("FrameStatePool: frame factory returned nullptr");
+            }
         }
-        m_frames = std::move(frames);
     }
 
     FrameStatePool::~FrameStatePool() noexcept
