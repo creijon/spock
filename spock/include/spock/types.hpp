@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 // This header is intentionally minimal:
@@ -16,4 +17,12 @@ namespace spock
     class Foundry;
 
     using FoundryPtr = std::shared_ptr<const Foundry>;
+
+    struct QueueFamilies
+    {
+        uint32_t graphics;
+        uint32_t present;
+        uint32_t compute;
+        uint32_t transfer;
+    };
 }

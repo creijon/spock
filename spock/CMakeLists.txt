@@ -10,6 +10,7 @@ set(SOURCE
     src/camera.cpp
     src/creators.cpp
     src/debug_lines.cpp
+    src/device_selector.cpp
     src/file_watcher.cpp
     src/foundry.cpp
     src/frame_state.cpp
@@ -29,6 +30,7 @@ set(HEADERS
     include/spock/camera.hpp
     include/spock/creators.hpp
     include/spock/debug_lines.hpp
+    include/spock/device_selector.hpp
     include/spock/file_watcher.hpp
     include/spock/foundry.hpp
     include/spock/frame_state.hpp
