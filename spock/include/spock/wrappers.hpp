@@ -48,23 +48,40 @@ namespace spock
         std::vector<vk::VertexInputAttributeDescription> m_attributes;
     };
 
-    // Small RAII wrapper for a command buffer that automatically begins and ends the render pass and command buffer.
+    // Small RAII wrapper that automatically begins and ends recording a command buffer.
     class CommandBufferWrapper final
     {
     public:
-        CommandBufferWrapper(
-            vk::raii::CommandBuffer const &commandBuffer,
-            vk::RenderPassBeginInfo const &renderPassBeginInfo)
+        explicit CommandBufferWrapper(vk::raii::CommandBuffer const &commandBuffer)
             : m_commandBuffer(commandBuffer)
         {
             m_commandBuffer.begin({});
-            m_commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
         }
 
         ~CommandBufferWrapper()
         {
-            m_commandBuffer.endRenderPass();
             m_commandBuffer.end();
+        }
+
+    private:
+        vk::raii::CommandBuffer const &m_commandBuffer;
+    };
+
+    // Small RAII wrapper that automatically begins and ends a render pass in a command buffer.
+    class RenderPassWrapper final
+    {
+    public:
+        RenderPassWrapper(
+            vk::raii::CommandBuffer const &commandBuffer,
+            vk::RenderPassBeginInfo const &renderPassBeginInfo)
+            : m_commandBuffer(commandBuffer)
+        {
+            m_commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+        }
+
+        ~RenderPassWrapper()
+        {
+            m_commandBuffer.endRenderPass();
         }
 
     private:
