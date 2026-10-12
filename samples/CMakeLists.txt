@@ -44,10 +44,12 @@ add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/src/debug_lines.cpp)
 add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_cube.cpp)
 add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_sphere.cpp)
 
-# The video player needs FFmpeg, so it is only built when the libraries are found.
+# The video players need FFmpeg, so they are only built when the libraries are found.
 find_package(PkgConfig)
 if (PKG_CONFIG_FOUND)
     pkg_check_modules(FFMPEG IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
+    # Sharing spock's Vulkan device needs the queue family list added in FFmpeg 7.1 (libavutil 59.34).
+    pkg_check_modules(FFMPEG_VULKAN IMPORTED_TARGET libavformat libavcodec libavutil>=59.34.100)
 endif()
 
 if (FFMPEG_FOUND)
@@ -58,6 +60,16 @@ if (FFMPEG_FOUND)
     set_target_properties(video_player PROPERTIES FOLDER "samples")
 else()
     message(STATUS "FFmpeg not found, skipping the video_player sample")
+endif()
+
+if (FFMPEG_VULKAN_FOUND)
+    add_sample_target(vulkan_video_player
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan_video_player.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/vulkan_video_decoder.cpp)
+    target_link_libraries(vulkan_video_player PRIVATE PkgConfig::FFMPEG_VULKAN)
+    set_target_properties(vulkan_video_player PROPERTIES FOLDER "samples")
+else()
+    message(STATUS "FFmpeg 7.1 or later not found, skipping the vulkan_video_player sample")
 endif()
 
 set_target_properties(

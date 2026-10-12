@@ -25,7 +25,7 @@ namespace spock
 
     Renderer::~Renderer()
     {
-        waitIdle();
+        m_foundry->waitIdleNoThrow();
         // Renderer owns the render pass and depth attachment referenced by Presenter's framebuffers.
         if (m_presenter) m_presenter->clearFramebuffers();
     }
@@ -85,7 +85,7 @@ namespace spock
         }
 
         FrameStateGuard frameGuard = m_framePool->acquireFrame();
-		FrameState &frameState = frameGuard.get();
+        FrameState &frameState = frameGuard.get();
         vk::Result acquireResult = m_presenter->acquireFrame(frameState);
 
         // If image acquisition failed, skip rendering and presentation.
@@ -95,6 +95,11 @@ namespace spock
         }
 
         {
+            CommandBufferWrapper commandBuffer(frameState.commandBuffer);
+
+            // The derived class records anything that has to happen outside the render pass.
+            prepare(frameState);
+
             // Begin the render pass.
             vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
 
@@ -104,7 +109,7 @@ namespace spock
                 vk::Rect2D(vk::Offset2D(0, 0), m_extents),
                 clearValues);
 
-            CommandBufferWrapper commandBuffer(
+            RenderPassWrapper renderPass(
                 frameState.commandBuffer,
                 renderPassBeginInfo);
 

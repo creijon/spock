@@ -11,6 +11,7 @@
 #include <limits>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 namespace spock
 {
@@ -120,12 +121,39 @@ namespace spock
 
     vk::Result Presenter::presentFrame(FrameState &frame)
     {
-        vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        std::vector<vk::Semaphore> waitSemaphores{ *frame.semaphore };
+        std::vector<vk::PipelineStageFlags> waitStages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        std::vector<uint64_t> waitValues{ 0 };
+        for (FrameState::SemaphoreWait const &wait : frame.extraWaitSemaphores)
+        {
+            waitSemaphores.push_back(wait.semaphore);
+            waitStages.push_back(wait.stageMask);
+            waitValues.push_back(wait.value);
+        }
+
+        std::vector<vk::Semaphore> signalSemaphores{ *m_renderSemaphores[frame.imageIndex] };
+        std::vector<uint64_t> signalValues{ 0 };
+        for (FrameState::SemaphoreSignal const &signal : frame.extraSignalSemaphores)
+        {
+            signalSemaphores.push_back(signal.semaphore);
+            signalValues.push_back(signal.value);
+        }
+
         vk::SubmitInfo submitInfo(
-            *frame.semaphore,
+            waitSemaphores,
             waitStages,
             *frame.commandBuffer,
-            *m_renderSemaphores[frame.imageIndex]);
+            signalSemaphores);
+
+        // The values are ignored for the binary swapchain semaphores.
+        vk::TimelineSemaphoreSubmitInfo timelineSubmitInfo(waitValues, signalValues);
+        if (!frame.extraWaitSemaphores.empty() || !frame.extraSignalSemaphores.empty())
+        {
+            submitInfo.pNext = &timelineSubmitInfo;
+        }
+
+        frame.extraWaitSemaphores.clear();
+        frame.extraSignalSemaphores.clear();
 
         m_foundry->device().resetFences({ frame.fence });
         m_foundry->graphicsQueue().submit(submitInfo, frame.fence);

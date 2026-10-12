@@ -23,11 +23,29 @@ namespace spock
         FrameState(vk::raii::Device const &device, vk::raii::CommandPool const &commandPool);
         virtual ~FrameState() = default;
 
+        struct SemaphoreWait
+        {
+            vk::Semaphore semaphore;
+            uint64_t value{0};
+            vk::PipelineStageFlags stageMask;
+        };
+
+        struct SemaphoreSignal
+        {
+            vk::Semaphore semaphore;
+            uint64_t value{0};
+        };
+
         vk::raii::CommandBuffer const commandBuffer{nullptr};
         vk::raii::Semaphore const semaphore{nullptr};
         vk::raii::Fence const fence{nullptr};
 
         uint32_t imageIndex{0}; // The index of this frame in the swapchain.
+
+        // Semaphores for the frame's submission to wait on and signal, in addition to the swapchain ones.
+        // Allows synchronisation between queues.
+        std::vector<SemaphoreWait> extraWaitSemaphores;
+        std::vector<SemaphoreSignal> extraSignalSemaphores;
     };
 
     class FrameStateGuard;
