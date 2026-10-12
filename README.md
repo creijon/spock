@@ -76,7 +76,8 @@ classDiagram
     FrameStatePool *-- "framesInFlight" FrameState
     FrameStatePool ..> FrameStateGuard : returns
     FrameStateGuard --> FrameState : borrows
-    Presenter ..> FrameState : acquires and presents
+    Renderer ..> FrameState : acquires
+    Presenter ..> FrameState : presents
 ```
 
 ### Frame lifecycle
