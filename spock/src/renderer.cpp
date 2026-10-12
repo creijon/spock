@@ -85,7 +85,7 @@ namespace spock
         }
 
         FrameStateGuard frameGuard = m_framePool->acquireFrame();
-		FrameState &frameState = frameGuard.get();
+        FrameState &frameState = frameGuard.get();
         vk::Result acquireResult = m_presenter->acquireFrame(frameState);
 
         // If image acquisition failed, skip rendering and presentation.

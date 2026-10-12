@@ -159,20 +159,20 @@ namespace spock
                 continue;
             }
 
-			queueFamilies.compute = queueFamilies.graphics;
+            queueFamilies.compute = queueFamilies.graphics;
             if (requiredQueues & vk::QueueFlagBits::eCompute)
             {
-				auto compute = findQueueFamilyIndexFallback(
-					queueFamilyProperties,
-					vk::QueueFlagBits::eCompute,
-					vk::QueueFlagBits::eGraphics);
-				
-				if (!compute.has_value())
+                auto compute = findQueueFamilyIndexFallback(
+                    queueFamilyProperties,
+                    vk::QueueFlagBits::eCompute,
+                    vk::QueueFlagBits::eGraphics);
+                
+                if (!compute.has_value())
                 {
-					continue;
+                    continue;
                 }
 
-				queueFamilies.compute = compute.value();
+                queueFamilies.compute = compute.value();
             }
 
             // Graphics families always support transfer, so we only need to look for a dedicated family.
@@ -190,22 +190,22 @@ namespace spock
                 }
             }
 
-			queueFamilies.videoDecode = queueFamilies.graphics;
-			if (requiredQueues & vk::QueueFlagBits::eVideoDecodeKHR)
-			{
-				auto videoDecode = findQueueFamilyIndexFallback(
-					queueFamilyProperties,
-					vk::QueueFlagBits::eVideoDecodeKHR,
-					vk::QueueFlagBits::eGraphics);
+            queueFamilies.videoDecode = queueFamilies.graphics;
+            if (requiredQueues & vk::QueueFlagBits::eVideoDecodeKHR)
+            {
+                auto videoDecode = findQueueFamilyIndexFallback(
+                    queueFamilyProperties,
+                    vk::QueueFlagBits::eVideoDecodeKHR,
+                    vk::QueueFlagBits::eGraphics);
 
-				if (!videoDecode.has_value())
+                if (!videoDecode.has_value())
                 {
-					// Video decode isn't supported by this device.
+                    // Video decode isn't supported by this device.
                     continue;
                 }
 
-				queueFamilies.videoDecode = videoDecode.value();
-			}
+                queueFamilies.videoDecode = videoDecode.value();
+            }
 
             vk::PhysicalDeviceType deviceType = physicalDevice.getProperties().deviceType;
             if (deviceType == preferredDevice)

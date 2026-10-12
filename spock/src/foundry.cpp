@@ -84,10 +84,18 @@ namespace spock
             features);
 
         m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
+        // Graphics and present are always required, because the Foundry always creates a swapchain.
         m_graphicsQueue = vk::raii::Queue(m_device, m_queueFamilies.graphics, 0);
         m_presentQueue = vk::raii::Queue(m_device, m_queueFamilies.present, 0);
-        m_computeQueue = vk::raii::Queue(m_device, m_queueFamilies.compute, 0);
-        m_transferQueue = vk::raii::Queue(m_device, m_queueFamilies.transfer, 0);
+        // The other queues are optional.
+        if (requiredQueues & vk::QueueFlagBits::eCompute)
+        {
+            m_computeQueue = vk::raii::Queue(m_device, m_queueFamilies.compute, 0);
+        }
+        if (requiredQueues & vk::QueueFlagBits::eTransfer)
+        {
+            m_transferQueue = vk::raii::Queue(m_device, m_queueFamilies.transfer, 0);
+        }
         if (requiredQueues & vk::QueueFlagBits::eVideoDecodeKHR)
         {
             m_videoDecodeQueue = vk::raii::Queue(m_device, m_queueFamilies.videoDecode, 0);
