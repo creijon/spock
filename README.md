@@ -20,12 +20,13 @@ The framework is built around a handful of classes, each owning one part of the 
 
 - `App` — owns the `vk::raii::Context` and `vk::raii::Instance`, the `Window`, the `Foundry` and the `Renderer`. `run()` drives a fixed-timestep main loop: poll events, call `update()`, render a frame, then detect window resizes and tell the renderer to rebuild. Subclasses implement `createRenderer()` and `update()`, and can override `createFoundry()` to request extra queues, extensions or device features.
 - `Window` — owns the platform window and its input state (cursor, mouse buttons, scroll wheel). GLFW is an implementation detail confined to `window.cpp`.
-- `Foundry` — owns the physical device, surface, logical device, queues (graphics, present, compute, transfer) and their command pools, and creates swapchains for the surface. It delegates the choice of physical device to `selectDevice()` and keeps the resulting `QueueFamilies`, which record the family index used for each of the four queues.
+- `Foundry` — owns the physical device, surface, logical device, queues (graphics, present, compute, transfer, and video decode when requested) and their command pools, and creates swapchains for the surface. It delegates the choice of physical device to `selectDevice()` and keeps the resulting `QueueFamilies`, which record the family index used for each queue, along with the device extensions it enabled.
 - `selectDevice()` — used by the `Foundry` to enumerate physical devices and select the best one that meets the required extensions.  It returns the winning `vk::raii::PhysicalDevice` and its `QueueFamilies`.
-- `Renderer` — owns the render pass, optional depth buffer, `Presenter` and `FrameStatePool`. `renderFrame()` acquires a frame, begins the render pass, sets the viewport and scissor, then calls the pure virtual `render(FrameState&)` for the subclass to record its draw commands. `resizeWindow()` tears everything down and rebuilds it at the new extent.
+- `Renderer` — owns the render pass, optional depth buffer, `Presenter` and `FrameStatePool`. `renderFrame()` acquires a frame, calls the virtual `prepare(FrameState&)` for the subclass to record anything that must come before the render pass, such as layout transitions, then begins the render pass, sets the viewport and scissor, and calls the pure virtual `render(FrameState&)` for the subclass to record its draw commands. `resizeWindow()` tears everything down and rebuilds it at the new extent.
 - `Presenter` — owns the swapchain, its image views, the framebuffers and the per-image render-finished semaphores. `acquireFrame()` and `presentFrame()` handle swapchain image acquisition, queue submission and presentation for a `FrameState`.
-- `FrameState` - the set of per-frame resources (command buffer, semaphore, fence, etc) for one frame in flight.  To extend, subclass `FrameState` and add per-frame resources such as dynamic vertex buffers or descriptor sets.  Then set the `m_createFrameFunc` function in your renderer's constructor to create this new class.
-- `FrameStatePool` - owns a fixed array of `FrameState` and rotates through them as the frames are rendered; `acquireFrame()` waits on the frame's fence so the CPU never touches resources that the GPU is still using. The `FrameStateGuard` returns the frame to the pool when it goes out of scope, even if recording throws.
+- `FrameState` - the set of per-frame resources (command buffer, semaphore, fence, etc) for one frame in flight.  A renderer can add semaphores to wait on or signal, to synchronize with other queues.  To extend, subclass and add per-frame resources such as dynamic vertex buffers or descriptor sets.
+- `FrameStatePool` - owns a fixed array of `FrameState` and rotates through them as the frames are rendered; `acquireFrame()` waits on the frame's fence so the CPU never touches resources that the GPU is still using.
+- `FrameStateGuard` - returns the `FrameState` to the pool when it goes out of scope, even if recording throws.
 
 ```mermaid
 classDiagram
@@ -87,9 +88,11 @@ Each iteration of `App::run()` does the following:
 1. `Window::pollEvents()` and `App::update()` (the subclass updates its simulation and camera).
 2. `Renderer::renderFrame()` lazily creates the `FrameStatePool` on the first frame (or after a resize), then borrows the next `FrameState`, waiting on its fence.
 3. `Presenter::acquireFrame()` acquires the next swapchain image, signalling the frame's semaphore.
-4. A `CommandBufferWrapper` begins the command buffer and render pass; the viewport and scissor are set from the swapchain extent; `render(frame)` records the subclass's commands; the wrapper ends the render pass and command buffer.
-5. `Presenter::presentFrame()` submits the command buffer to the graphics queue, signalling the frame's fence, and presents the image on the present queue.
-6. Back in `App`, a changed framebuffer size or a suboptimal/out-of-date result triggers `Renderer::resizeWindow()`, which waits for the GPU, rebuilds the swapchain (handing the old one over to the new `Presenter`), depth buffer, render pass, framebuffers and frame pool.
+4. A `CommandBufferWrapper` begins the command buffer and render pass; the viewport and scissor are set from the swapchain extent.
+5. `Renderer::prepare()` records commands that must come before the render pass, such as image layout transitions.
+6. `Renderer::render()` records the subclass's commands; the wrapper ends the render pass and command buffer.
+7. `Presenter::presentFrame()` submits the command buffer to the graphics queue, signalling the frame's fence, and presents the image on the present queue.
+8. Back in `App`, a changed framebuffer size or a suboptimal/out-of-date result triggers `Renderer::resizeWindow()`, which waits for the GPU, rebuilds the swapchain (handing the old one over to the new `Presenter`), depth buffer, render pass, framebuffers and frame pool.
 
 ### Resource wrappers and helpers
 
@@ -135,18 +138,19 @@ classDiagram
 
 ## Samples
 
-There are a set of samples which demonstrate functions of Vulkan and the framework. These will continue to be expanded.
+There are a set of samples which demonstrate functions of Vulkan and the framework:
 
 - `cube` — a completely self-contained renderer: the cube geometry and both shaders are defined inline in the source, with no external asset or shader files to load.
 - `quad` — an even simpler example: a single textured quad, useful as a basis for 2D samples.
-- `shaderlab` — demonstrates automatic shader compilation and hot-reloading via `FileWatcher`. The default shaders implement a simple ShaderToy-like interface, where the fragment shader can be experimented with at runtime.
+- `shaderlab` — demonstrates automatic shader compilation and hot-reloading via `FileWatcher`. The default shaders implement a simple ShaderToy-like interface.
 - `instancing` — renders a 16x16 grid of sprites. The vertex buffer contains a single quad and the instance buffer contains position and color data for each instance.
 - `textured_cube` — extends `cube` by loading a PNG from disk with `Loader::texture` and sampling it through a combined image sampler.
 - `textured_sphere` — generates a sphere by subdividing and normalising the faces of a cube, then projects a cubemap onto it using the normals.
-- `debug_lines` — demonstrates `spock::DebugLines` and per-frame resources: 32 wireframe cubes orbit a sphere, with each frame in flight owning its own line vertex buffer.
-- `compute` — sorts a buffer of random floats on the GPU using VkRadixSort compute shaders on the compute queue, and compares the result and timing against a CPU sort. Overrides `createFoundry()` to request a compute queue and the subgroup size control extension.
-- `splat` — demonstrates instanced rendering and the use of uniform and storage buffers. It implements a basic form of 3D Gaussian Splatting, derived from the tutorial “3D Gaussian Splatting in a Weekend”.
-- `video_player` — decodes a video file with FFmpeg and writes each YUV frame straight into persistently mapped, linearly tiled textures that the fragment shader converts to RGB. Only built when FFmpeg is found via `pkg-config`.
+- `debug_lines` — demonstrates `spock::DebugLines` and per-frame resources.
+- `compute` — sorts a buffer of random floats on the GPU using VkRadixSort compute shaders on the compute queue.
+- `splat` — demonstrates instanced rendering and the use of uniform and storage buffers. Derived from the tutorial “3D Gaussian Splatting in a Weekend”.
+- `video_player` — decodes a video file with FFmpeg and writes each YUV frame straight into persistently mapped. Only built when FFmpeg is found via `pkg-config`.
+- `vulkan_video_player` — decodes a video on the GPU with Vulkan Video and FFmpeg. Only built with FFmpeg 7.1 or later.
 
 ## Building
 
@@ -223,7 +227,7 @@ Installed on your system:
 - Vulkan SDK with Vulkan 1.4 headers (`createInstance` requests `VK_API_VERSION_1_4` by default)
 - OpenGL development libraries
 - TBB (Linux and MacOS only, for the parallel sort in the samples)
-- FFmpeg (`libavformat`, `libavcodec`, `libavutil`, `libswscale`), optional; found via `pkg-config` and only needed for the `video_player` sample
+- FFmpeg (`libavformat`, `libavcodec`, `libavutil`, `libswscale`), optional; found via `pkg-config` and only needed for the `video_player` and `vulkan_video_player` samples. `vulkan_video_player` needs FFmpeg 7.1 or later, built with Vulkan support.
 
 Bundled as git submodules under `deps/` and built as part of the project — no separate installation needed:
 - GLFW
