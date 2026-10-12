@@ -13,7 +13,7 @@
 namespace spock
 {
     // The result of Foundry::createSwapchain.
-    // The extent is the one the swapchain was actually created with, which may differ from srequested.
+    // The extent is the one the swapchain was actually created with, which may differ from requested.
     struct SwapchainInfo
     {
         vk::raii::SwapchainKHR swapchain{nullptr};

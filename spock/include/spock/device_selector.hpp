@@ -12,12 +12,6 @@
 
 namespace spock
 {
-    struct DeviceSelection
-    {
-        vk::raii::PhysicalDevice physicalDevice;
-        QueueFamilies queueFamilies;
-    };
-
     std::pair<vk::raii::PhysicalDevice, QueueFamilies> selectDevice(
         vk::raii::Instance const &instance,
         vk::SurfaceKHR const &windowSurface,

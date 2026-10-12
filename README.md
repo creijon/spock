@@ -20,7 +20,8 @@ The framework is built around a handful of classes, each owning one part of the 
 
 - `App` — owns the `vk::raii::Context` and `vk::raii::Instance`, the `Window`, the `Foundry` and the `Renderer`. `run()` drives a fixed-timestep main loop: poll events, call `update()`, render a frame, then detect window resizes and tell the renderer to rebuild. Subclasses implement `createRenderer()` and `update()`, and can override `createFoundry()` to request extra queues, extensions or device features.
 - `Window` — owns the platform window and its input state (cursor, mouse buttons, scroll wheel). GLFW is an implementation detail confined to `window.cpp`.
-- `Foundry` — owns the physical device, surface, logical device, queues (graphics, present, compute, transfer) and their command pools. It selects the physical device by scoring against the requested queues, extensions and preferred device type, and creates swapchains for the surface.
+- `Foundry` — owns the physical device, surface, logical device, queues (graphics, present, compute, transfer) and their command pools, and creates swapchains for the surface. It delegates the choice of physical device to `selectDevice()` and keeps the resulting `QueueFamilies`, which record the family index used for each of the four queues.
+- `selectDevice()` — used by the `Foundry` to enumerate physical devices and select the best one that meets the required extensions.  It returns the winning `vk::raii::PhysicalDevice` and its `QueueFamilies`.
 - `Renderer` — owns the render pass, optional depth buffer, `Presenter` and `FrameStatePool`. `renderFrame()` acquires a frame, begins the render pass, sets the viewport and scissor, then calls the pure virtual `render(FrameState&)` for the subclass to record its draw commands. `resizeWindow()` tears everything down and rebuilds it at the new extent.
 - `Presenter` — owns the swapchain, its image views, the framebuffers and the per-image render-finished semaphores. `acquireFrame()` and `presentFrame()` handle swapchain image acquisition, queue submission and presentation for a `FrameState`.
 - `FrameState` - the set of per-frame resources (command buffer, semaphore, fence, etc) for one frame in flight.  To extend, subclass `FrameState` and add per-frame resources such as dynamic vertex buffers or descriptor sets.  Then set the `m_createFrameFunc` function in your renderer's constructor to create this new class.
@@ -37,6 +38,13 @@ classDiagram
     }
 
     class Foundry {
+    }
+
+    class selectDevice {
+        <<function>>
+    }
+
+    class QueueFamilies {
     }
 
     class Renderer {
@@ -57,6 +65,9 @@ classDiagram
     App *-- Window
     App *-- Renderer
     App o-- Foundry : FoundryPtr
+    Foundry *-- QueueFamilies
+    Foundry ..> selectDevice : chooses the physical device
+    selectDevice ..> QueueFamilies : returns
     Renderer o-- Foundry : FoundryPtr
     Renderer *-- Presenter
     Renderer *-- FrameStatePool
@@ -112,13 +123,14 @@ classDiagram
 
 | Header | Contents |
 |---|---|
+| `device_selector.hpp` | `selectDevice`, which picks the physical device and its queue families for a surface given the required queues, preferred device type and device extensions. |
 | `creators.hpp` | Free functions that build Vulkan objects with sensible defaults: `createInstance`, `createRenderPass`, `createGraphicsPipeline`, `createComputePipeline`, `createDescriptorSetLayout`, `createDescriptorPool`, `createFramebuffers`, `createSampler`, `updateDescriptorSets`. |
 | `shaders.hpp` | `compileShader` (GLSL source to SPIR-V via glslang at runtime) and `loadShader` (from a file). |
 | `helpers.hpp` | Low-level helpers: `oneTimeSubmit`, `setImageLayout`, `allocateDeviceMemory`, `copyToDevice`, `pushConstants`, surface format and present mode selection. |
 | `math.hpp` | GLM configuration plus `Transform` (quaternion, translation, uniform scale), `f16` and random helpers. |
 | `camera.hpp` | `OrbitCamera` and a `viewProjMatrix` convenience function. |
 | `utils.hpp` | `checked_cast` and logging. |
-| `types.hpp` | Forward declarations and the `FoundryPtr` alias; includes no Vulkan or GLM headers. |
+| `types.hpp` | Forward declarations and simple types, includes no Spock, Vulkan or GLM headers. |
 
 ## Samples
 
@@ -184,8 +196,8 @@ See the comment above `Intersect::testNoBB` in `geo/src/intersect3d.cpp` for the
 The test suites live under `spock/tests` and `geo/tests` and use [Catch2](https://github.com/catchorg/Catch2) v3, which is downloaded automatically with `FetchContent` when `SPOCK_BUILD_TESTS` is `ON`. They build as the `spock_tests` and `geo_tests` executables and are registered with CTest.
 
 Tests fall into two groups:
-- Plain unit tests — pure logic, no GPU required: `camera_tests.cpp`, `foundry_tests.cpp` (queue family selection), `helpers_tests.cpp`, `math_tests.cpp`, `shaders_tests.cpp` (error paths), `utils_tests.cpp`, `wrappers_tests.cpp` (`VertexFormat`) and their `*_extended_tests.cpp` companions.
-- GPU-backed integration tests, tagged `[gpu]`: `gpu_tests.cpp`, `renderer_tests.cpp` and `frame_state_tests.cpp`. These create a real, headless Vulkan instance and `Foundry` via `VK_EXT_headless_surface`, so no window or display is required. They skip themselves when no usable Vulkan device is available.
+- Plain unit tests — pure logic, no GPU required: `camera_tests.cpp`, `device_selector_tests.cpp` (queue family lookup), `helpers_tests.cpp`, `math_tests.cpp`, `shaders_tests.cpp` (error paths), `utils_tests.cpp`, `wrappers_tests.cpp` (`VertexFormat`) and their `*_extended_tests.cpp` companions.
+- GPU-backed integration tests, tagged `[gpu]`: `gpu_tests.cpp`, `renderer_tests.cpp`, `frame_state_tests.cpp` and the `selectDevice` cases in `device_selector_tests.cpp`. These create a real, headless Vulkan instance and `Foundry` via `VK_EXT_headless_surface`, so no window or display is required. They skip themselves when no usable Vulkan device is available.
 
 Build and run:
 

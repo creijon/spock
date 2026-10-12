@@ -221,7 +221,9 @@ TEST_CASE("Presenter owns one framebuffer per image across moves and rebuilds", 
     for (uint32_t image = 0; image < handles.size(); ++image)
         CHECK(*moved.framebuffer(image) == handles[image]);
 
-    spock::Presenter assigned(fixture->foundry, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3);
+    // A surface can only have one live swapchain (MoltenVK reports ErrorNativeWindowInUseKHR
+    // otherwise), so hand the existing one over exactly as Renderer::resizeWindow does.
+    spock::Presenter assigned(fixture->foundry, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, &moved);
     assigned.createFramebuffers(renderPass, useDepthBuffer ? &depth.imageView() : nullptr);
     fixture->foundry->waitIdle();
     assigned = std::move(moved);
