@@ -138,7 +138,7 @@ namespace
             m_createFrameFunc = [](spock::FoundryPtr const& foundry) { return std::make_unique<LinesFrame>(foundry); };
         }
 
-        ~LinesRenderer() override { waitIdle(); }
+        ~LinesRenderer() override { m_foundry->waitIdleNoThrow(); }
         spock::DebugLines lines;
         LinesFrame *lastFrame{nullptr};
         bool throwWhileRecording{false};

@@ -32,7 +32,8 @@ namespace spock
             queueFamilies.graphics,
             queueFamilies.present,
             queueFamilies.compute,
-            queueFamilies.transfer
+            queueFamilies.transfer,
+            queueFamilies.videoDecode
         };
 
         for (uint32_t familyIndex : uniqueQueueFamilies) {
@@ -63,6 +64,7 @@ namespace spock
 #endif
         };
         deviceExtensions.insert(deviceExtensions.end(), extensions.begin(), extensions.end());
+        m_extensions.assign(deviceExtensions.begin(), deviceExtensions.end());
 
         std::tie(m_physicalDevice, m_queueFamilies) = selectDevice(
             instance,
@@ -86,6 +88,10 @@ namespace spock
         m_presentQueue = vk::raii::Queue(m_device, m_queueFamilies.present, 0);
         m_computeQueue = vk::raii::Queue(m_device, m_queueFamilies.compute, 0);
         m_transferQueue = vk::raii::Queue(m_device, m_queueFamilies.transfer, 0);
+        if (requiredQueues & vk::QueueFlagBits::eVideoDecodeKHR)
+        {
+            m_videoDecodeQueue = vk::raii::Queue(m_device, m_queueFamilies.videoDecode, 0);
+        }
 
         // Create the command pools.
         vk::CommandPoolCreateInfo poolInfo{
@@ -103,12 +109,24 @@ namespace spock
 
     Foundry::~Foundry()
     {
-        m_device.waitIdle();
+        waitIdleNoThrow();
     }
 
     void Foundry::waitIdle() const
     {
         m_device.waitIdle();
+    }
+
+    void Foundry::waitIdleNoThrow() const noexcept
+    {
+        try
+        {
+            m_device.waitIdle();
+        }
+        catch (vk::SystemError const &)
+        {
+            // Device loss must not escape resource cleanup during destruction.
+        }
     }
 
     SwapchainInfo Foundry::createSwapchain(

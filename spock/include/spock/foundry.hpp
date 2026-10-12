@@ -8,6 +8,7 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <string>
 #include <vector>
 
 namespace spock
@@ -54,6 +55,13 @@ namespace spock
         vk::raii::Queue const &presentQueue() const { return m_presentQueue; }
         vk::raii::Queue const &computeQueue() const { return m_computeQueue; }
         vk::raii::Queue const &transferQueue() const { return m_transferQueue; }
+        // Null unless video decode was one of the required queues.
+        vk::raii::Queue const &videoDecodeQueue() const { return m_videoDecodeQueue; }
+
+        QueueFamilies const &queueFamilies() const { return m_queueFamilies; }
+
+        // The device extensions the device was created with, including the ones the Foundry always adds.
+        std::vector<std::string> const &extensions() const { return m_extensions; }
 
         // Create a swapchain for the surface.
         // desiredImageCount: clamped to what the surface supports for the Swapchain imageCount.
@@ -65,6 +73,9 @@ namespace spock
             vk::SwapchainKHR oldSwapchain = {}) const;
 
         void waitIdle() const;
+
+        // For destructors, which must not throw: if the device has been lost there's nothing left to wait for.
+        void waitIdleNoThrow() const noexcept;
 
         template <typename Func>
         void submit(Func const &func) const
@@ -92,7 +103,9 @@ namespace spock
         vk::raii::Queue m_presentQueue{nullptr};
         vk::raii::Queue m_computeQueue{nullptr};
         vk::raii::Queue m_transferQueue{nullptr};
+        vk::raii::Queue m_videoDecodeQueue{nullptr};
 
         QueueFamilies m_queueFamilies;
+        std::vector<std::string> m_extensions;
     };
 }

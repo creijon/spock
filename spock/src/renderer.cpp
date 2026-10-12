@@ -25,7 +25,7 @@ namespace spock
 
     Renderer::~Renderer()
     {
-        waitIdle();
+        m_foundry->waitIdleNoThrow();
         // Renderer owns the render pass and depth attachment referenced by Presenter's framebuffers.
         if (m_presenter) m_presenter->clearFramebuffers();
     }

@@ -61,14 +61,7 @@ namespace spock
     {
         assert(!m_acquired);
 
-        try
-        {
-            m_foundry->waitIdle();
-        }
-        catch (vk::SystemError const &)
-        {
-            // Device loss must not escape resource cleanup during destruction.
-        }
+        m_foundry->waitIdleNoThrow();
     }
 
     FrameStateGuard FrameStatePool::acquireFrame()
