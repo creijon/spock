@@ -64,6 +64,7 @@ namespace spock
 #endif
         };
         deviceExtensions.insert(deviceExtensions.end(), extensions.begin(), extensions.end());
+        m_extensions.assign(deviceExtensions.begin(), deviceExtensions.end());
 
         std::tie(m_physicalDevice, m_queueFamilies) = selectDevice(
             instance,

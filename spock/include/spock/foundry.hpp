@@ -8,6 +8,7 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <string>
 #include <vector>
 
 namespace spock
@@ -58,6 +59,11 @@ namespace spock
         vk::raii::Queue const &transferQueue() const { return m_transferQueue; }
         vk::raii::Queue const &videoDecodeQueue() const { return m_videoDecodeQueue; }
 
+        QueueFamilies const &queueFamilies() const { return m_queueFamilies; }
+
+        // The device extensions the device was created with, including the ones the Foundry always adds.
+        std::vector<std::string> const &extensions() const { return m_extensions; }
+
         // Create a swapchain for the surface.
         // desiredImageCount: clamped to what the surface supports for the Swapchain imageCount.
         // oldSwapchain: the current swapchain so the driver can reuse its resources.  The caller must still destroy it.
@@ -101,5 +107,6 @@ namespace spock
         vk::raii::Queue m_videoDecodeQueue{nullptr};
 
         QueueFamilies m_queueFamilies;
+        std::vector<std::string> m_extensions;
     };
 }
