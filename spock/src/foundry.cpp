@@ -32,7 +32,8 @@ namespace spock
             queueFamilies.graphics,
             queueFamilies.present,
             queueFamilies.compute,
-            queueFamilies.transfer
+            queueFamilies.transfer,
+            queueFamilies.videoDecode
         };
 
         for (uint32_t familyIndex : uniqueQueueFamilies) {
@@ -82,23 +83,34 @@ namespace spock
             features);
 
         m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
-        m_graphicsQueue = vk::raii::Queue(m_device, m_queueFamilies.graphics, 0);
-        m_presentQueue = vk::raii::Queue(m_device, m_queueFamilies.present, 0);
-        m_computeQueue = vk::raii::Queue(m_device, m_queueFamilies.compute, 0);
-        m_transferQueue = vk::raii::Queue(m_device, m_queueFamilies.transfer, 0);
 
-        // Create the command pools.
+        // Graphics and present are always required, because the Foundry always creates a swapchain.
         vk::CommandPoolCreateInfo poolInfo{
             vk::CommandPoolCreateFlagBits::eResetCommandBuffer |
             vk::CommandPoolCreateFlagBits::eTransient,
             m_queueFamilies.graphics};
         m_commandPool = vk::raii::CommandPool(m_device, poolInfo);
+        m_graphicsQueue = vk::raii::Queue(m_device, m_queueFamilies.graphics, 0);
+        m_presentQueue = vk::raii::Queue(m_device, m_queueFamilies.present, 0);
 
-        poolInfo.queueFamilyIndex = m_queueFamilies.compute;
-        m_computeCommandPool = vk::raii::CommandPool(m_device, poolInfo);
-
-        poolInfo.queueFamilyIndex = m_queueFamilies.transfer;
-        m_transferCommandPool = vk::raii::CommandPool(m_device, poolInfo);
+        // The other queues are optional.
+        if (requiredQueues & vk::QueueFlagBits::eCompute)
+        {
+            poolInfo.queueFamilyIndex = m_queueFamilies.compute;
+            m_computeCommandPool = vk::raii::CommandPool(m_device, poolInfo);
+            m_computeQueue = vk::raii::Queue(m_device, m_queueFamilies.compute, 0);
+        }
+        if (requiredQueues & vk::QueueFlagBits::eTransfer)
+        {
+            poolInfo.queueFamilyIndex = m_queueFamilies.transfer;
+            m_transferCommandPool = vk::raii::CommandPool(m_device, poolInfo);
+            m_transferQueue = vk::raii::Queue(m_device, m_queueFamilies.transfer, 0);
+        }
+        if (requiredQueues & vk::QueueFlagBits::eVideoDecodeKHR)
+        {
+            // Question: does the video decode queue need its own command pool?
+            m_videoDecodeQueue = vk::raii::Queue(m_device, m_queueFamilies.videoDecode, 0);
+        }
     }
 
     Foundry::~Foundry()

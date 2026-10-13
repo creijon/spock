@@ -24,5 +24,6 @@ namespace spock
         uint32_t present;
         uint32_t compute;
         uint32_t transfer;
+        uint32_t videoDecode;
     };
 }
