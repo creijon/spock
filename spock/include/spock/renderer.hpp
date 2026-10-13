@@ -37,6 +37,10 @@ namespace spock
         void waitIdle() const;
 
     protected:
+        // Records commands that must come before the render pass, such as image layout transitions.
+        virtual void prepare(FrameState &) {}
+
+        // Records the commands inside the render pass.
         virtual void render(FrameState &frame) = 0;
 
         FoundryPtr m_foundry;

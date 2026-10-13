@@ -95,6 +95,11 @@ namespace spock
         }
 
         {
+            CommandBufferWrapper commandBuffer(frameState.commandBuffer);
+
+            // The derived class records anything that has to happen outside the render pass.
+            prepare(frameState);
+
             // Begin the render pass.
             vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
 
@@ -104,7 +109,7 @@ namespace spock
                 vk::Rect2D(vk::Offset2D(0, 0), m_extents),
                 clearValues);
 
-            CommandBufferWrapper commandBuffer(
+            RenderPassWrapper renderPass(
                 frameState.commandBuffer,
                 renderPassBeginInfo);
 
