@@ -103,12 +103,24 @@ namespace spock
 
     Foundry::~Foundry()
     {
-        m_device.waitIdle();
+        waitIdleNoThrow();
     }
 
     void Foundry::waitIdle() const
     {
         m_device.waitIdle();
+    }
+
+    void Foundry::waitIdleNoThrow() const noexcept
+    {
+        try
+        {
+            m_device.waitIdle();
+        }
+        catch (vk::SystemError const &)
+        {
+            // Device loss must not escape resource cleanup during destruction.
+        }
     }
 
     SwapchainInfo Foundry::createSwapchain(

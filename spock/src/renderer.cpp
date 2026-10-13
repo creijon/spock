@@ -25,7 +25,7 @@ namespace spock
 
     Renderer::~Renderer()
     {
-        waitIdle();
+        m_foundry->waitIdleNoThrow();
         // Renderer owns the render pass and depth attachment referenced by Presenter's framebuffers.
         if (m_presenter) m_presenter->clearFramebuffers();
     }
@@ -85,7 +85,7 @@ namespace spock
         }
 
         FrameStateGuard frameGuard = m_framePool->acquireFrame();
-		FrameState &frameState = frameGuard.get();
+        FrameState &frameState = frameGuard.get();
         vk::Result acquireResult = m_presenter->acquireFrame(frameState);
 
         // If image acquisition failed, skip rendering and presentation.

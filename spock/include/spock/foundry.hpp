@@ -66,6 +66,9 @@ namespace spock
 
         void waitIdle() const;
 
+        // For destructors, which must not throw: if the device has been lost there's nothing left to wait for.
+        void waitIdleNoThrow() const noexcept;
+
         template <typename Func>
         void submit(Func const &func) const
         {
