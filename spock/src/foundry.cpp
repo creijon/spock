@@ -19,6 +19,42 @@
 #include <tuple>
 #include <utility>
 
+namespace
+{
+    // Frame synchronisation needs timeline semaphores, so the feature is always enabled.
+    // A caller's chain may already carry it, and a struct can't appear twice, so only add it when it's missing.
+    void const *enableTimelineSemaphores(void const *features, vk::PhysicalDeviceTimelineSemaphoreFeatures &timelineFeatures)
+    {
+        for (auto const *next = static_cast<vk::BaseInStructure const*>(features); next; next = next->pNext)
+        {
+            vk::Bool32 enabled = VK_FALSE;
+            if (next->sType == vk::StructureType::ePhysicalDeviceVulkan12Features)
+            {
+                enabled = reinterpret_cast<vk::PhysicalDeviceVulkan12Features const*>(next)->timelineSemaphore;
+            }
+            else if (next->sType == vk::StructureType::ePhysicalDeviceTimelineSemaphoreFeatures)
+            {
+                enabled = reinterpret_cast<vk::PhysicalDeviceTimelineSemaphoreFeatures const*>(next)->timelineSemaphore;
+            }
+            else
+            {
+                continue;
+            }
+
+            if (!enabled)
+            {
+                // The chain is const, so it can't be switched on here.
+                throw std::invalid_argument("Foundry: the features chain must enable timelineSemaphore");
+            }
+            return features;
+        }
+
+        timelineFeatures.timelineSemaphore = VK_TRUE;
+        timelineFeatures.pNext = const_cast<void*>(features);
+        return &timelineFeatures;
+    }
+}
+
 namespace spock
 {
 
@@ -75,13 +111,15 @@ namespace spock
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{ uniqueQueueCreateInfos(m_queueFamilies) };
 
+        vk::PhysicalDeviceTimelineSemaphoreFeatures timelineFeatures;
+
         vk::DeviceCreateInfo deviceCreateInfo(
             vk::DeviceCreateFlags(),
             queueCreateInfos,
             {},
             deviceExtensions,
             nullptr,
-            features);
+            enableTimelineSemaphores(features, timelineFeatures));
 
         m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
 

@@ -91,7 +91,7 @@ static void generateSphereMesh(
 
                 glm::vec3 cubePos = face.normal + face.axisU * u + face.axisV * v;
 
-                vertices.push_back(SphereVertex{cubePos});
+                vertices.emplace_back(cubePos);
             }
         }
 

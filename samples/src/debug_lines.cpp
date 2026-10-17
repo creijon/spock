@@ -95,13 +95,13 @@ namespace
             float orbitSign = signDist(rng) < 0.0f ? -1.0f : 1.0f;
             float spinSign = signDist(rng) < 0.0f ? -1.0f : 1.0f;
 
-            cubes.push_back(OrbitingCube{
+            cubes.emplace_back(
                 orbitAxis,
                 perpendicular(orbitAxis) * ORBIT_RADIUS,
                 orbitSpeedDist(rng) * orbitSign,
                 spock::randomUnitVector(rng),
                 spinSpeedDist(rng) * spinSign,
-                hueToColor(static_cast<float>(i) / static_cast<float>(count))});
+                hueToColor(static_cast<float>(i) / static_cast<float>(count)));
         }
         return cubes;
     }

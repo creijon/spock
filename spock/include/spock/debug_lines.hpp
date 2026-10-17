@@ -41,7 +41,7 @@ namespace spock
         void clear();
         void addLine(glm::vec3 const& start, glm::vec3 const& end, glm::vec4 const& color);
 
-        // FrameData must belong to a frame whose fence has completed.
+        // FrameData must belong to a frame whose previous submission has completed.
         void draw(
             vk::raii::CommandBuffer const& commandBuffer,
             BufferWrapper const& frameData,

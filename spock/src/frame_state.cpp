@@ -13,7 +13,7 @@
 
 namespace
 {
-    constexpr std::chrono::nanoseconds FENCE_TIMEOUT{std::chrono::seconds(5)};
+    constexpr std::chrono::nanoseconds FRAME_TIMEOUT{std::chrono::seconds(5)};
 
     std::unique_ptr<spock::FrameState> defaultCreateFrame(spock::FoundryPtr const &foundry)
     {
@@ -28,7 +28,8 @@ namespace spock
         vk::raii::CommandPool const& commandPool)
         : commandBuffer(spock::createCommandBuffer(device, commandPool))
         , semaphore(device.createSemaphore(vk::SemaphoreCreateInfo{}))
-        , fence(device.createFence(vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled }))
+        , timeline(device.createSemaphore(vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo>{
+            {}, { vk::SemaphoreType::eTimeline, 0 } }.get()))
         , imageIndex(0)
     {
     }
@@ -72,13 +73,13 @@ namespace spock
         }
         FrameState &frame = *m_frames[m_nextFrame];
 
-        vk::Result waitResult = m_foundry->device().waitForFences(
-            { frame.fence },
-            VK_TRUE,
-            static_cast<uint64_t>(FENCE_TIMEOUT.count()));
+        // A frame that has never been submitted, or was abandoned, already has its timeline at this value.
+        vk::Result waitResult = m_foundry->device().waitSemaphores(
+            vk::SemaphoreWaitInfo({}, *frame.timeline, frame.timelineValue),
+            static_cast<uint64_t>(FRAME_TIMEOUT.count()));
         if (waitResult != vk::Result::eSuccess)
         {
-            throw std::runtime_error("FrameStatePool: waiting for the frame fence failed: " + vk::to_string(waitResult));
+            throw std::runtime_error("FrameStatePool: waiting for the frame timeline failed: " + vk::to_string(waitResult));
         }
 
         m_acquired = true;
