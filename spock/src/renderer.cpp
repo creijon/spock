@@ -94,9 +94,10 @@ namespace spock
             return acquireResult;
         }
 
-        {
-            CommandBufferWrapper commandBuffer(frameState.commandBuffer);
+        frameState.commandBuffer.begin({});
 
+        try
+        {
             // The derived class records anything that has to happen outside the render pass.
             prepare(frameState);
 
@@ -126,6 +127,19 @@ namespace spock
             // The derived class renders using the current frame state.
             render(frameState);
         }
+        catch (...)
+        {
+            try
+            {
+                frameState.commandBuffer.end();
+            }
+            catch (vk::SystemError const &)
+            {
+            }
+            throw;
+        }
+
+        frameState.commandBuffer.end();
 
         vk::Result result = m_presenter->presentFrame(frameState);
 

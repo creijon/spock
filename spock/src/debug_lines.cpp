@@ -106,8 +106,8 @@ void main()
             throw std::length_error("DebugLines capacity exceeded");
         }
 
-        m_vertices.push_back({start, color});
-        m_vertices.push_back({end, color});
+        m_vertices.emplace_back(start, color);
+        m_vertices.emplace_back(end, color);
     }
 
     void DebugLines::draw(
@@ -124,7 +124,7 @@ void main()
         {
             throw std::length_error("DebugLines frame buffer capacity exceeded");
         }
-        // The caller has waited for this frame's fence; other frames keep their own copies.
+        // The caller has waited for this frame's timeline; other frames keep their own copies.
         frameData.upload(m_vertices);
         commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, m_pipeline);
         pushConstants(

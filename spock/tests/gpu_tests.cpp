@@ -27,6 +27,52 @@ TEST_CASE("a headless Vulkan device can be created for GPU-backed tests", "[gpu]
     CHECK(*fixture->foundry->device() != VK_NULL_HANDLE);
 }
 
+TEST_CASE("Foundry enables timeline semaphores alongside a caller's feature chain", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    auto createFoundry = [&](void const *features) {
+        return spock::Foundry(
+            fixture->instance,
+            vk::raii::SurfaceKHR(fixture->instance, vk::HeadlessSurfaceCreateInfoEXT{}),
+            vk::QueueFlagBits::eGraphics,
+            vk::PhysicalDeviceType::eDiscreteGpu,
+            {},
+            features);
+    };
+
+    // Creating a timeline semaphore is only valid when the feature is enabled.
+    auto createTimeline = [](spock::Foundry const &foundry) {
+        vk::SemaphoreTypeCreateInfo type(vk::SemaphoreType::eTimeline, 0);
+        return foundry.device().createSemaphore(vk::SemaphoreCreateInfo({}, &type));
+    };
+
+    SECTION("a chain without the feature")
+    {
+        vk::PhysicalDeviceShaderDrawParametersFeatures drawParameters(VK_FALSE);
+        spock::Foundry foundry = createFoundry(&drawParameters);
+        CHECK_NOTHROW(createTimeline(foundry));
+    }
+    SECTION("a chain that enables the feature")
+    {
+        vk::PhysicalDeviceVulkan12Features vulkan12;
+        vulkan12.timelineSemaphore = VK_TRUE;
+        spock::Foundry foundry = createFoundry(&vulkan12);
+        CHECK_NOTHROW(createTimeline(foundry));
+    }
+    SECTION("a chain that disables the feature")
+    {
+        vk::PhysicalDeviceShaderDrawParametersFeatures drawParameters(VK_FALSE);
+        vk::PhysicalDeviceVulkan12Features vulkan12;
+        drawParameters.pNext = &vulkan12;
+        CHECK_THROWS_AS(createFoundry(&drawParameters), std::invalid_argument);
+    }
+}
+
 TEST_CASE("Foundry::createSwapchain builds a swapchain for the headless surface", "[gpu]")
 {
     auto fixture = createGpuFixture();

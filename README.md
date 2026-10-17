@@ -24,8 +24,8 @@ The framework is built around a handful of classes, each owning one part of the 
 - `selectDevice()` — used by the `Foundry` to enumerate physical devices and select the best one that meets the required extensions.  It returns the winning `vk::raii::PhysicalDevice` and its `QueueFamilies`.
 - `Renderer` — owns the render pass, optional depth buffer, `Presenter` and `FrameStatePool`. `renderFrame()` acquires a frame, begins the render pass, sets the viewport and scissor, then calls the pure virtual `render(FrameState&)` for the subclass to record its draw commands. `resizeWindow()` tears everything down and rebuilds it at the new extent.
 - `Presenter` — owns the swapchain, its image views, the framebuffers and the per-image render-finished semaphores. `acquireFrame()` and `presentFrame()` handle swapchain image acquisition, queue submission and presentation for a `FrameState`.
-- `FrameState` - the set of per-frame resources (command buffer, semaphore, fence, etc) for one frame in flight.  To extend, subclass `FrameState` and add per-frame resources such as dynamic vertex buffers or descriptor sets.  Then set the `m_createFrameFunc` function in your renderer's constructor to create this new class.
-- `FrameStatePool` - owns a fixed array of `FrameState` and rotates through them as the frames are rendered; `acquireFrame()` waits on the frame's fence so the CPU never touches resources that the GPU is still using. The `FrameStateGuard` returns the frame to the pool when it goes out of scope, even if recording throws.
+- `FrameState` - the set of per-frame resources (command buffer, semaphore, timeline semaphore, etc) for one frame in flight.  To extend, subclass `FrameState` and add per-frame resources such as dynamic vertex buffers or descriptor sets.  Then set the `m_createFrameFunc` function in your renderer's constructor to create this new class.
+- `FrameStatePool` - owns a fixed array of `FrameState` and rotates through them as the frames are rendered; `acquireFrame()` waits on the frame's timeline semaphore so the CPU never touches resources that the GPU is still using. The `FrameStateGuard` returns the frame to the pool when it goes out of scope, even if recording throws.
 
 ```mermaid
 classDiagram
@@ -85,10 +85,10 @@ classDiagram
 Each iteration of `App::run()` does the following:
 
 1. `Window::pollEvents()` and `App::update()` (the subclass updates its simulation and camera).
-2. `Renderer::renderFrame()` lazily creates the `FrameStatePool` on the first frame (or after a resize), then borrows the next `FrameState`, waiting on its fence.
+2. `Renderer::renderFrame()` lazily creates the `FrameStatePool` on the first frame (or after a resize), then borrows the next `FrameState`, waiting on its timeline semaphore.
 3. `Presenter::acquireFrame()` acquires the next swapchain image, signalling the frame's semaphore.
-4. A `CommandBufferWrapper` begins the command buffer and render pass; the viewport and scissor are set from the swapchain extent; `render(frame)` records the subclass's commands; the wrapper ends the render pass and command buffer.
-5. `Presenter::presentFrame()` submits the command buffer to the graphics queue, signalling the frame's fence, and presents the image on the present queue.
+4. `Renderer::renderFrame()` calls `frame.commandBuffer.begin({})`, then `prepare(frame)` to record commands outside the render pass. A `RenderPassWrapper` scopes the render pass; the viewport and scissor are set from the swapchain extent, and `render(frame)` records the subclass's commands. After the render-pass scope ends, `frame.commandBuffer.end()` ends recording. Recording errors propagate before submission.
+5. `Presenter::presentFrame()` submits the command buffer to the graphics queue, signalling the frame's timeline semaphore, and presents the image on the present queue.
 6. Back in `App`, a changed framebuffer size or a suboptimal/out-of-date result triggers `Renderer::resizeWindow()`, which waits for the GPU, rebuilds the swapchain (handing the old one over to the new `Presenter`), depth buffer, render pass, framebuffers and frame pool.
 
 ### Resource wrappers and helpers

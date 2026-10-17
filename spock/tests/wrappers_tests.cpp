@@ -7,6 +7,14 @@
 
 #include <glm/glm.hpp>
 
+#include <type_traits>
+
+static_assert(!std::is_copy_constructible_v<spock::RenderPassWrapper>);
+static_assert(!std::is_copy_assignable_v<spock::RenderPassWrapper>);
+static_assert(!std::is_move_constructible_v<spock::RenderPassWrapper>);
+static_assert(!std::is_move_assignable_v<spock::RenderPassWrapper>);
+static_assert(std::is_nothrow_destructible_v<spock::RenderPassWrapper>);
+
 TEST_CASE("VertexFormat default-constructs empty", "[wrappers]")
 {
     spock::VertexFormat format;

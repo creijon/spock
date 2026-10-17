@@ -92,7 +92,7 @@ static std::vector<SpriteInstance> createSpriteGrid()
             float b = 0.5f + 0.5f * std::sin((x + y) * 5.0f / (dim - 1));
             glm::vec4 color{r, g, b, 1.0f};
 
-            instances.push_back({position, color});
+            instances.emplace_back(position, color);
         }
     }
 

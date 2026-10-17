@@ -11,6 +11,7 @@
 #include <limits>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 namespace spock
 {
@@ -120,15 +121,41 @@ namespace spock
 
     vk::Result Presenter::presentFrame(FrameState &frame)
     {
-        vk::PipelineStageFlags waitStages[]{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        std::vector<vk::Semaphore> waitSemaphores{ *frame.semaphore };
+        std::vector<vk::PipelineStageFlags> waitStages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        std::vector<uint64_t> waitValues{ 0 };
+        for (FrameState::SemaphoreWait const &wait : frame.extraWaitSemaphores)
+        {
+            waitSemaphores.emplace_back(wait.semaphore);
+            waitStages.emplace_back(wait.stageMask);
+            waitValues.emplace_back(wait.value);
+        }
+
+        // The frame's timeline tells the FrameStatePool when the frame can be reused.
+        std::vector<vk::Semaphore> signalSemaphores{ *m_renderSemaphores[frame.imageIndex], *frame.timeline };
+        std::vector<uint64_t> signalValues{ 0, frame.timelineValue + 1 };
+        for (FrameState::SemaphoreSignal const &signal : frame.extraSignalSemaphores)
+        {
+            signalSemaphores.emplace_back(signal.semaphore);
+            signalValues.emplace_back(signal.value);
+        }
+
         vk::SubmitInfo submitInfo(
-            *frame.semaphore,
+            waitSemaphores,
             waitStages,
             *frame.commandBuffer,
-            *m_renderSemaphores[frame.imageIndex]);
+            signalSemaphores);
 
-        m_foundry->device().resetFences({ frame.fence });
-        m_foundry->graphicsQueue().submit(submitInfo, frame.fence);
+        // The values are ignored for the binary swapchain semaphores.
+        vk::TimelineSemaphoreSubmitInfo timelineSubmitInfo(waitValues, signalValues);
+        submitInfo.pNext = &timelineSubmitInfo;
+
+        frame.extraWaitSemaphores.clear();
+        frame.extraSignalSemaphores.clear();
+
+        m_foundry->graphicsQueue().submit(submitInfo);
+        // Only advance once the submission has been made, so a failed submit leaves the pool nothing to wait for.
+        ++frame.timelineValue;
 
         try
         {

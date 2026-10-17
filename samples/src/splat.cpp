@@ -110,7 +110,7 @@ public:
         uint32_t splatCount)
     {
         // The renderer creates frames on the first render after construction, resize or a scene load.
-        // Allocate sample resources on first use, after the frame's fence wait.
+        // Allocate sample resources on first use, after the frame's timeline wait.
         if (descriptorSet != nullptr) return;
 
         uniforms = spock::BufferWrapper(foundry, sizeof(FrameConstants), vk::BufferUsageFlagBits::eUniformBuffer);

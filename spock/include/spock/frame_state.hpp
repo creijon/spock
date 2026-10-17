@@ -23,11 +23,32 @@ namespace spock
         FrameState(vk::raii::Device const &device, vk::raii::CommandPool const &commandPool);
         virtual ~FrameState() = default;
 
+        struct SemaphoreWait
+        {
+            vk::Semaphore semaphore;
+            uint64_t value{0};
+            vk::PipelineStageFlags stageMask;
+        };
+
+        struct SemaphoreSignal
+        {
+            vk::Semaphore semaphore;
+            uint64_t value{0};
+        };
+
         vk::raii::CommandBuffer const commandBuffer{nullptr};
+
         vk::raii::Semaphore const semaphore{nullptr};
-        vk::raii::Fence const fence{nullptr};
+        // Signalled with timelineValue + 1 by the frame's submission, which then increments timelineValue.
+        // The pool waits for the timeline to reach timelineValue before handing the frame out again.
+        vk::raii::Semaphore const timeline{nullptr};
+        uint64_t timelineValue{0};
 
         uint32_t imageIndex{0}; // The index of this frame in the swapchain.
+
+        // Allows synchronisation between queues.
+        std::vector<SemaphoreWait> extraWaitSemaphores;
+        std::vector<SemaphoreSignal> extraSignalSemaphores;
     };
 
     class FrameStateGuard;
@@ -46,7 +67,7 @@ namespace spock
 
         // Acquire the next frame state in the rotation, blocks until the GPU has finished with it.
         // Only one frame may be borrowed at a time. Calls must be serialized by the caller.
-        // Throws std::runtime_error if its fence does not signal in time (a lost submission or a hung GPU).
+        // Throws std::runtime_error if its timeline does not reach its value in time (a hung GPU).
         [[nodiscard]] FrameStateGuard acquireFrame();
 
     private:

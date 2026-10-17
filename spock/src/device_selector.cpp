@@ -122,6 +122,19 @@ namespace spock
         return requiredExtensionsSet.empty();
     }
 
+    // Frame synchronisation needs timeline semaphores, which are core from Vulkan 1.2.
+    bool supportsTimelineSemaphores(vk::raii::PhysicalDevice const& physicalDevice)
+    {
+        // The 1.2 feature struct can't be queried from an older device.
+        if (physicalDevice.getProperties().apiVersion < VK_API_VERSION_1_2)
+        {
+            return false;
+        }
+
+        auto features = physicalDevice.getFeatures2<vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceTimelineSemaphoreFeatures>();
+        return features.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>().timelineSemaphore == VK_TRUE;
+    }
+
     std::pair<vk::raii::PhysicalDevice, QueueFamilies> selectDevice(
         vk::raii::Instance const &instance,
         vk::SurfaceKHR const& surface,
@@ -137,6 +150,11 @@ namespace spock
             if (!checkDeviceExtensionSupport(physicalDevice, requiredExtensions))
             {
                 // Only consider devices that support the required extensions.
+                continue;
+            }
+
+            if (!supportsTimelineSemaphores(physicalDevice))
+            {
                 continue;
             }
 
@@ -222,7 +240,7 @@ namespace spock
                         (deviceType == vk::PhysicalDeviceType::eCpu) ? 10 : 0;
             }
 
-            deviceSelections.push_back({ rank, physicalDevice,queueFamilies });
+            deviceSelections.emplace_back(rank, physicalDevice,queueFamilies);
         }
 
         if (deviceSelections.empty())
