@@ -33,22 +33,20 @@ constexpr uint32_t SH_REST_FLOAT_COUNT = SH_REST_COUNT * SH_CHANNEL_COUNT;
 
 using float3 = std::array<float, 3>;
 using float4 = std::array<float, 4>;
-using half3 = std::array<spock::f16, 3>;
-using half4 = std::array<spock::f16, 4>;
 
 inline glm::vec3 toVec3(float3 const& v) { return glm::vec3(v[0], v[1], v[2]); }
 
 struct SplatInstance
 {
     float3 position;
-    half4 rotation; // Note: needs to be stored in xyzw order for the shader.
-    half3 scale;
-    spock::f16 opacity;
-    half3 sh0;
-    half3 sh1[SH_DEGREE1_COUNT];
-    half3 sh2[SH_DEGREE2_COUNT];
-    half3 sh3[SH_DEGREE3_COUNT];
-    spock::f16 padding;
+    float4 rotation; // Note: needs to be stored in xyzw order for the shader.
+    float3 scale;
+    float opacity;
+    float3 sh0;
+    float3 sh1[SH_DEGREE1_COUNT];
+    float3 sh2[SH_DEGREE2_COUNT];
+    float3 sh3[SH_DEGREE3_COUNT];
+    float padding;
 }; // 6 + 8 + 6 + 2 + 16 * 6 + 2 = 120 bytes
 
 struct SplatScene
@@ -326,7 +324,7 @@ inline void loadPly(const std::string& path, SplatScene& scene) {
         const uint32_t offsetG = harmonicCount;
         const uint32_t offsetB = harmonicCount * 2;
 
-        auto readSHDegree = [&](half3 shDegree[], uint32_t offset, uint32_t count)
+        auto readSHDegree = [&](float3 shDegree[], uint32_t offset, uint32_t count)
         {
             if (harmonicCount >= offset + count)
             {

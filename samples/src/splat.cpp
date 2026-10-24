@@ -337,6 +337,7 @@ public:
 protected:
     spock::FoundryPtr createFoundry() const override
     {
+        /*
         std::vector<char const*> extensions{
             VK_KHR_16BIT_STORAGE_EXTENSION_NAME,
             VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
@@ -356,14 +357,14 @@ protected:
             VK_FALSE,
             &float16Int8
         };
-
+*/
         return std::make_shared<const spock::Foundry>(
             m_instance,
             m_window.createSurface(m_instance),
             vk::QueueFlagBits::eGraphics,
-            vk::PhysicalDeviceType::eDiscreteGpu,
-            extensions,
-            &storage16);
+            vk::PhysicalDeviceType::eDiscreteGpu);
+            //extensions,
+            //&storage16);
     }
 
     std::unique_ptr<spock::Renderer> createRenderer() override

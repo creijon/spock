@@ -37,14 +37,14 @@ const float SH_C3_6 = -0.5900435899266435;
 struct SplatData
 {
     float position[3];
-    float16_t rotation[4];
-    float16_t scale[3];
-    float16_t opacity;
-    float16_t sh0[3];
-    float16_t sh1[SH_DEGREE1_COUNT][3];
-    float16_t sh2[SH_DEGREE2_COUNT][3];
-    float16_t sh3[SH_DEGREE3_COUNT][3];
-    float16_t padding;
+    float rotation[4];
+    float scale[3];
+    float opacity;
+    float sh0[3];
+    float sh1[SH_DEGREE1_COUNT][3];
+    float sh2[SH_DEGREE2_COUNT][3];
+    float sh3[SH_DEGREE3_COUNT][3];
+    float padding;
 };
 
 // Buffer Bindings
@@ -81,12 +81,12 @@ vec4 floatToVec4(float v[4])
     return vec4(v[0], v[1], v[2], v[3]);
 }
 
-vec3 halfToVec3(float16_t v[3])
+vec3 halfToVec3(float v[3])
 {
     return vec3(float(v[0]), float(v[1]), float(v[2]));
 }
 
-vec4 halfToVec4(float16_t v[4])
+vec4 halfToVec4(float v[4])
 {
     return vec4(float(v[0]), float(v[1]), float(v[2]), float(v[3]));
 }
