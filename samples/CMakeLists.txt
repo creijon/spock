@@ -38,11 +38,14 @@ add_sample_target(cube ${CMAKE_CURRENT_SOURCE_DIR}/src/cube.cpp)
 add_sample_target(quad ${CMAKE_CURRENT_SOURCE_DIR}/src/quad.cpp)
 add_sample_target(shaderlab ${CMAKE_CURRENT_SOURCE_DIR}/src/shaderlab.cpp)
 add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/src/instancing.cpp)
-add_sample_target(splat ${CMAKE_CURRENT_SOURCE_DIR}/src/splat.cpp)
-add_sample_target(compute ${CMAKE_CURRENT_SOURCE_DIR}/src/compute.cpp)
+add_sample_target(splat_hybrid ${CMAKE_CURRENT_SOURCE_DIR}/src/splat_hybrid.cpp)
+add_sample_target(compute_sort ${CMAKE_CURRENT_SOURCE_DIR}/src/compute_sort.cpp)
+add_sample_target(compute_quad ${CMAKE_CURRENT_SOURCE_DIR}/src/compute_quad.cpp)
 add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/src/debug_lines.cpp)
 add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_cube.cpp)
 add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_sphere.cpp)
+add_sample_target(spherical_harmonics ${CMAKE_CURRENT_SOURCE_DIR}/src/spherical_harmonics.cpp)
+target_include_directories(spherical_harmonics PRIVATE ${CMAKE_SOURCE_DIR}/deps/stb)
 
 # The video player needs FFmpeg, so it is only built when the libraries are found.
 find_package(PkgConfig)
@@ -65,9 +68,11 @@ set_target_properties(
     quad
     shaderlab
     instancing
-    splat
-    compute
+    splat_hybrid
+    compute_sort
+    compute_quad
     debug_lines
     textured_cube
     textured_sphere
+    spherical_harmonics
     PROPERTIES FOLDER "samples")

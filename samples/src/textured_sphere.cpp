@@ -180,7 +180,7 @@ void main()
   vec3 lightAmb = vec3(0.3);
   vec3 litColor = lightAmb + lightDif * max(dot(normalize(normal), lightDir), 0.0);
   vec3 tex = texture(texSampler, texDir).rgb;
-  outColor = vec4(tex * litColor, 1.0);
+  outColor = vec4(tex, 1.0);
 }
 )";
 
