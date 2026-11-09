@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
-#include "samples/spherical_harmonics.hpp"
-#include "samples/spherical_harmonics_shaders.hpp"
+#include "spherical_harmonics.hpp"
+#include "spherical_harmonics_shaders.hpp"
 #include "spock/shaders.hpp"
 #include "gpu_fixture.hpp"
 

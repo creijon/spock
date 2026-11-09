@@ -111,11 +111,6 @@ public:
             vk::BufferUsageFlagBits::eVertexBuffer);
         spock::copyToDevice(m_vertexBuffer.deviceMemory(), QUAD_VERTEX_DATA, QUAD_VERTEX_COUNT);
 
-        m_texture = spock::Loader::texture(
-            foundry,
-            TEXTURE_PATH,
-            spock::createSampler(foundry->device(), vk::Filter::eLinear, vk::SamplerAddressMode::eClampToBorder));
-
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
             foundry->device(),
             vk::ShaderStageFlagBits::eFragment,
@@ -133,13 +128,13 @@ public:
             { {vk::DescriptorType::eCombinedImageSampler, 1} });
         m_descriptorSet = std::move(vk::raii::DescriptorSets(foundry->device(), { m_descriptorPool, *m_descriptorSetLayout }).front());
 
-        spock::updateDescriptorSets(foundry->device(), m_descriptorSet, {}, {m_texture});
+//        spock::updateDescriptorSets(foundry->device(), m_descriptorSet, {}, {m_texture});
 
-        createPipeline();
+        createPipelines();
     }
 
 protected:
-    void createPipeline()
+    void createPipelines()
     {
         // Create the shaders.
         auto vertShader = spock::compileShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
@@ -182,12 +177,18 @@ private:
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
+	vk::raii::Pipeline m_computePipeline{nullptr};
 
     vk::raii::DescriptorPool m_descriptorPool{nullptr};
     vk::raii::DescriptorSet m_descriptorSet{nullptr};
 
     spock::BufferWrapper m_vertexBuffer;
-    spock::TextureWrapper m_texture;
+
+	// Texture for the quad, can't use the TextureWrapper because I need to set the VK_IMAGE_USAGE_STORAGE_BIT.
+	vk::Format m_imageFormat;
+	vk::Extent2D m_imageExtent;
+	spock::ImageWrapper m_image;
+	vk::raii::Sampler m_sampler{nullptr};
 };
 
 class ComputeQuadApp : public spock::App
@@ -202,6 +203,20 @@ public:
     }
 
 protected:
+    spock::FoundryPtr createFoundry() const override
+    {
+        std::vector<char const*> extensions{ VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME };
+        vk::PhysicalDeviceSubgroupSizeControlFeatures subgroupSizeControl{ VK_TRUE, VK_TRUE };
+
+        return std::make_shared<const spock::Foundry>(
+            m_instance,
+            m_window.createSurface(m_instance),
+            vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute,
+            vk::PhysicalDeviceType::eDiscreteGpu,
+            extensions,
+            &subgroupSizeControl);
+    }
+
     std::unique_ptr<spock::Renderer> createRenderer() override
     {
         return std::make_unique<ComputeQuadRenderer>(m_foundry, m_window.extents());

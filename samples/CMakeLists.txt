@@ -76,3 +76,7 @@ set_target_properties(
     textured_sphere
     spherical_harmonics
     PROPERTIES FOLDER "samples")
+
+if (SPOCK_BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()

@@ -52,7 +52,7 @@ TextureWrapper Loader::texture(
     unsigned height = 0;
     auto pixels = loadRgba(path, width, height);
 
-    TextureWrapper texture(foundry, vk::Extent2D(width, height), std::move(sampler));
+    TextureWrapper texture(foundry, {width, height}, std::move(sampler));
 
     foundry->submit(
         [&](vk::CommandBuffer commandBuffer)
