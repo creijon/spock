@@ -7,7 +7,7 @@
 #include "spock/foundry.hpp"
 #include "spock/frame_state.hpp"
 
-#include <exception>
+#include <algorithm>
 #include <limits>
 #include <tuple>
 #include <utility>
@@ -20,14 +20,17 @@ namespace spock
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
         uint32_t framesInFlight,
-        Presenter const *oldPresenter)
+        Presenter const* oldPresenter,
+        SwapchainOptions const& options)
         : m_foundry(foundry)
     {
         vk::SwapchainKHR oldSwapchain = oldPresenter ? *oldPresenter->m_swapchain : vk::SwapchainKHR{};
-        SwapchainInfo swapchain = foundry->createSwapchain(extent, usage, framesInFlight, oldSwapchain);
+        SwapchainInfo swapchain = foundry->createSwapchain(extent, usage, framesInFlight, oldSwapchain, options);
         m_swapchain = std::move(swapchain.swapchain);
         m_colorFormat = swapchain.colorFormat;
         m_extent = swapchain.extent;
+        m_presentMode = swapchain.presentMode;
+        m_compositeAlpha = swapchain.compositeAlpha;
         m_images = m_swapchain.getImages();
 
         vk::ImageViewCreateInfo imageViewCreateInfo{
@@ -57,15 +60,17 @@ namespace spock
         }
     }
 
-    Presenter::Presenter(Presenter&&other) noexcept
+    Presenter::Presenter(Presenter&& other) noexcept
         : m_foundry(std::move(other.m_foundry))
+        , m_renderSemaphores(std::move(other.m_renderSemaphores))
         , m_swapchain(std::move(other.m_swapchain))
         , m_colorFormat(other.m_colorFormat)
         , m_extent(other.m_extent)
+        , m_presentMode(other.m_presentMode)
+        , m_compositeAlpha(other.m_compositeAlpha)
         , m_images(std::move(other.m_images))
         , m_imageViews(std::move(other.m_imageViews))
         , m_frameBuffers(std::move(other.m_frameBuffers))
-        , m_renderSemaphores(std::move(other.m_renderSemaphores))
     {
     }
 
@@ -73,16 +78,19 @@ namespace spock
     {
         if (this != &other)
         {
-            // Retire dependent objects before dropping their views, swapchain, or device owner.
+            // Retire dependent objects before dropping their views, swapchain, or device owner. The render
+            // semaphores go after the swapchain, which is what completes the presentation waits on them.
             m_frameBuffers.clear();
-            m_renderSemaphores.clear();
             m_imageViews.clear();
             m_images.clear();
             m_swapchain = nullptr;
+            m_renderSemaphores.clear();
             m_foundry = std::move(other.m_foundry);
             m_swapchain = std::move(other.m_swapchain);
             m_colorFormat = other.m_colorFormat;
             m_extent = other.m_extent;
+            m_presentMode = other.m_presentMode;
+            m_compositeAlpha = other.m_compositeAlpha;
             m_images = std::move(other.m_images);
             m_imageViews = std::move(other.m_imageViews);
             m_frameBuffers = std::move(other.m_frameBuffers);
@@ -102,20 +110,20 @@ namespace spock
         m_frameBuffers.clear();
     }
 
-    vk::Result Presenter::acquireFrame(FrameState &frame)
+    vk::Result Presenter::acquireFrame(FrameState& frame, std::chrono::nanoseconds timeout)
     {
         try
         {
             vk::Result result = vk::Result::eSuccess;
             std::tie(result, frame.imageIndex) = m_swapchain.acquireNextImage(
-                std::numeric_limits<uint64_t>::max(),
-                frame.semaphore);
+                static_cast<uint64_t>((std::max)(timeout.count(), std::chrono::nanoseconds::rep(0))),
+                *frame.semaphore);
             return result;
         }
-        catch (std::exception const &)
+        catch (vk::SystemError const& error)
         {
-            // Most commonly vk::OutOfDateKHRError right after a resize.
-            return vk::Result::eErrorOutOfDateKHR;
+            // Most commonly vk::OutOfDateKHRError right after a resize, but surface and device loss end up here too.
+            return static_cast<vk::Result>(error.code().value());
         }
     }
 
@@ -167,9 +175,10 @@ namespace spock
 
             return m_foundry->presentQueue().presentKHR(presentInfo);
         }
-        catch (std::exception const& e)
+        catch (vk::SystemError const& error)
         {
-            return vk::Result::eErrorOutOfDateKHR;
+            // The submission went ahead, so the frame's timeline still advances; only presentation failed.
+            return static_cast<vk::Result>(error.code().value());
         }
     }
 } // namespace spock

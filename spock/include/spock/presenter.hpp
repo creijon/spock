@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include "foundry.hpp"
 #include "types.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -24,7 +26,8 @@ namespace spock
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
             uint32_t framesInFlight,
-            Presenter const *oldPresenter = nullptr);
+            Presenter const *oldPresenter = nullptr,
+            SwapchainOptions const& options = {});
         Presenter() = default;
         Presenter(const Presenter &) = delete;
         Presenter(Presenter && other) noexcept;
@@ -60,22 +63,35 @@ namespace spock
             return m_frameBuffers.at(imageIndex);
         }
 
-        vk::Result acquireFrame(FrameState &frame);
+        // The present mode and composite alpha chosen from the SwapchainOptions.
+        vk::PresentModeKHR presentMode() const
+        {
+            return m_presentMode;
+        }
+        vk::CompositeAlphaFlagBitsKHR compositeAlpha() const
+        {
+            return m_compositeAlpha;
+        }
+
+        vk::Result acquireFrame(FrameState& frame, std::chrono::nanoseconds timeout);
         vk::Result presentFrame(FrameState &frame);
 
     private:
         // The Foundry has to be the first member since it holds the lifetime of the device and this
         // must be maintained until after the swapchain is destroyed.
         FoundryPtr m_foundry;
+
+        std::vector<vk::raii::Semaphore> m_renderSemaphores;
+
         vk::raii::SwapchainKHR m_swapchain{nullptr};
         vk::Format m_colorFormat{};
         vk::Extent2D m_extent{};
+        vk::PresentModeKHR m_presentMode{vk::PresentModeKHR::eFifo};
+        vk::CompositeAlphaFlagBitsKHR m_compositeAlpha{vk::CompositeAlphaFlagBitsKHR::eOpaque};
     
         std::vector<vk::Image> m_images;
         std::vector<vk::raii::ImageView> m_imageViews;
         // Destroy framebuffers before the swapchain image views they reference.
         std::vector<vk::raii::Framebuffer> m_frameBuffers;
-
-        std::vector<vk::raii::Semaphore> m_renderSemaphores;
     };
 } // namespace spock

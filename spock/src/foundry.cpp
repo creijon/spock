@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstring>
 #include <iterator>
 #include <limits>
 #include <set>
@@ -87,27 +88,40 @@ namespace spock
     Foundry::Foundry(
         vk::raii::Instance const &instance,
         vk::raii::SurfaceKHR windowSurface,
-        vk::QueueFlags requiredQueues,
-        vk::PhysicalDeviceType preferredDevice,
-        std::vector<char const*> const &extensions,
-        void const *features)
+        DeviceRequirements const& requirements)
         : m_surface(std::move(windowSurface))
     {
         std::vector<char const*> deviceExtensions{
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 #if defined(__APPLE__)
             VK_KHR_PORTABILITY_SUBSET_EXTENSION_NAME,
 #endif
         };
-        deviceExtensions.insert(deviceExtensions.end(), extensions.begin(), extensions.end());
-        m_extensions.assign(deviceExtensions.begin(), deviceExtensions.end());
+        deviceExtensions.insert(deviceExtensions.end(), requirements.extensions.begin(), requirements.extensions.end());
 
+        vk::QueueFlags const requiredQueues = requirements.queues;
         std::tie(m_physicalDevice, m_queueFamilies) = selectDevice(
             instance,
             *m_surface,
             requiredQueues,
-            preferredDevice,
-            deviceExtensions);
+            requirements.preferredDeviceType,
+            deviceExtensions,
+            requirements.optionalExtensions);
+
+        // Enable the optional extensions the selected device has, without repeating any already requested.
+        for (char const* name : supportedExtensions(m_physicalDevice, requirements.optionalExtensions))
+        {
+            bool const alreadyEnabled = std::any_of(
+                deviceExtensions.begin(), deviceExtensions.end(), [name](char const* enabled)
+                {
+                    return std::strcmp(enabled, name) == 0;
+                });
+            if (!alreadyEnabled)
+            {
+                deviceExtensions.push_back(name);
+            }
+        }
+        m_extensions.assign(deviceExtensions.begin(), deviceExtensions.end());
 
         std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos{ uniqueQueueCreateInfos(m_queueFamilies) };
 
@@ -119,7 +133,7 @@ namespace spock
             {},
             deviceExtensions,
             nullptr,
-            enableTimelineSemaphores(features, timelineFeatures));
+            enableTimelineSemaphores(requirements.features, timelineFeatures));
 
         m_device = vk::raii::Device(m_physicalDevice, deviceCreateInfo);
 
@@ -178,11 +192,12 @@ namespace spock
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
         uint32_t desiredImageCount,
-        vk::SwapchainKHR oldSwapchain) const
+        vk::SwapchainKHR oldSwapchain,
+        SwapchainOptions const& options) const
     {
-        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(m_surface));
+        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(*m_surface));
 
-        vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(m_surface);
+        vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(*m_surface);
         vk::Extent2D swapchainExtent;
         if (surfaceCapabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)())
         {
@@ -207,18 +222,12 @@ namespace spock
             vk::SurfaceTransformFlagBitsKHR::eIdentity :
             surfaceCapabilities.currentTransform;
 
-        using Alpha = vk::CompositeAlphaFlagBitsKHR;
-        auto compositeAlpha =
-            (surfaceCapabilities.supportedCompositeAlpha & Alpha::eOpaque)         ? Alpha::eOpaque :
-            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePreMultiplied)  ? Alpha::ePreMultiplied :
-            (surfaceCapabilities.supportedCompositeAlpha & Alpha::ePostMultiplied) ? Alpha::ePostMultiplied :
-            Alpha::eInherit;
-
-        vk::PresentModeKHR presentMode = pickPresentMode(m_physicalDevice.getSurfacePresentModesKHR(m_surface));
+        vk::CompositeAlphaFlagBitsKHR const compositeAlpha = pickCompositeAlpha(surfaceCapabilities.supportedCompositeAlpha, options.compositeAlpha);
+        vk::PresentModeKHR const presentMode = pickPresentMode(m_physicalDevice.getSurfacePresentModesKHR(*m_surface), options.presentModes);
         uint32_t imageCount = clampSurfaceImageCount(desiredImageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
         vk::SwapchainCreateInfoKHR swapChainCreateInfo(
             {},
-            m_surface,
+            *m_surface,
             imageCount,
             surfaceFormat.format,
             surfaceFormat.colorSpace,
@@ -241,9 +250,17 @@ namespace spock
             swapChainCreateInfo.pQueueFamilyIndices = queueFamilyIndices;
         }
 
-        return {
-            vk::raii::SwapchainKHR(m_device, swapChainCreateInfo),
-            surfaceFormat.format,
-            swapchainExtent};
+        SwapchainInfo info;
+        info.swapchain = vk::raii::SwapchainKHR(m_device, swapChainCreateInfo);
+        info.colorFormat = surfaceFormat.format;
+        info.extent = swapchainExtent;
+        info.presentMode = presentMode;
+        info.compositeAlpha = compositeAlpha;
+        return info;
+    }
+
+    bool Foundry::hasExtension(char const* name) const
+    {
+        return std::find(m_extensions.begin(), m_extensions.end(), name) != m_extensions.end();
     }
 }

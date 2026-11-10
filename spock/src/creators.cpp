@@ -135,6 +135,44 @@ namespace spock
             context, instanceCreateInfoChain.get<vk::InstanceCreateInfo>());
     }
 
+    constexpr vk::ColorComponentFlags ALL_COMPONENTS =
+        vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+
+    vk::PipelineColorBlendAttachmentState blendStraightAlpha()
+    {
+        return vk::PipelineColorBlendAttachmentState(
+            true,
+            vk::BlendFactor::eSrcAlpha,
+            vk::BlendFactor::eOneMinusSrcAlpha,
+            vk::BlendOp::eAdd,
+            vk::BlendFactor::eOne,
+            vk::BlendFactor::eZero,
+            vk::BlendOp::eAdd,
+            ALL_COMPONENTS);
+    }
+
+    vk::PipelineColorBlendAttachmentState blendPremultipliedAlpha()
+    {
+        // The result stays premultiplied, so it can be composited again or presented with ePreMultiplied.
+        return vk::PipelineColorBlendAttachmentState(
+            true,
+            vk::BlendFactor::eOne,
+            vk::BlendFactor::eOneMinusSrcAlpha,
+            vk::BlendOp::eAdd,
+            vk::BlendFactor::eOne,
+            vk::BlendFactor::eOneMinusSrcAlpha,
+            vk::BlendOp::eAdd,
+            ALL_COMPONENTS);
+    }
+
+    vk::PipelineColorBlendAttachmentState blendDisabled()
+    {
+        vk::PipelineColorBlendAttachmentState state;
+        state.blendEnable = VK_FALSE;
+        state.colorWriteMask = ALL_COMPONENTS;
+        return state;
+    }
+
     // Create a basic render pass with a single color attachment and an optional
     // depth attachment. loadOp applies to color only; depth is always cleared and discarded.
     vk::raii::RenderPass createRenderPass(
@@ -142,11 +180,17 @@ namespace spock
         vk::Format colorFormat,
         vk::Format depthFormat,
         vk::AttachmentLoadOp loadOp,
-        vk::ImageLayout colorFinalLayout)
+        vk::ImageLayout colorFinalLayout,
+        vk::ImageLayout colorInitialLayout)
     {
         std::vector<vk::AttachmentDescription> attachmentDescriptions;
 
         assert(colorFormat != vk::Format::eUndefined);
+        if (loadOp == vk::AttachmentLoadOp::eLoad && colorInitialLayout == vk::ImageLayout::eUndefined)
+        {
+            // The contents of an image in eUndefined may be discarded, so there would be nothing to load.
+            throw std::invalid_argument("createRenderPass: eLoad needs the color image's initial layout");
+        }
         attachmentDescriptions.emplace_back(
             vk::AttachmentDescriptionFlags(),
             colorFormat,
@@ -155,7 +199,7 @@ namespace spock
             vk::AttachmentStoreOp::eStore,
             vk::AttachmentLoadOp::eDontCare,
             vk::AttachmentStoreOp::eDontCare,
-            vk::ImageLayout::eUndefined,
+            colorInitialLayout,
             colorFinalLayout);
 
         if (depthFormat != vk::Format::eUndefined)
@@ -183,18 +227,36 @@ namespace spock
             {},
             (depthFormat != vk::Format::eUndefined) ? &depthAttachment : nullptr);
 
-        vk::SubpassDependency dependency(
-            VK_SUBPASS_EXTERNAL, 0,
-            vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
-            vk::PipelineStageFlagBits::eColorAttachmentOutput |
-                vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests,
-            vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-            vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead |
-                vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+        vk::PipelineStageFlags const attachmentStages =
+            vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
+        vk::AccessFlags const attachmentWrites = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
+
+        // Earlier attachment writes must finish before this pass loads, clears or writes the attachments.
+        std::vector<vk::SubpassDependency> dependencies{
+            vk::SubpassDependency(
+                VK_SUBPASS_EXTERNAL,
+                0,
+                attachmentStages,
+                attachmentStages,
+                attachmentWrites,
+                vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead | vk::AccessFlagBits::eDepthStencilAttachmentWrite)};
+
+        // A presented image is ordered by the present semaphore. Any other final layout means a later command
+        // reads the result, such as a copy or a shader, so make the writes and the final layout transition
+        // visible to everything that follows.
+        if (colorFinalLayout != vk::ImageLayout::ePresentSrcKHR)
+        {
+            dependencies.emplace_back(
+                0,
+                VK_SUBPASS_EXTERNAL,
+                attachmentStages,
+                vk::PipelineStageFlagBits::eAllCommands,
+                attachmentWrites,
+                vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite);
+        }
 
         vk::RenderPassCreateInfo renderPassCreateInfo(
-            vk::RenderPassCreateFlags(), attachmentDescriptions, subpassDescription, dependency);
+            vk::RenderPassCreateFlags(), attachmentDescriptions, subpassDescription, dependencies);
 
         return vk::raii::RenderPass(device, renderPassCreateInfo);
     }
@@ -304,7 +366,8 @@ namespace spock
         VertexFormat const& vertexFormat,
         vk::PrimitiveTopology primitiveTopology,
         vk::CullModeFlagBits cullMode,
-        bool depthBuffered)
+        bool depthBuffered,
+        vk::PipelineColorBlendAttachmentState const& colorBlend)
     {
         std::vector<vk::VertexInputAttributeDescription> vertexAttributeDescriptions;
 
@@ -342,21 +405,12 @@ namespace spock
             stencilOpState,
             stencilOpState);
 
-        vk::PipelineColorBlendAttachmentState pipelineColorBlendAttachment(
-            true,
-            vk::BlendFactor::eSrcAlpha,
-            vk::BlendFactor::eOneMinusSrcAlpha,
-            vk::BlendOp::eAdd,
-            vk::BlendFactor::eOne,
-            vk::BlendFactor::eZero,
-            vk::BlendOp::eAdd,
-            vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA);
-        vk::PipelineColorBlendStateCreateInfo colorBlendInfo(
-            vk::PipelineColorBlendStateCreateFlags(),
-            false,
-            vk::LogicOp::eNoOp,
-            pipelineColorBlendAttachment,
-            {{1.0f, 1.0f, 1.0f, 1.0f}});
+    vk::PipelineColorBlendStateCreateInfo colorBlendInfo(
+        vk::PipelineColorBlendStateCreateFlags(),
+        false,
+        vk::LogicOp::eNoOp,
+        colorBlend,
+        {{1.0f, 1.0f, 1.0f, 1.0f}});
 
         std::array<vk::DynamicState, 2> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
         vk::PipelineDynamicStateCreateInfo dynamicStateInfo(vk::PipelineDynamicStateCreateFlags(), dynamicStates);
@@ -374,8 +428,8 @@ namespace spock
             &depthStencilInfo,
             &colorBlendInfo,
             &dynamicStateInfo,
-            pipelineLayout,
-            renderPass);
+            *pipelineLayout,
+            *renderPass);
 
         // TODO: might need to pass in VkPipelineCacheCreateFlagBits at some stage.
         vk::raii::PipelineCache cache(device, vk::PipelineCacheCreateInfo());
@@ -392,7 +446,7 @@ namespace spock
         vk::ComputePipelineCreateInfo computePipelineInfo(
             vk::PipelineCreateFlags(),
             shaderStageInfo,
-            pipelineLayout);
+            *pipelineLayout);
 
         // TODO: might need to pass in VkPipelineCacheCreateFlagBits at some stage.
         vk::raii::PipelineCache cache(device, vk::PipelineCacheCreateInfo());
@@ -444,8 +498,8 @@ namespace spock
         uint32_t dstBinding = bindingOffset;
         for (BufferWrapper const& bd : bufferData)
         {
-            vk::Buffer buffer = bd.buffer();
-            bool hasBufferView = bd.bufferView() != nullptr;
+            vk::Buffer buffer = *bd.buffer();
+            bool hasBufferView = *bd.bufferView() != vk::BufferView{};
             bufferInfos.emplace_back(buffer, 0, bd.size());
             bufferViews.push_back(hasBufferView ? *bd.bufferView() : vk::BufferView{});
             writeDescriptorSets.emplace_back(

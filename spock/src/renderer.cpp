@@ -4,8 +4,8 @@
 #include "spock/renderer.hpp"
 
 #include "spock/creators.hpp"
-#include "spock/presenter.hpp"
 #include "spock/helpers.hpp"
+#include "spock/presenter.hpp"
 
 namespace spock
 {
@@ -14,7 +14,8 @@ namespace spock
         vk::Extent2D const &extents,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
-        bool useDepthBuffer)
+        bool useDepthBuffer,
+        SwapchainOptions const& swapchainOptions)
         : m_foundry(foundry)
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
@@ -49,7 +50,8 @@ namespace spock
             extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
             m_framesInFlight,
-            m_presenter.get());
+            m_presenter.get(),
+            m_swapchainOptions);
 
         // The surface may constrain the swapchain extent, so everything sized to the swapchain
         // (depth buffer, framebuffers, viewport, scissor) uses the extent it was actually created with.
@@ -86,7 +88,7 @@ namespace spock
 
         FrameStateGuard frameGuard = m_framePool->acquireFrame();
         FrameState &frameState = frameGuard.get();
-        vk::Result acquireResult = m_presenter->acquireFrame(frameState);
+        vk::Result acquireResult = m_presenter->acquireFrame(frameState, m_acquireTimeout);
 
         // If image acquisition failed, skip rendering and presentation.
         if (acquireResult != vk::Result::eSuccess && acquireResult != vk::Result::eSuboptimalKHR)
@@ -105,27 +107,32 @@ namespace spock
             vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
 
             vk::RenderPassBeginInfo renderPassBeginInfo(
-                m_renderPass,
-                m_presenter->framebuffer(frameState.imageIndex),
+                *m_renderPass,
+                *m_presenter->framebuffer(frameState.imageIndex),
                 vk::Rect2D(vk::Offset2D(0, 0), m_extents),
                 clearValues);
 
-            RenderPassWrapper renderPass(
-                frameState.commandBuffer,
-                renderPassBeginInfo);
+            {
+                RenderPassWrapper renderPass(
+                    frameState.commandBuffer,
+                    renderPassBeginInfo);
 
-            // Setup the viewport and scissor rectangle.
-            frameState.commandBuffer.setViewport(
-                0, vk::Viewport(0.0f,
-                    0.0f,
-                    static_cast<float>(m_extents.width),
-                    static_cast<float>(m_extents.height),
-                    0.0f,
-                    1.0f));
-            frameState.commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
+                // Setup the viewport and scissor rectangle.
+                frameState.commandBuffer.setViewport(
+                    0, vk::Viewport(0.0f,
+                        0.0f,
+                        static_cast<float>(m_extents.width),
+                        static_cast<float>(m_extents.height),
+                        0.0f,
+                        1.0f));
+                frameState.commandBuffer.setScissor(0, vk::Rect2D(vk::Offset2D(0, 0), m_extents));
 
-            // The derived class renders using the current frame state.
-            render(frameState);
+                // The derived class renders using the current frame state.
+                render(frameState);
+            }
+
+            // The derived class records anything that has to happen after the render pass.
+            finish(frameState);
         }
         catch (...)
         {

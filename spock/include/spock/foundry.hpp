@@ -13,6 +13,33 @@
 
 namespace spock
 {
+// What the logical device has to provide.
+struct DeviceRequirements
+{
+    // Queues in addition to graphics and present.
+    vk::QueueFlags queues{vk::QueueFlagBits::eGraphics};
+    vk::PhysicalDeviceType preferredDeviceType{vk::PhysicalDeviceType::eDiscreteGpu};
+    std::vector<char const*> extensions;
+    std::vector<char const*> optionalExtensions;
+    void const* features{nullptr};
+};
+
+struct SwapchainOptions
+{
+    // FIFO is the fallback when none of these is supported, because every surface supports it.
+    std::vector<vk::PresentModeKHR> presentModes{
+        vk::PresentModeKHR::eMailbox,
+        vk::PresentModeKHR::eImmediate,
+        vk::PresentModeKHR::eFifo};
+
+    // The default keeps the window opaque. Put ePreMultiplied first so that transparent pixels show what
+    // is behind the window. If none is supported, the first mode the surface supports is used.
+    std::vector<vk::CompositeAlphaFlagBitsKHR> compositeAlpha{
+        vk::CompositeAlphaFlagBitsKHR::eOpaque,
+        vk::CompositeAlphaFlagBitsKHR::ePreMultiplied,
+        vk::CompositeAlphaFlagBitsKHR::ePostMultiplied,
+        vk::CompositeAlphaFlagBitsKHR::eInherit};
+};
     // The result of Foundry::createSwapchain.
     // The extent is the one the swapchain was actually created with, which may differ from requested.
     struct SwapchainInfo
@@ -20,6 +47,8 @@ namespace spock
         vk::raii::SwapchainKHR swapchain{nullptr};
         vk::Format colorFormat{vk::Format::eUndefined};
         vk::Extent2D extent{};
+        vk::PresentModeKHR presentMode{vk::PresentModeKHR::eFifo};
+        vk::CompositeAlphaFlagBitsKHR compositeAlpha{vk::CompositeAlphaFlagBitsKHR::eOpaque};
     };
 
     // Responsible for managing the lifetime of the devices, queues and command pools, and keeping track of the queue families.
@@ -36,10 +65,7 @@ namespace spock
         Foundry(
             vk::raii::Instance const &instance,
             vk::raii::SurfaceKHR windowSurface,
-            vk::QueueFlags requiredQueues = vk::QueueFlagBits::eGraphics,
-            vk::PhysicalDeviceType preferredDevice = vk::PhysicalDeviceType::eDiscreteGpu,
-            std::vector<char const*> const &extensions = {},
-            void const *features = nullptr);
+            DeviceRequirements const& requirements = {});
 
         ~Foundry();
 
@@ -64,6 +90,9 @@ namespace spock
         // The device extensions the device was created with, including the ones the Foundry always adds.
         std::vector<std::string> const &extensions() const { return m_extensions; }
 
+        // True if the device was created with the named extension.
+        bool hasExtension(char const* name) const;
+
         // Create a swapchain for the surface.
         // desiredImageCount: clamped to what the surface supports for the Swapchain imageCount.
         // oldSwapchain: the current swapchain so the driver can reuse its resources.  The caller must still destroy it.
@@ -71,7 +100,8 @@ namespace spock
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
             uint32_t desiredImageCount,
-            vk::SwapchainKHR oldSwapchain = {}) const;
+            vk::SwapchainKHR oldSwapchain = {},
+            SwapchainOptions const& options = {}) const;
 
         void waitIdle() const;
 
@@ -81,14 +111,14 @@ namespace spock
         template <typename Func>
         void submit(Func const &func) const
         {
-            oneTimeSubmit(m_device, m_commandPool, m_graphicsQueue, func);
+            oneTimeSubmit(m_device, *m_commandPool, *m_graphicsQueue, func);
         }
 
         // Records a single-use command buffer via `func` and submits it to the compute queue.
         template <typename Func>
         void submitCompute(Func const &func) const
         {
-            oneTimeSubmit(m_device, m_computeCommandPool, m_computeQueue, func);
+            oneTimeSubmit(m_device, *m_computeCommandPool, *m_computeQueue, func);
         }
 
     private:

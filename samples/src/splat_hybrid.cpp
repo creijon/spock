@@ -154,11 +154,11 @@ public:
         };
     }
 
-	~SplatRenderer() override
-	{
+    ~SplatRenderer() override
+    {
         // The frames' descriptor sets are freed back to m_descriptorPool, so release them while it still exists.
         m_framePool.reset();
-	}
+    }
 
     void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
     {
@@ -357,13 +357,18 @@ protected:
             &float16Int8
         };
 
-        return std::make_shared<const spock::Foundry>(
-            m_instance,
-            m_window.createSurface(m_instance),
+        spock::DeviceRequirements requirements{
             vk::QueueFlagBits::eGraphics,
             vk::PhysicalDeviceType::eDiscreteGpu,
             extensions,
-            &storage16);
+            {},
+            &storage16
+        };
+
+        return std::make_shared<const spock::Foundry>(
+            m_instance,
+            m_window.createSurface(m_instance),
+            requirements);
     }
 
     std::unique_ptr<spock::Renderer> createRenderer() override

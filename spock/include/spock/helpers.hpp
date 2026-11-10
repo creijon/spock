@@ -26,6 +26,12 @@ namespace spock
         vk::ImageLayout newImageLayout,
         uint32_t layerCount = 1);
 
+    // Return the index of the first memory type allowed by typeBits that has all of requirementsMask.
+    // Throws std::runtime_error if there is none.
+    uint32_t findMemoryType(
+        vk::PhysicalDeviceMemoryProperties const& memoryProperties,
+        uint32_t typeBits,
+        vk::MemoryPropertyFlags requirementsMask);
     vk::raii::DeviceMemory allocateDeviceMemory(
         vk::raii::Device const &device,
         vk::PhysicalDeviceMemoryProperties const &memoryProperties,
@@ -55,7 +61,14 @@ namespace spock
         std::vector<vk::SurfaceFormatKHR> const &formats);
 
     vk::PresentModeKHR pickPresentMode(
-        std::vector<vk::PresentModeKHR> const &presentModes);
+        std::vector<vk::PresentModeKHR> const &presentModes,
+        std::vector<vk::PresentModeKHR> const& preferred);
+
+    vk::CompositeAlphaFlagBitsKHR pickCompositeAlpha(
+        vk::CompositeAlphaFlagsKHR supported,
+        std::vector<vk::CompositeAlphaFlagBitsKHR> const& preferred);
+
+    uint32_t texelSize(vk::Format format);
 
     VKAPI_ATTR vk::Bool32 VKAPI_CALL debugUtilsMessengerCallback(
         vk::DebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -124,7 +137,7 @@ namespace spock
             reinterpret_cast<const uint8_t*>(&constants) };
 
         commandBuffer.pushConstants<uint8_t>(
-            pipelineLayout,
+            *pipelineLayout,
             stageFlags,
             0,
             dataSpan);

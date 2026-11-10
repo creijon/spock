@@ -3,7 +3,12 @@
 
 #include "spock/wrappers.hpp"
 
+#include <fcntl.h>
+#include <unistd.h>
+
 #include <algorithm>
+#include <stdexcept>
+#include <string>
 
 namespace spock
 {
@@ -30,8 +35,10 @@ namespace spock
     {
         // Add new attributes to the existing binding if it already exists.
         auto it = std::find_if(
-            m_bindings.begin(), m_bindings.end(),
-            [binding](auto desc) { return desc.binding == binding; });
+            m_bindings.begin(), m_bindings.end(), [binding](auto desc)
+            {
+                return desc.binding == binding;
+            });
 
         if (it == m_bindings.end())
         {
@@ -74,7 +81,7 @@ namespace spock
             foundry->physicalDevice().getMemoryProperties(),
             m_buffer.getMemoryRequirements(),
             propertyFlags);
-        m_buffer.bindMemory(m_deviceMemory, 0);
+        m_buffer.bindMemory(*m_deviceMemory, 0);
 
         // For now, only check for uniform buffer usage.  As we add support for ray tracing etc, extend this.
         m_type = (usage & vk::BufferUsageFlagBits::eUniformBuffer) ? vk::DescriptorType::eUniformBuffer : vk::DescriptorType::eStorageBuffer;
@@ -128,14 +135,37 @@ namespace spock
             return m_mapped;
         }
 
-        if (m_propertyFlags & (vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent))
-        {
-            m_mapped = m_deviceMemory.mapMemory(0, m_size);
-            return m_mapped;
-        }
-
-        return nullptr;
+    if (m_propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible)
+    {
+        m_mapped = m_deviceMemory.mapMemory(0, VK_WHOLE_SIZE);
+        return m_mapped;
     }
+
+    return nullptr;
+}
+
+void BufferWrapper::flush(
+    vk::DeviceSize offset,
+    vk::DeviceSize size) const
+{
+    if (m_propertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent)
+    {
+        return;
+    }
+
+    // The memory must be mapped while it is flushed; the caller maps it for the duration of the write.
+    VkMappedMemoryRange range{};
+    range.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+    range.memory = static_cast<VkDeviceMemory>(*m_deviceMemory);
+    range.offset = offset;
+    range.size = size;
+    auto const* dispatcher = m_deviceMemory.getDispatcher();
+    VkResult const result = dispatcher->vkFlushMappedMemoryRanges(static_cast<VkDevice>(m_deviceMemory.getDevice()), 1, &range);
+    if (result != VK_SUCCESS)
+    {
+        throw std::runtime_error("BufferWrapper::flush failed: " + vk::to_string(static_cast<vk::Result>(result)));
+    }
+}
 
     void BufferWrapper::unmap()
     {
@@ -159,6 +189,8 @@ namespace spock
         vk::ImageCreateFlags createFlags,
         vk::ImageViewType viewType)
         : m_format(format)
+        , m_extent(extent)
+        , m_layout(initialLayout)
         , m_image(
             foundry->device(),
             {createFlags,
@@ -179,14 +211,16 @@ namespace spock
             foundry->physicalDevice().getMemoryProperties(),
             m_image.getMemoryRequirements(),
             memoryProperties);
-        m_image.bindMemory(m_deviceMemory, 0);
+        m_image.bindMemory(*m_deviceMemory, 0);
         m_imageView = vk::raii::ImageView(
             foundry->device(),
-            vk::ImageViewCreateInfo({}, m_image, viewType, format, {}, {aspectMask, 0, 1, 0, arrayLayers}));
+            vk::ImageViewCreateInfo({}, *m_image, viewType, format, {}, {aspectMask, 0, 1, 0, arrayLayers}));
     }
 
     ImageWrapper::ImageWrapper(ImageWrapper &&other) noexcept
         : m_format(other.m_format)
+        , m_extent(other.m_extent)
+        , m_layout(other.m_layout)
         , m_deviceMemory(std::move(other.m_deviceMemory))
         , m_image(std::move(other.m_image))
         , m_imageView(std::move(other.m_imageView))
@@ -197,13 +231,85 @@ namespace spock
     {
         if (this != &other)
         {
-            m_format = other.m_format;
-            m_deviceMemory = std::move(other.m_deviceMemory);
-            m_image = std::move(other.m_image);
+            // Release the view and image before the memory they are bound to.
             m_imageView = std::move(other.m_imageView);
+            m_image = std::move(other.m_image);
+            m_deviceMemory = std::move(other.m_deviceMemory);
+            m_format = other.m_format;
+            m_extent = other.m_extent;
+            m_layout = other.m_layout;
         }
 
         return *this;
+    }
+
+    void ImageWrapper::upload(
+        FoundryPtr const& foundry,
+        std::vector<ImageRegion> const& regions,
+        vk::ImageLayout finalLayout)
+    {
+        if (regions.empty())
+        {
+            return;
+        }
+
+        vk::DeviceSize const texel = texelSize(m_format);
+        // Copy offsets must be multiples of the texel size, and of 4 on queues without graphics or compute.
+        vk::DeviceSize const alignment = (std::max)(texel, vk::DeviceSize(4));
+
+        std::vector<vk::BufferImageCopy> copies;
+        copies.reserve(regions.size());
+        vk::DeviceSize stagingSize = 0;
+        for (ImageRegion const& region : regions)
+        {
+            bool const inside = region.offset.x >= 0 && region.offset.y >= 0 &&
+                                uint64_t(region.offset.x) + region.extent.width <= m_extent.width &&
+                                uint64_t(region.offset.y) + region.extent.height <= m_extent.height;
+            if (!region.data || !inside || region.extent.width == 0 || region.extent.height == 0)
+            {
+                throw std::invalid_argument("ImageWrapper::upload: region is empty, has no data or lies outside the image");
+            }
+            if (region.rowPitch != 0 && region.rowPitch < region.extent.width * texel)
+            {
+                throw std::invalid_argument("ImageWrapper::upload: row pitch is smaller than a row");
+            }
+
+            stagingSize = (stagingSize + alignment - 1) / alignment * alignment;
+            copies.emplace_back(
+                stagingSize,
+                0,
+                0,
+                vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1),
+                vk::Offset3D(region.offset.x, region.offset.y, 0),
+                vk::Extent3D(region.extent, 1));
+            stagingSize += vk::DeviceSize(region.extent.width) * region.extent.height * texel;
+        }
+
+        BufferWrapper staging(foundry, stagingSize, vk::BufferUsageFlagBits::eTransferSrc);
+        uint8_t* mapped = static_cast<uint8_t*>(staging.map());
+        for (size_t i = 0; i < regions.size(); ++i)
+        {
+            ImageRegion const& region = regions[i];
+            size_t const rowSize = size_t(region.extent.width * texel);
+            size_t const sourcePitch = region.rowPitch ? region.rowPitch : rowSize;
+            uint8_t* destination = mapped + copies[i].bufferOffset;
+            uint8_t const* source = static_cast<uint8_t const*>(region.data);
+            for (uint32_t row = 0; row < region.extent.height; ++row)
+            {
+                memcpy(destination + row * rowSize, source + row * sourcePitch, rowSize);
+            }
+        }
+        staging.flush();
+
+        vk::ImageLayout const oldLayout = m_layout;
+        foundry->submit(
+            [&](vk::CommandBuffer const& commandBuffer)
+            {
+                setImageLayout(commandBuffer, *m_image, m_format, oldLayout, vk::ImageLayout::eTransferDstOptimal);
+                commandBuffer.copyBufferToImage(*staging.buffer(), *m_image, vk::ImageLayout::eTransferDstOptimal, copies);
+                setImageLayout(commandBuffer, *m_image, m_format, vk::ImageLayout::eTransferDstOptimal, finalLayout);
+            });
+        m_layout = finalLayout;
     }
 
     DepthBufferWrapper::DepthBufferWrapper(
@@ -231,10 +337,13 @@ namespace spock
     {
         if (this != &other)
         {
-            m_format = other.m_format;
-            m_deviceMemory = std::move(other.m_deviceMemory);
-            m_image = std::move(other.m_image);
+            // Release the view and image before the memory they are bound to.
             m_imageView = std::move(other.m_imageView);
+            m_image = std::move(other.m_image);
+            m_deviceMemory = std::move(other.m_deviceMemory);
+            m_format = other.m_format;
+            m_extent = other.m_extent;
+            m_layout = other.m_layout;
         }
 
         return *this;

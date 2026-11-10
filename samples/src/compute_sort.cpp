@@ -380,13 +380,18 @@ protected:
         std::vector<char const*> extensions{ VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME };
         vk::PhysicalDeviceSubgroupSizeControlFeatures subgroupSizeControl{ VK_TRUE, VK_TRUE };
 
-        return std::make_shared<const spock::Foundry>(
-            m_instance,
-            m_window.createSurface(m_instance),
+        spock::DeviceRequirements requirements{
             vk::QueueFlagBits::eCompute,
             vk::PhysicalDeviceType::eDiscreteGpu,
             extensions,
-            &subgroupSizeControl);
+            {},
+            &subgroupSizeControl
+        };
+
+        return std::make_shared<const spock::Foundry>(
+            m_instance,
+            m_window.createSurface(m_instance),
+            requirements);
     }
 
     std::unique_ptr<spock::Renderer> createRenderer() override

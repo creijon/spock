@@ -129,12 +129,16 @@ namespace spock
         void* map();
         void unmap();
 
+        // Make host writes to the mapped memory visible to the device. Does nothing for host coherent memory.
+        void flush(
+            vk::DeviceSize offset = 0,
+            vk::DeviceSize size = VK_WHOLE_SIZE) const;
+
         template <typename DataType>
         void upload(
             DataType const &data) const
         {
-            assert((m_propertyFlags & vk::MemoryPropertyFlagBits::eHostCoherent) &&
-                   (m_propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible));
+            assert(m_propertyFlags & vk::MemoryPropertyFlagBits::eHostVisible);
             assert(sizeof(DataType) <= m_size);
 
             withMappedMemory(
@@ -191,8 +195,8 @@ namespace spock
 
             oneTimeSubmit(
                 foundry->device(),
-                commandPool,
-                queue,
+                *commandPool,
+                *queue,
                 [&](vk::CommandBuffer const& commandBuffer) {
                     commandBuffer.copyBuffer(*stagingBuffer.m_buffer, *m_buffer, vk::BufferCopy(0, 0, dataSize));
                 });
@@ -203,16 +207,19 @@ namespace spock
         // if there is one, and otherwise map the first `size` bytes just for the duration of `write`.
         template <typename WriteFunc>
         void withMappedMemory(
-            vk::DeviceSize size,
+            [[maybe_unused]] vk::DeviceSize size,
             WriteFunc const &write) const
         {
             if (m_mapped)
             {
                 write(m_mapped);
+                flush();
                 return;
             }
 
-            write(m_deviceMemory.mapMemory(0, size));
+            assert(size <= m_size);
+            write(m_deviceMemory.mapMemory(0, VK_WHOLE_SIZE));
+            flush();
             m_deviceMemory.unmapMemory();
         }
 
@@ -229,6 +236,18 @@ namespace spock
         vk::BufferUsageFlags m_usage{};
         vk::MemoryPropertyFlags m_propertyFlags{};
         void* m_mapped{nullptr};
+    };
+
+    // A rectangle of host pixels for ImageWrapper::upload.
+    struct ImageRegion
+    {
+        // The top-left texel of the rectangle.
+        void const* data{nullptr};
+        // Bytes from the start of one row of `data` to the next. 0 means the rows are tightly packed.
+        size_t rowPitch{0};
+        // Where the rectangle goes in the image, and its size, in texels.
+        vk::Offset2D offset{};
+        vk::Extent2D extent{};
     };
 
     class ImageWrapper
@@ -271,11 +290,36 @@ namespace spock
             return m_imageView;
         }
 
+        vk::Extent2D extent() const
+        {
+            return m_extent;
+        }
+
+        // The layout the image is in once the commands recorded so far have executed.
+        vk::ImageLayout layout() const
+        {
+            return m_layout;
+        }
+
+        // Record a layout change made outside this wrapper, so that later transitions start from it.
+        void setLayout(vk::ImageLayout layout)
+        {
+            m_layout = layout;
+        }
+
+        // Copy host pixels into the image through a staging buffer on the graphics queue, then leave the image in
+        // `finalLayout`. Texels outside the regions keep their contents, unless the image was still in eUndefined.
+        // Blocks until the copy has finished. The image needs eTransferDst usage and a single-plane color format
+        // that texelSize() knows. Throws std::invalid_argument for a region outside the image.
+        void upload(
+            FoundryPtr const& foundry,
+            std::vector<ImageRegion> const& regions,
+            vk::ImageLayout finalLayout = vk::ImageLayout::eShaderReadOnlyOptimal);
     protected:
-        // the DeviceMemory should be destroyed before the Image it is bound to;
-        // to get that order with the standard destructor of the ImageWrapper,
-        // the order of DeviceMemory and Image here matters.
+        // The image view is destroyed first, then the image, and the memory it is bound to last.
         vk::Format m_format{vk::Format::eUndefined};
+        vk::Extent2D m_extent{};
+        vk::ImageLayout m_layout{vk::ImageLayout::eUndefined};
         vk::raii::DeviceMemory m_deviceMemory{nullptr};
         vk::raii::Image m_image{nullptr};
         vk::raii::ImageView m_imageView{nullptr};
@@ -323,7 +367,7 @@ namespace spock
                 // Since we're going to blit to the texture image, set its layout to eTransferDstOptimal
                 setImageLayout(
                     commandBuffer,
-                    m_image.image(),
+                    *m_image.image(),
                     m_image.format(),
                     vk::ImageLayout::eUndefined,
                     vk::ImageLayout::eTransferDstOptimal);
@@ -343,25 +387,42 @@ namespace spock
                 // Set the layout for the texture image from eTransferDstOptimal to eShaderReadOnlyOptimal
                 setImageLayout(
                     commandBuffer,
-                    m_image.image(),
+                    *m_image.image(),
                     m_image.format(),
                     vk::ImageLayout::eTransferDstOptimal,
                     vk::ImageLayout::eShaderReadOnlyOptimal);
             }
             else
             {
-                void *data = m_image.deviceMemory().mapMemory(0, m_image.image().getMemoryRequirements().size);
-                imageGenerator(data, m_extent);
+                // A linearly tiled image may pad its rows, so the generator, which writes tightly packed rows,
+                // can only write straight into the image when the row pitch matches.
+                vk::SubresourceLayout const subresource = m_image.image().getSubresourceLayout({vk::ImageAspectFlagBits::eColor, 0, 0});
+                size_t const packedPitch = size_t(m_extent.width) * texelSize(m_format);
+                uint8_t* mapped = static_cast<uint8_t*>(m_image.deviceMemory().mapMemory(0, VK_WHOLE_SIZE)) + subresource.offset;
+                if (subresource.rowPitch == packedPitch)
+                {
+                    imageGenerator(mapped, m_extent);
+                }
+                else
+                {
+                    std::vector<uint8_t> packed(packedPitch * m_extent.height);
+                    imageGenerator(packed.data(), m_extent);
+                    for (uint32_t row = 0; row < m_extent.height; ++row)
+                    {
+                        memcpy(mapped + row * subresource.rowPitch, packed.data() + row * packedPitch, packedPitch);
+                    }
+                }
                 m_image.deviceMemory().unmapMemory();
 
                 // If we can use the linear tiled image as a texture directly.
                 setImageLayout(
                     commandBuffer,
-                    m_image.image(),
+                    *m_image.image(),
                     m_image.format(),
                     vk::ImageLayout::ePreinitialized,
                     vk::ImageLayout::eShaderReadOnlyOptimal);
             }
+            m_image.setLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
         }
 
         ImageWrapper const& image() const

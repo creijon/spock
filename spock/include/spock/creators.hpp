@@ -20,7 +20,20 @@ namespace spock
         std::string const &appName,
         std::vector<std::string> const &layers = {},
         std::vector<std::string> const &extensions = {},
-        uint32_t apiVersion = VK_API_VERSION_1_4);
+        uint32_t apiVersion = VK_API_VERSION_1_2);
+
+    // Create a messenger that forwards validation warnings and errors to the Spock log sink for the life of
+    // the instance. The instance must have been created with VK_EXT_debug_utils.
+    vk::raii::DebugUtilsMessengerEXT createDebugMessenger(
+        vk::raii::Instance const& instance);
+
+    // Color blend states for createGraphicsPipeline.
+    // Straight alpha: the source color is not yet multiplied by its alpha.
+    vk::PipelineColorBlendAttachmentState blendStraightAlpha();
+    // Premultiplied alpha: the source color has already been multiplied by its alpha.
+    vk::PipelineColorBlendAttachmentState blendPremultipliedAlpha();
+    // No blending: the source replaces the destination.
+    vk::PipelineColorBlendAttachmentState blendDisabled();
 
     // Allocate a primary command buffer from the given command pool.
     vk::raii::CommandBuffer createCommandBuffer(
@@ -34,7 +47,8 @@ namespace spock
         vk::Format colorFormat,
         vk::Format depthFormat,
         vk::AttachmentLoadOp loadOp = vk::AttachmentLoadOp::eClear,
-        vk::ImageLayout colorFinalLayout = vk::ImageLayout::ePresentSrcKHR);
+        vk::ImageLayout colorFinalLayout = vk::ImageLayout::ePresentSrcKHR,
+        vk::ImageLayout colorInitialLayout = vk::ImageLayout::eUndefined);
 
     // Create a descriptor pool that can allocate descriptor sets for the given bindings.
     vk::raii::DescriptorPool createDescriptorPool(
@@ -86,7 +100,8 @@ namespace spock
         VertexFormat const &vertexFormat,
         vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList,
         vk::CullModeFlagBits cullMode = vk::CullModeFlagBits::eBack,
-        bool depthBuffered = true);
+        bool depthBuffered = true,
+        vk::PipelineColorBlendAttachmentState const& colorBlend = blendStraightAlpha());
 
     // Create a compute pipeline from a single compute shader stage.
     vk::raii::Pipeline createComputePipeline(

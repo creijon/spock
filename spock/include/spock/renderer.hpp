@@ -13,8 +13,6 @@
 #include <memory>
 #include <vector>
 
-using namespace std::chrono_literals;
-
 namespace spock
 {
     class FrameState;
@@ -28,7 +26,8 @@ namespace spock
             vk::Extent2D const &extents,
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,
-            bool useDepthBuffer = true);
+            bool useDepthBuffer = true,
+            SwapchainOptions const& swapchainOptions = {});
 
         virtual ~Renderer();
 
@@ -36,6 +35,19 @@ namespace spock
         void resizeWindow(vk::Extent2D const &extents);
         void waitIdle() const;
 
+        void setClearColor(vk::ClearColorValue const& clearColor)
+        {
+            m_clearColor = clearColor;
+        }
+        void setAcquireTimeout(std::chrono::nanoseconds timeout)
+        {
+            m_acquireTimeout = timeout;
+        }
+
+        Presenter const* presenter() const
+        {
+            return m_presenter.get();
+        }
     protected:
         // Records commands that must come before the render pass, such as image layout transitions.
         virtual void prepare(FrameState &) {}
@@ -43,6 +55,10 @@ namespace spock
         // Records the commands inside the render pass.
         virtual void render(FrameState &frame) = 0;
 
+        // Records commands that must come after the render pass, such as handing images back to another owner.
+        virtual void finish(FrameState&)
+        {
+        }
         FoundryPtr m_foundry;
         std::unique_ptr<Presenter> m_presenter;
         std::unique_ptr<FrameStatePool> m_framePool;
@@ -58,9 +74,11 @@ namespace spock
 
         std::chrono::microseconds m_frameTime{0};
         uint32_t m_frameCount{0};
-
-        const vk::ClearColorValue m_clearColor;
+    
+        vk::ClearColorValue m_clearColor;
         const vk::ClearDepthStencilValue m_clearDepthStencil;
         const uint32_t m_framesInFlight{3};
+        const SwapchainOptions m_swapchainOptions;
+        std::chrono::nanoseconds m_acquireTimeout{std::chrono::seconds(1)};
     };
 } // namespace spock

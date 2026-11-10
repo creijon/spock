@@ -5,8 +5,8 @@ add_executable(samples_tests
 )
 
 target_include_directories(samples_tests PRIVATE
-	${CMAKE_CURRENT_SOURCE_DIR}/../src
-	${CMAKE_SOURCE_DIR}/spock/tests)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src
+    ${CMAKE_SOURCE_DIR}/spock/tests)
 
 target_link_libraries(samples_tests PRIVATE ${BINARY_NAME} Catch2::Catch2WithMain)
 

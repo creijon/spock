@@ -190,46 +190,46 @@ public:
         spock::FoundryPtr const &foundry,
         vk::raii::DescriptorPool const &descriptorPool,
         vk::raii::DescriptorSetLayout const &descriptorSetLayout,
-		vk::raii::Sampler const &sampler,
-		vk::Extent2D const &lumaExtent)
+        vk::raii::Sampler const &sampler,
+        vk::Extent2D const &lumaExtent)
     {
-		if (descriptorSet != nullptr) return;
+        if (descriptorSet != nullptr) return;
 
         vk::Extent2D chromaExtent((lumaExtent.width + 1) / 2, (lumaExtent.height + 1) / 2);
 
         descriptorSet = std::move(vk::raii::DescriptorSets(foundry->device(), {descriptorPool, *descriptorSetLayout}).front());
 
-		planes.reserve(PLANE_COUNT);
-		planes.emplace_back(foundry, lumaExtent);
-		planes.emplace_back(foundry, chromaExtent);
-		planes.emplace_back(foundry, chromaExtent);
+        planes.reserve(PLANE_COUNT);
+        planes.emplace_back(foundry, lumaExtent);
+        planes.emplace_back(foundry, chromaExtent);
+        planes.emplace_back(foundry, chromaExtent);
 
-		// Start black rather than with undefined contents.
-		std::memset(planes[0].mapped, 0, planes[0].rowPitch * lumaExtent.height);
-		std::memset(planes[1].mapped, 128, planes[1].rowPitch * chromaExtent.height);
-		std::memset(planes[2].mapped, 128, planes[2].rowPitch * chromaExtent.height);
+        // Start black rather than with undefined contents.
+        std::memset(planes[0].mapped, 0, planes[0].rowPitch * lumaExtent.height);
+        std::memset(planes[1].mapped, 128, planes[1].rowPitch * chromaExtent.height);
+        std::memset(planes[2].mapped, 128, planes[2].rowPitch * chromaExtent.height);
 
-		std::array<vk::DescriptorImageInfo, PLANE_COUNT> imageInfos;
-		std::array<vk::WriteDescriptorSet, PLANE_COUNT> writes;
-		for (uint32_t p = 0; p < PLANE_COUNT; ++p)
-		{
-			imageInfos[p] = vk::DescriptorImageInfo(*sampler, *planes[p].image.imageView(), vk::ImageLayout::eGeneral);
-			writes[p] = vk::WriteDescriptorSet(*descriptorSet, p, 0, vk::DescriptorType::eCombinedImageSampler, imageInfos[p]);
-		}
-		foundry->device().updateDescriptorSets(writes, nullptr);
+        std::array<vk::DescriptorImageInfo, PLANE_COUNT> imageInfos;
+        std::array<vk::WriteDescriptorSet, PLANE_COUNT> writes;
+        for (uint32_t p = 0; p < PLANE_COUNT; ++p)
+        {
+            imageInfos[p] = vk::DescriptorImageInfo(*sampler, *planes[p].image.imageView(), vk::ImageLayout::eGeneral);
+            writes[p] = vk::WriteDescriptorSet(*descriptorSet, p, 0, vk::DescriptorType::eCombinedImageSampler, imageInfos[p]);
+        }
+        foundry->device().updateDescriptorSets(writes, nullptr);
 
         foundry->submit(
             [&](vk::CommandBuffer commandBuffer)
             {
-				for (VideoPlane const &plane : planes)
-				{
-					spock::setImageLayout(
-						commandBuffer,
-						plane.image.image(),
-						plane.image.format(),
-						vk::ImageLayout::ePreinitialized,
-						vk::ImageLayout::eGeneral);
-				}
+                for (VideoPlane const &plane : planes)
+                {
+                    spock::setImageLayout(
+                        commandBuffer,
+                        plane.image.image(),
+                        plane.image.format(),
+                        vk::ImageLayout::ePreinitialized,
+                        vk::ImageLayout::eGeneral);
+                }
             });
     }
 
@@ -292,11 +292,11 @@ public:
         createPipeline();
     }
 
-	~VideoRenderer() override
-	{
+    ~VideoRenderer() override
+    {
         // The frames' descriptor sets are freed back to Renderer::m_descriptorPool, so release them while it still exists.
         m_framePool.reset();
-	}
+    }
 
 protected:
     void checkFormatSupport() const
@@ -337,8 +337,8 @@ protected:
     {
         auto& frameData = static_cast<VideoFrameState&>(frame);
 
-		frameData.createResources(m_foundry, m_descriptorPool, m_descriptorSetLayout, m_sampler, m_decoder->extent());
-		
+        frameData.createResources(m_foundry, m_descriptorPool, m_descriptorSetLayout, m_sampler, m_decoder->extent());
+        
         AVFrame const *videoFrame = m_decoder->currentFrame();
         if (videoFrame && frameData.serial != m_decoder->serial())
         {

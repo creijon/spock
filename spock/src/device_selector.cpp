@@ -9,7 +9,6 @@
 #include <cassert>
 #include <cstdint>
 #include <limits>
-#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -113,13 +112,7 @@ namespace spock
         vk::raii::PhysicalDevice const& physicalDevice,
         std::vector<char const*> const& requiredExtensions)
     {
-        std::set<std::string> requiredExtensionsSet(requiredExtensions.begin(), requiredExtensions.end());
-        auto availableExtensions = physicalDevice.enumerateDeviceExtensionProperties();
-        for (const auto& extension : availableExtensions)
-        {
-            requiredExtensionsSet.erase(extension.extensionName);
-        }
-        return requiredExtensionsSet.empty();
+        return supportedExtensions(physicalDevice, requiredExtensions).size() == requiredExtensions.size();
     }
 
     // Frame synchronisation needs timeline semaphores, which are core from Vulkan 1.2.
@@ -135,12 +128,33 @@ namespace spock
         return features.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>().timelineSemaphore == VK_TRUE;
     }
 
+    std::vector<char const*> supportedExtensions(
+        vk::raii::PhysicalDevice const& physicalDevice,
+        std::vector<char const*> const& extensions)
+    {
+        std::set<std::string> available;
+        for (auto const& extension : physicalDevice.enumerateDeviceExtensionProperties())
+        {
+            available.insert(extension.extensionName.data());
+        }
+
+        std::vector<char const*> supported;
+        for (char const* name : extensions)
+        {
+            if (available.count(name) != 0)
+            {
+                supported.push_back(name);
+            }
+        }
+        return supported;
+    }
     std::pair<vk::raii::PhysicalDevice, QueueFamilies> selectDevice(
         vk::raii::Instance const &instance,
         vk::SurfaceKHR const& surface,
         vk::QueueFlags requiredQueues,
         vk::PhysicalDeviceType preferredDevice,
-        std::vector<char const*> const &requiredExtensions)
+        std::vector<char const*> const &requiredExtensions,
+        std::vector<char const*> const& optionalExtensions)
     {
         auto physicalDevices = vk::raii::PhysicalDevices(instance);
         std::vector<std::tuple<uint32_t, vk::raii::PhysicalDevice, QueueFamilies>> deviceSelections;

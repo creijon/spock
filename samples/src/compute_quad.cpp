@@ -88,6 +88,18 @@ void main()
 }
 )";
 
+static const std::string COMPUTE_SHADER_SOURCE = R"(
+#version 400
+
+#extension GL_KHR_shader_subgroup_basic: enable
+#extension GL_KHR_shader_subgroup_arithmetic: enable
+#extension GL_KHR_shader_subgroup_ballot: enable
+
+void main()
+{
+}
+)";
+
 struct PushConstants
 {
     glm::vec2 aspect;
@@ -139,8 +151,9 @@ protected:
         // Create the shaders.
         auto vertShader = spock::compileShader(m_foundry->device(), vk::ShaderStageFlagBits::eVertex, VERTEX_SHADER_SOURCE);
         auto fragShader = spock::compileShader(m_foundry->device(), vk::ShaderStageFlagBits::eFragment, FRAGMENT_SHADER_SOURCE);
+        auto compShader = spock::compileShader(m_foundry->device(), vk::ShaderStageFlagBits::eCompute, COMPUTE_SHADER_SOURCE);
 
-        std::vector<vk::PipelineShaderStageCreateInfo> shaderStagesInfo{
+        std::vector<vk::PipelineShaderStageCreateInfo> graphicsStagesInfo{
             {{}, vk::ShaderStageFlagBits::eVertex, *vertShader, "main"},
             {{}, vk::ShaderStageFlagBits::eFragment, *fragShader, "main"},
         };
@@ -148,11 +161,18 @@ protected:
         // Finally create the graphics pipeline.
         m_graphicsPipeline = spock::createGraphicsPipeline(
             m_foundry->device(),
-            shaderStagesInfo,
+            graphicsStagesInfo,
             m_pipelineLayout,
             m_renderPass,
             spock::VertexFormatWrapper<QuadVertex>(),
             vk::PrimitiveTopology::eTriangleStrip);
+
+        vk::PipelineShaderStageCreateInfo computeStageInfo({}, vk::ShaderStageFlagBits::eCompute, *compShader, "main");
+        
+        m_computePipeline = spock::createComputePipeline(
+            m_foundry->device(),
+            computeStageInfo,
+            m_pipelineLayout);
     }
 
     void render(spock::FrameState &frame) override
@@ -177,18 +197,18 @@ private:
     vk::raii::DescriptorSetLayout m_descriptorSetLayout{nullptr};
     vk::raii::PipelineLayout m_pipelineLayout{nullptr};
     vk::raii::Pipeline m_graphicsPipeline{nullptr};
-	vk::raii::Pipeline m_computePipeline{nullptr};
+    vk::raii::Pipeline m_computePipeline{nullptr};
 
     vk::raii::DescriptorPool m_descriptorPool{nullptr};
     vk::raii::DescriptorSet m_descriptorSet{nullptr};
 
     spock::BufferWrapper m_vertexBuffer;
 
-	// Texture for the quad, can't use the TextureWrapper because I need to set the VK_IMAGE_USAGE_STORAGE_BIT.
-	vk::Format m_imageFormat;
-	vk::Extent2D m_imageExtent;
-	spock::ImageWrapper m_image;
-	vk::raii::Sampler m_sampler{nullptr};
+    // Texture for the quad, can't use the TextureWrapper because I need to set the VK_IMAGE_USAGE_STORAGE_BIT.
+    vk::Format m_imageFormat;
+    vk::Extent2D m_imageExtent;
+    spock::ImageWrapper m_image;
+    vk::raii::Sampler m_sampler{nullptr};
 };
 
 class ComputeQuadApp : public spock::App
@@ -208,13 +228,19 @@ protected:
         std::vector<char const*> extensions{ VK_EXT_SUBGROUP_SIZE_CONTROL_EXTENSION_NAME };
         vk::PhysicalDeviceSubgroupSizeControlFeatures subgroupSizeControl{ VK_TRUE, VK_TRUE };
 
-        return std::make_shared<const spock::Foundry>(
-            m_instance,
-            m_window.createSurface(m_instance),
+        spock::DeviceRequirements requirements{
             vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute,
             vk::PhysicalDeviceType::eDiscreteGpu,
             extensions,
-            &subgroupSizeControl);
+            {},
+            &subgroupSizeControl
+        };
+
+        return std::make_shared<const spock::Foundry>(
+            m_instance,
+            m_window.createSurface(m_instance),
+            requirements
+        );
     }
 
     std::unique_ptr<spock::Renderer> createRenderer() override
