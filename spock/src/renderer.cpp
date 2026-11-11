@@ -20,6 +20,7 @@ namespace spock
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
+        , m_swapchainOptions(swapchainOptions)
     {
         resizeWindow(extents);
     }

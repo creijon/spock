@@ -13,8 +13,10 @@
 #include <array>
 #include <chrono>
 #include <cstring>
+#include <memory>
 #include <set>
 #include <stdexcept>
+#include <vector>
 
 using namespace spock_test;
 
@@ -110,6 +112,173 @@ TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
 
     vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+}
+
+namespace
+{
+    // Records the order in which the Renderer calls its hooks, and for which frame.
+    class HookRenderer : public spock::Renderer
+    {
+    public:
+        using spock::Renderer::Renderer;
+
+        struct Call
+        {
+            char hook;
+            spock::FrameState *frame;
+        };
+        std::vector<Call> calls;
+
+    protected:
+        void prepare(spock::FrameState &frame) override
+        {
+            calls.push_back({'p', &frame});
+        }
+        void render(spock::FrameState &frame) override
+        {
+            calls.push_back({'r', &frame});
+        }
+        void finish(spock::FrameState &frame) override
+        {
+            calls.push_back({'f', &frame});
+        }
+    };
+} // namespace
+
+TEST_CASE("Renderer calls prepare, render and finish in order for each frame", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device");
+
+    HookRenderer renderer(
+        fixture->foundry,
+        vk::Extent2D(32, 32),
+        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
+        vk::ClearDepthStencilValue(1.0f, 0));
+
+    int const frameCount = 4;
+    for (int frame = 0; frame < frameCount; ++frame)
+    {
+        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+    }
+
+    REQUIRE(renderer.calls.size() == size_t(3 * frameCount));
+    for (int frame = 0; frame < frameCount; ++frame)
+    {
+        INFO("frame " << frame);
+        HookRenderer::Call const *calls = &renderer.calls[size_t(3 * frame)];
+        CHECK(calls[0].hook == 'p');
+        CHECK(calls[1].hook == 'r');
+        CHECK(calls[2].hook == 'f');
+        CHECK(calls[1].frame == calls[0].frame);
+        CHECK(calls[2].frame == calls[0].frame);
+    }
+}
+
+TEST_CASE("Renderer builds its swapchain from the options it was given", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device");
+
+    auto createRenderer = [&](spock::SwapchainOptions const &options) {
+        return std::make_unique<NoOpRenderer>(
+            fixture->foundry,
+            vk::Extent2D(32, 32),
+            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
+            vk::ClearDepthStencilValue(1.0f, 0),
+            /*useDepthBuffer=*/false,
+            options);
+    };
+
+    SECTION("present mode")
+    {
+        for (vk::PresentModeKHR mode : supportedPresentModes(*fixture->foundry))
+        {
+            INFO("present mode " << vk::to_string(mode));
+            spock::SwapchainOptions options;
+            options.presentModes = {mode};
+            auto renderer = createRenderer(options);
+            REQUIRE(renderer->presenter() != nullptr);
+            CHECK(renderer->presenter()->presentMode() == mode);
+
+            // A resize builds a new swapchain, which must keep to the options.
+            renderer->resizeWindow(vk::Extent2D(48, 48));
+            CHECK(renderer->presenter()->presentMode() == mode);
+        }
+    }
+    SECTION("composite alpha")
+    {
+        for (vk::CompositeAlphaFlagBitsKHR mode : supportedCompositeAlpha(*fixture->foundry))
+        {
+            INFO("composite alpha " << vk::to_string(mode));
+            spock::SwapchainOptions options;
+            options.compositeAlpha = {mode};
+            auto renderer = createRenderer(options);
+            REQUIRE(renderer->presenter() != nullptr);
+            CHECK(renderer->presenter()->compositeAlpha() == mode);
+
+            renderer->resizeWindow(vk::Extent2D(48, 48));
+            CHECK(renderer->presenter()->compositeAlpha() == mode);
+        }
+    }
+}
+
+TEST_CASE("Renderer::setAcquireTimeout bounds the wait for a swapchain image", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device");
+
+    NoOpRenderer renderer(
+        fixture->foundry,
+        vk::Extent2D(32, 32),
+        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
+        vk::ClearDepthStencilValue(1.0f, 0),
+        /*useDepthBuffer=*/false);
+
+    // With no time to wait, acquisition may report that no image is ready instead of blocking, but must not throw.
+    renderer.setAcquireTimeout(std::chrono::nanoseconds(0));
+    for (int frame = 0; frame < 6; ++frame)
+    {
+        vk::Result result = vk::Result::eErrorUnknown;
+        CHECK_NOTHROW(result = renderer.renderFrame(std::chrono::microseconds(frame * 16666)));
+        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR ||
+               result == vk::Result::eNotReady || result == vk::Result::eTimeout));
+    }
+
+    // Frames skipped by a timeout must not stop rendering once there is time to wait again.
+    renderer.setAcquireTimeout(std::chrono::seconds(1));
+    for (int frame = 0; frame < 6; ++frame)
+    {
+        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+    }
+}
+
+TEST_CASE("Presenter reports the present mode and composite alpha it was created with", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device");
+
+    std::vector<vk::CompositeAlphaFlagBitsKHR> const compositeAlphas = supportedCompositeAlpha(*fixture->foundry);
+    REQUIRE_FALSE(compositeAlphas.empty());
+
+    for (vk::PresentModeKHR mode : supportedPresentModes(*fixture->foundry))
+    {
+        INFO("present mode " << vk::to_string(mode));
+        spock::SwapchainOptions options;
+        options.presentModes = {mode};
+        // Prefer the last supported composite alpha, so it is not just the default choice.
+        options.compositeAlpha = {compositeAlphas.back()};
+
+        spock::Presenter presenter(fixture->foundry, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, nullptr, options);
+        CHECK(presenter.presentMode() == mode);
+        CHECK(presenter.compositeAlpha() == compositeAlphas.back());
+
+        spock::Presenter moved(std::move(presenter));
+        CHECK(moved.presentMode() == mode);
+        CHECK(moved.compositeAlpha() == compositeAlphas.back());
+    }
 }
 
 namespace

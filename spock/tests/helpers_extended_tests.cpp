@@ -1,31 +1,46 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
+#include "spock/foundry.hpp"
 #include "spock/helpers.hpp"
 
 #include <catch2/catch_test_macros.hpp>
 
-TEST_CASE("pickPresentMode prefers Mailbox when available", "[helpers_extended]")
+// These cover pickPresentMode and pickCompositeAlpha with the default SwapchainOptions preferences, which are
+// what every swapchain gets unless the caller passes its own.
+
+TEST_CASE("Default present modes prefer Mailbox when available", "[helpers_extended]")
 {
-    std::vector<vk::PresentModeKHR> modes{vk::PresentModeKHR::eMailbox, vk::PresentModeKHR::eFifo};
-    CHECK(spock::pickPresentMode(modes) == vk::PresentModeKHR::eMailbox);
+    std::vector<vk::PresentModeKHR> modes{vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eImmediate, vk::PresentModeKHR::eMailbox};
+    CHECK(spock::pickPresentMode(modes, spock::SwapchainOptions{}.presentModes) == vk::PresentModeKHR::eMailbox);
 }
 
-TEST_CASE("pickPresentMode prefers Immediate over Fifo", "[helpers_extended]")
+TEST_CASE("Default present modes prefer Immediate over Fifo", "[helpers_extended]")
 {
-    std::vector<vk::PresentModeKHR> modes{vk::PresentModeKHR::eImmediate, vk::PresentModeKHR::eFifo};
-    CHECK(spock::pickPresentMode(modes) == vk::PresentModeKHR::eImmediate);
+    std::vector<vk::PresentModeKHR> modes{vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eImmediate};
+    CHECK(spock::pickPresentMode(modes, spock::SwapchainOptions{}.presentModes) == vk::PresentModeKHR::eImmediate);
 }
 
-TEST_CASE("pickPresentMode returns Fifo as fallback", "[helpers_extended]")
+TEST_CASE("Default present modes return Fifo as fallback", "[helpers_extended]")
 {
-    std::vector<vk::PresentModeKHR> modes{vk::PresentModeKHR::eFifo};
-    CHECK(spock::pickPresentMode(modes) == vk::PresentModeKHR::eFifo);
+    std::vector<vk::PresentModeKHR> modes{vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed};
+    CHECK(spock::pickPresentMode(modes, spock::SwapchainOptions{}.presentModes) == vk::PresentModeKHR::eFifo);
 }
 
-TEST_CASE("pickPresentMode handles empty list", "[helpers_extended]")
+TEST_CASE("Default present modes handle an empty list", "[helpers_extended]")
 {
-    CHECK(spock::pickPresentMode({}) == vk::PresentModeKHR::eFifo);
+    CHECK(spock::pickPresentMode({}, spock::SwapchainOptions{}.presentModes) == vk::PresentModeKHR::eFifo);
+}
+
+TEST_CASE("Default composite alpha keeps the window opaque when the surface allows it", "[helpers_extended]")
+{
+    using Alpha = vk::CompositeAlphaFlagBitsKHR;
+    std::vector<Alpha> const preferred = spock::SwapchainOptions{}.compositeAlpha;
+
+    CHECK(spock::pickCompositeAlpha(Alpha::eOpaque | Alpha::ePreMultiplied | Alpha::eInherit, preferred) == Alpha::eOpaque);
+    CHECK(spock::pickCompositeAlpha(Alpha::ePostMultiplied | Alpha::ePreMultiplied, preferred) == Alpha::ePreMultiplied);
+    CHECK(spock::pickCompositeAlpha(Alpha::eInherit | Alpha::ePostMultiplied, preferred) == Alpha::ePostMultiplied);
+    CHECK(spock::pickCompositeAlpha(Alpha::eInherit, preferred) == Alpha::eInherit);
 }
 
 TEST_CASE("pickSurfaceFormat prefers B8G8R8A8Unorm", "[helpers_extended]")

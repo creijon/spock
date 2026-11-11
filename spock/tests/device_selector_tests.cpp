@@ -10,27 +10,10 @@
 
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <vector>
 
 using namespace spock_test;
-
-// These helpers are implemented in device_selector.cpp as ordinary (non-static) free
-// functions but are intentionally not exposed via device_selector.hpp since they're
-// implementation details of the queue family discovery. They operate purely on
-// plain data, so they're worth unit-testing directly via a matching forward
-// declaration -- same convention used for findMemoryType in helpers_tests.cpp.
-namespace spock
-{
-    std::optional<uint32_t> findQueueFamilyIndex(
-        std::vector<vk::QueueFamilyProperties> const &queueFamilyProperties,
-        vk::QueueFlags include,
-        vk::QueueFlags exclude);
-
-    std::optional<uint32_t> findQueueFamilyIndexFallback(
-        std::vector<vk::QueueFamilyProperties> const &queueFamilyProperties,
-        vk::QueueFlags include,
-        vk::QueueFlags exclude);
-} // namespace spock
 
 namespace
 {
@@ -245,6 +228,63 @@ TEST_CASE("selectDevice only considers devices that support the required extensi
             vk::PhysicalDeviceType::eDiscreteGpu,
             extensions),
         std::runtime_error);
+}
+
+TEST_CASE("selectDevice does not need the optional extensions", "[gpu][device]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device available");
+
+    vk::raii::SurfaceKHR surface = createHeadlessSurface(*fixture);
+
+    std::vector<char const*> required{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    auto [withoutOptional, withoutFamilies] = spock::selectDevice(
+        fixture->instance,
+        *surface,
+        vk::QueueFlagBits::eGraphics,
+        vk::PhysicalDeviceType::eDiscreteGpu,
+        required);
+
+    std::vector<char const*> optional{"VK_SPOCK_extension_that_does_not_exist"};
+    auto [withOptional, withFamilies] = spock::selectDevice(
+        fixture->instance,
+        *surface,
+        vk::QueueFlagBits::eGraphics,
+        vk::PhysicalDeviceType::eDiscreteGpu,
+        required,
+        optional);
+
+    CHECK(*withOptional == *withoutOptional);
+    CHECK(withFamilies.graphics == withoutFamilies.graphics);
+    CHECK(withFamilies.present == withoutFamilies.present);
+}
+
+TEST_CASE("supportedExtensions keeps the extensions the device has, in the order given", "[gpu][device]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device available");
+
+    vk::raii::PhysicalDevice const &physicalDevice = fixture->foundry->physicalDevice();
+    std::vector<vk::ExtensionProperties> const available = physicalDevice.enumerateDeviceExtensionProperties();
+    REQUIRE(available.size() >= 2);
+
+    // Ask for two real extensions in the reverse of the driver's order, with missing ones around them.
+    std::string const first = available.front().extensionName.data();
+    std::string const last = available.back().extensionName.data();
+    std::vector<char const*> const requested{
+        "VK_SPOCK_missing_one",
+        last.c_str(),
+        "VK_SPOCK_missing_two",
+        first.c_str(),
+        "VK_SPOCK_missing_three"};
+
+    std::vector<char const*> const supported = spock::supportedExtensions(physicalDevice, requested);
+    REQUIRE(supported.size() == 2);
+    CHECK(std::string(supported[0]) == last);
+    CHECK(std::string(supported[1]) == first);
+
+    CHECK(spock::supportedExtensions(physicalDevice, {}).empty());
+    CHECK(spock::supportedExtensions(physicalDevice, {"VK_SPOCK_missing_one"}).empty());
 }
 
 TEST_CASE("selectDevice is deterministic and prefers the requested device type", "[gpu][device]")
