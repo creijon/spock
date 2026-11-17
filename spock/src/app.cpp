@@ -49,9 +49,10 @@ App::App(
     char const* name,
     uint32_t windowWidth,
     uint32_t windowHeight,
-    std::chrono::microseconds frameDuration)
+    std::chrono::microseconds frameDuration,
+    uint32_t apiVersion)
     : m_context()
-    , m_instance(createInstance(m_context, name, {}, getDefaultInstanceExtensions()))
+    , m_instance(createInstance(m_context, name, {}, getDefaultInstanceExtensions(), apiVersion))
     , m_window(name, {windowWidth, windowHeight})
     , m_frameDuration(frameDuration)
 {

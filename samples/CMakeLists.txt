@@ -47,20 +47,32 @@ add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_spher
 add_sample_target(spherical_harmonics ${CMAKE_CURRENT_SOURCE_DIR}/src/spherical_harmonics.cpp)
 target_include_directories(spherical_harmonics PRIVATE ${CMAKE_SOURCE_DIR}/deps/stb)
 
-# The video player needs FFmpeg, so it is only built when the libraries are found.
+# The video players need FFmpeg, so they are only built when the libraries are found.
 find_package(PkgConfig)
 if (PKG_CONFIG_FOUND)
     pkg_check_modules(FFMPEG IMPORTED_TARGET libavformat libavcodec libavutil libswscale)
+    # Sharing spock's Vulkan device needs the queue family list added in FFmpeg 7.1 (libavutil 59.34).
+    pkg_check_modules(FFMPEG_VULKAN IMPORTED_TARGET libavformat libavcodec libavutil>=59.34.100)
 endif()
 
 if (FFMPEG_FOUND)
-    add_sample_target(video_player
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_player.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_decoder.cpp)
-    target_link_libraries(video_player PRIVATE PkgConfig::FFMPEG)
-    set_target_properties(video_player PROPERTIES FOLDER "samples")
+    add_sample_target(video_player_sw
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_player_sw.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_decoder_sw.cpp)
+    target_link_libraries(video_player_sw PRIVATE PkgConfig::FFMPEG)
+    set_target_properties(video_player_sw PROPERTIES FOLDER "samples")
 else()
-    message(STATUS "FFmpeg not found, skipping the video_player sample")
+    message(STATUS "FFmpeg not found, skipping the video_player_sw sample")
+endif()
+
+if (FFMPEG_VULKAN_FOUND)
+    add_sample_target(video_player_hw
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_player_hw.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/video_decoder_hw.cpp)
+    target_link_libraries(video_player_hw PRIVATE PkgConfig::FFMPEG_VULKAN)
+    set_target_properties(video_player_hw PROPERTIES FOLDER "samples")
+else()
+    message(STATUS "FFmpeg 7.1 or later not found, skipping the video_player_hw sample")
 endif()
 
 set_target_properties(

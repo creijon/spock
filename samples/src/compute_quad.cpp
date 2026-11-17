@@ -49,7 +49,7 @@ static constexpr uint32_t QUAD_VERTEX_COUNT{std::size(QUAD_VERTEX_DATA)};
 static const std::string TEXTURE_PATH = std::string(SPOCK_DIR) + "/samples/assets/textures/uvmapping.png";
 
 static const std::string VERTEX_SHADER_SOURCE = R"(
-#version 400
+#version 450
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -71,7 +71,7 @@ void main()
 )";
 
 static const std::string FRAGMENT_SHADER_SOURCE = R"(
-#version 400
+#version 450
 
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
@@ -89,20 +89,33 @@ void main()
 )";
 
 static const std::string COMPUTE_SHADER_SOURCE = R"(
-#version 400
+#version 450
 
-#extension GL_KHR_shader_subgroup_basic: enable
-#extension GL_KHR_shader_subgroup_arithmetic: enable
-#extension GL_KHR_shader_subgroup_ballot: enable
+layout(local_size_x_id = 0) in;
+layout(local_size_x = 16, local_size_y = 16) in;
+
+#define WORKGROUP_SIZE gl_WorkGroupSize.x
+
+layout(push_constant) uniform PushConstants {
+  vec2 imageSize;
+} pc;
+
+layout (binding = 0, rgba8) uniform writeonly image2D destImage;
 
 void main()
 {
+  ivec2 pixelCoord = ivec2(gl_GlobalInvocationID.xy);
+  if (pixelCoord.x >= int(pc.imageSize.x) || pixelCoord.y >= int(pc.imageSize.y)) return;
+
+  vec2 uv = vec2(pixelCoord) / pc.imageSize;
+  vec3 color = vec3(uv, 0.5);
+  imageStore(destImage, pixelCoord, vec4(color, 1.0));
 }
 )";
 
 struct PushConstants
 {
-    glm::vec2 aspect;
+    glm::vec2 imageSize;
 };
 
 class ComputeQuadRenderer : public spock::Renderer
@@ -133,14 +146,58 @@ public:
             0,
             sizeof(PushConstants)};
 
-        m_pipelineLayout = std::move(vk::raii::PipelineLayout(foundry->device(), {{}, *m_descriptorSetLayout, pushConstantRange}));
+        m_pipelineLayout = std::move(vk::raii::PipelineLayout(
+			foundry->device(), {{}, *m_descriptorSetLayout, pushConstantRange}));
 
         m_descriptorPool = spock::createDescriptorPool(
             foundry->device(),
             { {vk::DescriptorType::eCombinedImageSampler, 1} });
-        m_descriptorSet = std::move(vk::raii::DescriptorSets(foundry->device(), { m_descriptorPool, *m_descriptorSetLayout }).front());
+        m_descriptorSet = std::move(vk::raii::DescriptorSets(
+			foundry->device(), { m_descriptorPool, *m_descriptorSetLayout }).front());
 
-//        spock::updateDescriptorSets(foundry->device(), m_descriptorSet, {}, {m_texture});
+		// Create the destination image for the compute shader to write to.
+		m_imageFormat = vk::Format::eR8G8B8A8Unorm;
+		m_imageExtent = extents;
+		m_image = spock::ImageWrapper(
+			foundry,
+			m_imageFormat,
+			m_imageExtent,
+			vk::ImageTiling::eOptimal,
+			vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eSampled,
+			vk::ImageLayout::eGeneral,
+			vk::MemoryPropertyFlagBits::eDeviceLocal,
+			vk::ImageAspectFlagBits::eColor);
+
+		m_sampler = spock::createSampler(
+			foundry->device(),
+			vk::Filter::eLinear,
+			vk::SamplerAddressMode::eClampToBorder);
+
+        std::vector<vk::DescriptorImageInfo> imageInfos{
+			{
+                m_sampler,
+                m_image.imageView(),
+				vk::ImageLayout::eShaderReadOnlyOptimal
+			}
+		};
+
+		// Bind the texture to the descriptor set.
+		uint32_t dstBinding = 0;
+
+		std::vector<vk::WriteDescriptorSet> writeDescriptorSets{
+			{
+                *m_descriptorSet,
+                dstBinding++,
+                0,
+                1,
+                vk::DescriptorType::eCombinedImageSampler,
+                &imageInfos.back(),
+                nullptr,
+                nullptr
+			}
+        };
+
+        foundry->device().updateDescriptorSets(writeDescriptorSets, nullptr);
 
         createPipelines();
     }

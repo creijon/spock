@@ -21,11 +21,14 @@ namespace spock
     class App
     {
     public:
+        // apiVersion: the Vulkan version the instance is created with, which caps the core functions the
+        // device exposes.  Raise it for an app that uses something newer than 1.2, such as FFmpeg's Vulkan decoder.
         App(
             char const* name,
             uint32_t windowWidth,
             uint32_t windowHeight,
-            std::chrono::microseconds frameDuration = 16666us);
+            std::chrono::microseconds frameDuration = 16666us,
+            uint32_t apiVersion = VK_API_VERSION_1_2);
 
         virtual ~App() = default;
 
