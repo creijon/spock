@@ -29,8 +29,11 @@
   - https://github.com/shg8/3DGS.cpp
   - https://github.com/dendenxu/fast-gaussian-rasterization
 
+Overview of GS Algo:
 
-
+- First GPU job: for all splats, project bounds onto screen and bucket into tiles.
+- Second GPU job: for all tiles, sort splats back-to-front
+- Third GPU jon: for all splats in tiles: render
 
 ## Fixes
 

@@ -16,19 +16,27 @@
 
 namespace spock_test
 {
-    // A real, headless (no window/display) Vulkan instance + Foundry pair,
+    // A real, headless (no window/display) Vulkan instance, surface and Foundry,
     // built with VK_EXT_headless_surface so device-backed pieces of the spock
-    // API can be exercised without GLFW or a windowing system. The Foundry
-    // owns the physical device, surface, logical device, queues and command
-    // pool, exactly as it does in a running App. Tests that use this should
-    // be tagged "[gpu]" and skip gracefully via createGpuFixture() returning
-    // nullptr when no usable Vulkan driver is present.
+    // API can be exercised without GLFW or a windowing system. The fixture
+    // owns the surface, standing in for the Window, and the Foundry owns the
+    // physical device, logical device, queues and command pools, exactly as
+    // they do in a running App. Tests that use this should be tagged "[gpu]"
+    // and skip gracefully via createGpuFixture() returning nullptr when no
+    // usable Vulkan driver is present.
     struct GpuFixture
     {
+        // Declared in this order so that the Foundry goes first, then the surface, then the instance.
         vk::raii::Context context;
         vk::raii::Instance instance{nullptr};
+        vk::raii::SurfaceKHR surface{nullptr};
         spock::FoundryPtr foundry;
     };
+
+    inline vk::raii::SurfaceKHR createHeadlessSurface(vk::raii::Instance const &instance)
+    {
+        return vk::raii::SurfaceKHR(instance, vk::HeadlessSurfaceCreateInfoEXT{});
+    }
 
     inline std::unique_ptr<GpuFixture> createGpuFixture()
     {
@@ -52,9 +60,8 @@ namespace spock_test
                 {},
                 extensions);
 
-            fixture->foundry = std::make_shared<spock::Foundry>(
-                fixture->instance,
-                vk::raii::SurfaceKHR(fixture->instance, vk::HeadlessSurfaceCreateInfoEXT{}));
+            fixture->surface = createHeadlessSurface(fixture->instance);
+            fixture->foundry = std::make_shared<spock::Foundry>(fixture->instance, *fixture->surface);
         }
         catch (std::exception const &e)
         {
@@ -64,12 +71,12 @@ namespace spock_test
         return fixture;
     }
 
-    // The FIFO, FIFO relaxed, mailbox and immediate present modes the Foundry's surface supports. The shared
+    // The FIFO, FIFO relaxed, mailbox and immediate present modes the fixture's surface supports. The shared
     // present modes are left out because they need a presentable image of their own.
-    inline std::vector<vk::PresentModeKHR> supportedPresentModes(spock::Foundry const &foundry)
+    inline std::vector<vk::PresentModeKHR> supportedPresentModes(GpuFixture const &fixture)
     {
         std::vector<vk::PresentModeKHR> modes;
-        for (vk::PresentModeKHR mode : foundry.physicalDevice().getSurfacePresentModesKHR(*foundry.surface()))
+        for (vk::PresentModeKHR mode : fixture.foundry->physicalDevice().getSurfacePresentModesKHR(*fixture.surface))
         {
             if (mode == vk::PresentModeKHR::eFifo || mode == vk::PresentModeKHR::eFifoRelaxed ||
                 mode == vk::PresentModeKHR::eMailbox || mode == vk::PresentModeKHR::eImmediate)
@@ -80,11 +87,11 @@ namespace spock_test
         return modes;
     }
 
-    // Each composite alpha mode the Foundry's surface supports.
-    inline std::vector<vk::CompositeAlphaFlagBitsKHR> supportedCompositeAlpha(spock::Foundry const &foundry)
+    // Each composite alpha mode the fixture's surface supports.
+    inline std::vector<vk::CompositeAlphaFlagBitsKHR> supportedCompositeAlpha(GpuFixture const &fixture)
     {
         vk::CompositeAlphaFlagsKHR const supported =
-            foundry.physicalDevice().getSurfaceCapabilitiesKHR(*foundry.surface()).supportedCompositeAlpha;
+            fixture.foundry->physicalDevice().getSurfaceCapabilitiesKHR(*fixture.surface).supportedCompositeAlpha;
 
         std::vector<vk::CompositeAlphaFlagBitsKHR> modes;
         for (vk::CompositeAlphaFlagBitsKHR mode : {

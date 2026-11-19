@@ -62,6 +62,17 @@ namespace
         return window;
     }
 
+    vk::raii::SurfaceKHR createGlfwSurface(vk::raii::Instance const &instance, GLFWwindow* window)
+    {
+        VkSurfaceKHR surface;
+        VkResult result = glfwCreateWindowSurface(*instance, window, nullptr, &surface);
+        if (result != VK_SUCCESS)
+        {
+            throw std::runtime_error("Failed to create window surface");
+        }
+        return vk::raii::SurfaceKHR(instance, surface);
+    }
+
     void scrollCallback(GLFWwindow* window, double xoffset, double yoffset)
     {
         Window* win = reinterpret_cast<Window*>(glfwGetWindowUserPointer(window));
@@ -71,29 +82,32 @@ namespace
 
 Window::Window(
     std::string const &name,
-    vk::Extent2D const &extents)
+    vk::Extent2D const &extents,
+    vk::raii::Instance const &instance)
     : m_name(name)
     , m_extents(extents)
     , m_handle(createGlfwWindow(m_name, m_extents))
 {
+    try
+    {
+        m_surface = createGlfwSurface(instance, m_handle);
+    }
+    catch (...)
+    {
+        // The destructor doesn't run when the constructor throws.
+        glfwDestroyWindow(m_handle);
+        throw;
+    }
+
     glfwSetWindowUserPointer(m_handle, this);
     glfwSetScrollCallback(m_handle, scrollCallback);
 }
 
 Window::~Window()
 {
+    // The surface refers to the native window, so it goes first.
+    m_surface.clear();
     glfwDestroyWindow(m_handle);
-}
-
-vk::raii::SurfaceKHR Window::createSurface(vk::raii::Instance const &instance) const
-{
-    VkSurfaceKHR surface;
-    VkResult result = glfwCreateWindowSurface(*instance, m_handle, nullptr, &surface);
-    if (result != VK_SUCCESS)
-    {
-        throw std::runtime_error("Failed to create window surface");
-    }
-    return vk::raii::SurfaceKHR(instance, surface);
 }
 
 bool Window::shouldClose() const

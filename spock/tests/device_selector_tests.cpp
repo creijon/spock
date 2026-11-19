@@ -30,11 +30,6 @@ namespace
                hasFlags(families, index, vk::QueueFlagBits::eGraphics) ||
                hasFlags(families, index, vk::QueueFlagBits::eCompute);
     }
-
-    vk::raii::SurfaceKHR createHeadlessSurface(GpuFixture const &fixture)
-    {
-        return vk::raii::SurfaceKHR(fixture.instance, vk::HeadlessSurfaceCreateInfoEXT{});
-    }
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -144,7 +139,7 @@ TEST_CASE("selectDevice picks a device whose queue families satisfy graphics and
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device available");
 
-    vk::raii::SurfaceKHR surface = createHeadlessSurface(*fixture);
+    vk::raii::SurfaceKHR surface = createHeadlessSurface(fixture->instance);
 
     auto [physicalDevice, queueFamilies] = spock::selectDevice(fixture->instance, *surface);
     CHECK(*physicalDevice != VK_NULL_HANDLE);
@@ -164,7 +159,7 @@ TEST_CASE("selectDevice honours a request for compute and transfer queues", "[gp
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device available");
 
-    vk::raii::SurfaceKHR surface = createHeadlessSurface(*fixture);
+    vk::raii::SurfaceKHR surface = createHeadlessSurface(fixture->instance);
 
     auto [physicalDevice, queueFamilies] = spock::selectDevice(
         fixture->instance,
@@ -208,7 +203,7 @@ TEST_CASE("selectDevice only considers devices that support the required extensi
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device available");
 
-    vk::raii::SurfaceKHR surface = createHeadlessSurface(*fixture);
+    vk::raii::SurfaceKHR surface = createHeadlessSurface(fixture->instance);
 
     // The swapchain extension is what the Foundry always requires, so it must be available.
     std::vector<char const*> extensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
@@ -235,7 +230,7 @@ TEST_CASE("selectDevice does not need the optional extensions", "[gpu][device]")
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device available");
 
-    vk::raii::SurfaceKHR surface = createHeadlessSurface(*fixture);
+    vk::raii::SurfaceKHR surface = createHeadlessSurface(fixture->instance);
 
     std::vector<char const*> required{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
     auto [withoutOptional, withoutFamilies] = spock::selectDevice(
@@ -292,7 +287,7 @@ TEST_CASE("selectDevice is deterministic and prefers the requested device type",
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device available");
 
-    vk::raii::SurfaceKHR surface = createHeadlessSurface(*fixture);
+    vk::raii::SurfaceKHR surface = createHeadlessSurface(fixture->instance);
 
     auto [first, firstFamilies] = spock::selectDevice(fixture->instance, *surface);
     auto [second, secondFamilies] = spock::selectDevice(fixture->instance, *surface);
@@ -316,7 +311,7 @@ TEST_CASE("Foundry uses the device that selectDevice would choose", "[gpu][devic
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device available");
 
-    vk::raii::SurfaceKHR surface = createHeadlessSurface(*fixture);
+    vk::raii::SurfaceKHR surface = createHeadlessSurface(fixture->instance);
 
     std::vector<char const*> extensions{
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,

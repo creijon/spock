@@ -174,9 +174,11 @@ class InstancingRenderer : public spock::Renderer
 public:
     InstancingRenderer(
         spock::FoundryPtr const &foundry,
+        vk::SurfaceKHR surface,
         vk::Extent2D const& extents)
         : spock::Renderer(
             foundry,
+            surface,
             extents,
             {0.2f, 0.2f, 0.35f, 1.0},
             {1.0f, 0})
@@ -283,7 +285,7 @@ public:
 protected:
     std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<InstancingRenderer>(m_foundry, m_window.extents());
+        return std::make_unique<InstancingRenderer>(m_foundry, m_window.surface(), m_window.extents());
     }
 
     void update() override

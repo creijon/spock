@@ -98,7 +98,7 @@ class SplatFrameState : public spock::FrameState
 {
 public:
     explicit SplatFrameState(spock::FoundryPtr const &foundry)
-        : spock::FrameState(foundry->device(), foundry->commandPool())
+        : spock::FrameState(foundry)
     {
     }
 
@@ -140,9 +140,11 @@ class SplatRenderer : public spock::Renderer
 public:
     SplatRenderer(
         spock::FoundryPtr const &foundry,
+        vk::SurfaceKHR surface,
         vk::Extent2D const& extents)
         : spock::Renderer(
             foundry,
+            surface,
             extents,
             {0.05f, 0.08f, 0.15f, 1.0f},
             {1.0f, 0},
@@ -367,13 +369,13 @@ protected:
 
         return std::make_shared<const spock::Foundry>(
             m_instance,
-            m_window.createSurface(m_instance),
+            m_window.surface(),
             requirements);
     }
 
     std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        auto renderer = std::make_unique<SplatRenderer>(m_foundry, m_window.extents());
+        auto renderer = std::make_unique<SplatRenderer>(m_foundry, m_window.surface(), m_window.extents());
 
         loadScene();
         renderer->createResources(m_scene);

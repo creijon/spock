@@ -130,7 +130,7 @@ TEST_CASE("Foundry enables timeline semaphores alongside a caller's feature chai
         requirements.features = features;
         return spock::Foundry(
             fixture->instance,
-            vk::raii::SurfaceKHR(fixture->instance, vk::HeadlessSurfaceCreateInfoEXT{}),
+            *fixture->surface,
             requirements);
     };
 
@@ -180,7 +180,7 @@ TEST_CASE("Foundry enables the optional extensions the device supports and skips
 
     spock::Foundry foundry(
         fixture->instance,
-        vk::raii::SurfaceKHR(fixture->instance, vk::HeadlessSurfaceCreateInfoEXT{}),
+        *fixture->surface,
         requirements);
 
     bool const deviceHasCommon = !spock::supportedExtensions(foundry.physicalDevice(), {commonExtension}).empty();
@@ -218,22 +218,22 @@ TEST_CASE("Foundry::createSwapchain uses the present mode and composite alpha th
     }
 
     spock::Foundry const &foundry = *fixture->foundry;
-    std::vector<vk::PresentModeKHR> const presentModes = supportedPresentModes(foundry);
-    std::vector<vk::CompositeAlphaFlagBitsKHR> const compositeAlphas = supportedCompositeAlpha(foundry);
+    std::vector<vk::PresentModeKHR> const presentModes = supportedPresentModes(*fixture);
+    std::vector<vk::CompositeAlphaFlagBitsKHR> const compositeAlphas = supportedCompositeAlpha(*fixture);
     REQUIRE_FALSE(presentModes.empty());
     REQUIRE_FALSE(compositeAlphas.empty());
 
     auto create = [&](spock::SwapchainOptions const &options) {
-        return foundry.createSwapchain(vk::Extent2D{64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 2, {}, options);
+        return foundry.createSwapchain(*fixture->surface, vk::Extent2D{64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 2, {}, options);
     };
 
     SECTION("the defaults")
     {
         spock::SwapchainOptions const defaults;
-        spock::SwapchainInfo swapchain = foundry.createSwapchain(vk::Extent2D{64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 2);
+        spock::SwapchainInfo swapchain = foundry.createSwapchain(*fixture->surface, vk::Extent2D{64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 2);
         CHECK(swapchain.presentMode == spock::pickPresentMode(presentModes, defaults.presentModes));
         CHECK(swapchain.compositeAlpha == spock::pickCompositeAlpha(
-            foundry.physicalDevice().getSurfaceCapabilitiesKHR(*foundry.surface()).supportedCompositeAlpha,
+            foundry.physicalDevice().getSurfaceCapabilitiesKHR(*fixture->surface).supportedCompositeAlpha,
             defaults.compositeAlpha));
     }
     SECTION("each supported present mode")
@@ -279,6 +279,7 @@ TEST_CASE("Foundry::createSwapchain builds a swapchain for the headless surface"
     }
 
     spock::SwapchainInfo swapchain = fixture->foundry->createSwapchain(
+        *fixture->surface,
         vk::Extent2D{256, 256},
         vk::ImageUsageFlagBits::eColorAttachment,
         2);
@@ -301,11 +302,13 @@ TEST_CASE("Foundry::createSwapchain recreates a swapchain from the old one", "[g
     }
 
     spock::SwapchainInfo oldSwapchain = fixture->foundry->createSwapchain(
+        *fixture->surface,
         vk::Extent2D{256, 256},
         vk::ImageUsageFlagBits::eColorAttachment,
         2);
 
     spock::SwapchainInfo newSwapchain = fixture->foundry->createSwapchain(
+        *fixture->surface,
         vk::Extent2D{128, 128},
         vk::ImageUsageFlagBits::eColorAttachment,
         2,
@@ -317,6 +320,31 @@ TEST_CASE("Foundry::createSwapchain recreates a swapchain from the old one", "[g
 
     // The retired swapchain must still be destroyable while its replacement is alive.
     CHECK_NOTHROW(oldSwapchain.swapchain.clear());
+}
+
+TEST_CASE("Foundry doesn't keep the surface it chose the device for", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    vk::raii::SurfaceKHR creationSurface = createHeadlessSurface(fixture->instance);
+    spock::Foundry const foundry(fixture->instance, *creationSurface);
+
+    // As an Android app's surface is when its window goes away.
+    creationSurface.clear();
+
+    // The device keeps working, and can build a swapchain for a surface it was never given.
+    vk::raii::SurfaceKHR otherSurface = createHeadlessSurface(fixture->instance);
+    spock::SwapchainInfo swapchain = foundry.createSwapchain(
+        *otherSurface,
+        vk::Extent2D{64, 64},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2);
+    CHECK(*swapchain.swapchain != VK_NULL_HANDLE);
+    CHECK(swapchain.swapchain.getImages().size() >= 2);
 }
 
 TEST_CASE("allocateDeviceMemory satisfies a real buffer's memory requirements", "[gpu]")
@@ -956,7 +984,7 @@ TEST_CASE("Foundry owns a compute command pool and queue when compute is require
     requirements.queues = vk::QueueFlagBits::eGraphics | vk::QueueFlagBits::eCompute;
     spock::Foundry const foundry(
         fixture->instance,
-        vk::raii::SurfaceKHR(fixture->instance, vk::HeadlessSurfaceCreateInfoEXT{}),
+        *fixture->surface,
         requirements);
 
     CHECK(*foundry.computeCommandPool() != VK_NULL_HANDLE);

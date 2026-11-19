@@ -63,7 +63,9 @@ namespace
     {
     public:
         TrackedFrame(spock::FoundryPtr const &foundry, std::atomic<int> &destroyed)
-            : spock::FrameState(foundry->device(), foundry->commandPool()), m_destroyed(destroyed) {}
+            : spock::FrameState(foundry)
+			, m_destroyed(destroyed) 
+		{}
         ~TrackedFrame() override { ++m_destroyed; }
     private:
         std::atomic<int> &m_destroyed;

@@ -156,7 +156,7 @@ public:
         spock::FoundryPtr const &foundry,
         vk::raii::DescriptorPool const &descriptorPool,
         vk::raii::DescriptorSetLayout const &descriptorSetLayout)
-        : spock::FrameState(foundry->device(), foundry->commandPool())
+        : spock::FrameState(foundry)
         , videoFrame(av_frame_alloc())
         , descriptorSet(std::move(vk::raii::DescriptorSets(foundry->device(), {descriptorPool, *descriptorSetLayout}).front()))
     {
@@ -246,10 +246,12 @@ class VideoRendererHW : public spock::Renderer
 public:
     VideoRendererHW(
         spock::FoundryPtr const &foundry,
+        vk::SurfaceKHR surface,
         vk::Extent2D const& extents,
         std::shared_ptr<const VideoDecoderHW> const &decoder)
         : spock::Renderer(
             foundry,
+            surface,
             extents,
             {0.0f, 0.0f, 0.0f, 1.0},
             {1.0f, 0},
@@ -449,7 +451,7 @@ protected:
         {
             return std::make_shared<const spock::Foundry>(
                 m_instance,
-                m_window.createSurface(m_instance),
+                m_window.surface(),
                 requirements);
         }
         catch (...)
@@ -466,7 +468,7 @@ protected:
         // FFmpeg decodes on the Foundry's device, so it can only start now that the device exists.
         m_decoder->start(m_instance, m_context.getDispatcher()->vkGetInstanceProcAddr, m_foundry);
 
-        return std::make_unique<VideoRendererHW>(m_foundry, m_window.extents(), m_decoder);
+        return std::make_unique<VideoRendererHW>(m_foundry, m_window.surface(), m_window.extents(), m_decoder);
     }
 
     void update() override

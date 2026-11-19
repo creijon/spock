@@ -21,8 +21,6 @@ namespace spock
     class App
     {
     public:
-        // apiVersion: the Vulkan version the instance is created with, which caps the core functions the
-        // device exposes.  Raise it for an app that uses something newer than 1.2, such as FFmpeg's Vulkan decoder.
         App(
             char const* name,
             uint32_t windowWidth,
@@ -41,6 +39,8 @@ namespace spock
         // Called once per frame before rendering.
         virtual void update() = 0;
 
+        // Members are destroyed in reverse order, which matters here: the renderer's swapchain must go
+        // before the window's surface, and the surface before the instance.
         vk::raii::Context m_context{};
         vk::raii::Instance m_instance{nullptr};
 

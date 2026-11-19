@@ -17,6 +17,7 @@ namespace spock
 {
     Presenter::Presenter(
         FoundryPtr const &foundry,
+        vk::SurfaceKHR surface,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
         uint32_t framesInFlight,
@@ -25,7 +26,7 @@ namespace spock
         : m_foundry(foundry)
     {
         vk::SwapchainKHR oldSwapchain = oldPresenter ? *oldPresenter->m_swapchain : vk::SwapchainKHR{};
-        SwapchainInfo swapchain = foundry->createSwapchain(extent, usage, framesInFlight, oldSwapchain, options);
+        SwapchainInfo swapchain = foundry->createSwapchain(surface, extent, usage, framesInFlight, oldSwapchain, options);
         m_swapchain = std::move(swapchain.swapchain);
         m_colorFormat = swapchain.colorFormat;
         m_extent = swapchain.extent;

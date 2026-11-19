@@ -20,7 +20,7 @@ namespace spock
     class FrameState
     {
     public:
-        FrameState(vk::raii::Device const &device, vk::raii::CommandPool const &commandPool);
+        explicit FrameState(FoundryPtr const &foundry);
         virtual ~FrameState() = default;
 
         struct SemaphoreWait

@@ -32,6 +32,11 @@ namespace
         using spock::Renderer::Renderer;
         std::set<spock::FrameState*> frames;
 
+        vk::RenderPass renderPass() const
+        {
+            return *m_renderPass;
+        }
+
     protected:
         void render(spock::FrameState &frame) override
         {
@@ -52,6 +57,7 @@ TEST_CASE("Renderer renders and presents frames against a headless surface", "[g
 
     NoOpRenderer renderer(
         fixture->foundry,
+        *fixture->surface,
         extent,
         vk::ClearColorValue(std::array<float, 4>{0.1f, 0.2f, 0.3f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0),
@@ -79,6 +85,7 @@ TEST_CASE("Renderer::resizeWindow rebuilds the swapchain and framebuffers at a n
 
     NoOpRenderer renderer(
         fixture->foundry,
+        *fixture->surface,
         vk::Extent2D(64, 64),
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0), useDepthBuffer);
@@ -95,6 +102,92 @@ TEST_CASE("Renderer::resizeWindow rebuilds the swapchain and framebuffers at a n
     }
 }
 
+TEST_CASE("Renderer moves its swapchain to a new surface", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    // Both surfaces are declared before the renderer, so they outlive any swapchain it builds for them.
+    vk::raii::SurfaceKHR firstSurface = createHeadlessSurface(fixture->instance);
+    vk::raii::SurfaceKHR secondSurface = createHeadlessSurface(fixture->instance);
+
+    NoOpRenderer renderer(
+        fixture->foundry,
+        *firstSurface,
+        vk::Extent2D(64, 64),
+        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
+        vk::ClearDepthStencilValue(1.0f, 0));
+    REQUIRE(renderer.hasSurface());
+    CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
+
+    SECTION("after releasing the old one, as an Android app does when its window goes away")
+    {
+        renderer.releaseSurface();
+        CHECK_FALSE(renderer.hasSurface());
+        CHECK(renderer.presenter() == nullptr);
+        // Pipelines may still need building while there is no surface.
+        CHECK(renderer.renderPass() != VK_NULL_HANDLE);
+
+        // The renderer no longer refers to the surface, so it can go.
+        firstSurface.clear();
+
+        CHECK(renderer.renderFrame(std::chrono::microseconds(16666)) == vk::Result::eErrorSurfaceLostKHR);
+        CHECK_THROWS_AS(renderer.resizeWindow(vk::Extent2D(64, 64)), std::logic_error);
+        // Releasing twice is harmless.
+        CHECK_NOTHROW(renderer.releaseSurface());
+
+        renderer.setSurface(*secondSurface, vk::Extent2D(96, 48));
+    }
+    SECTION("directly, without releasing the old one first")
+    {
+        renderer.setSurface(*secondSurface, vk::Extent2D(96, 48));
+        firstSurface.clear();
+    }
+
+    CHECK(renderer.hasSurface());
+    REQUIRE(renderer.presenter() != nullptr);
+    for (int frame = 0; frame < 6; ++frame)
+    {
+        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+    }
+
+    // A resize on the new surface hands its swapchain over as usual.
+    CHECK_NOTHROW(renderer.resizeWindow(vk::Extent2D(128, 96)));
+    vk::Result result = renderer.renderFrame(std::chrono::microseconds(6 * 16666));
+    CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+}
+
+TEST_CASE("Renderer rejects a null surface", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    auto createRenderer = [&](vk::SurfaceKHR surface) {
+        return NoOpRenderer(
+            fixture->foundry,
+            surface,
+            vk::Extent2D(32, 32),
+            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
+            vk::ClearDepthStencilValue(1.0f, 0));
+    };
+
+    CHECK_THROWS_AS(createRenderer(vk::SurfaceKHR{}), std::invalid_argument);
+
+    // A rejected setSurface leaves the renderer on the surface it had.
+    NoOpRenderer renderer = createRenderer(*fixture->surface);
+    CHECK_THROWS_AS(renderer.setSurface(vk::SurfaceKHR{}, vk::Extent2D(32, 32)), std::invalid_argument);
+    CHECK(renderer.hasSurface());
+    vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
+    CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+}
+
 TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
 {
     auto fixture = createGpuFixture();
@@ -105,6 +198,7 @@ TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
 
     NoOpRenderer renderer(
         fixture->foundry,
+        *fixture->surface,
         vk::Extent2D(32, 32),
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0),
@@ -152,6 +246,7 @@ TEST_CASE("Renderer calls prepare, render and finish in order for each frame", "
 
     HookRenderer renderer(
         fixture->foundry,
+        *fixture->surface,
         vk::Extent2D(32, 32),
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0));
@@ -184,6 +279,7 @@ TEST_CASE("Renderer builds its swapchain from the options it was given", "[gpu]"
     auto createRenderer = [&](spock::SwapchainOptions const &options) {
         return std::make_unique<NoOpRenderer>(
             fixture->foundry,
+            *fixture->surface,
             vk::Extent2D(32, 32),
             vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
             vk::ClearDepthStencilValue(1.0f, 0),
@@ -193,7 +289,7 @@ TEST_CASE("Renderer builds its swapchain from the options it was given", "[gpu]"
 
     SECTION("present mode")
     {
-        for (vk::PresentModeKHR mode : supportedPresentModes(*fixture->foundry))
+        for (vk::PresentModeKHR mode : supportedPresentModes(*fixture))
         {
             INFO("present mode " << vk::to_string(mode));
             spock::SwapchainOptions options;
@@ -209,7 +305,7 @@ TEST_CASE("Renderer builds its swapchain from the options it was given", "[gpu]"
     }
     SECTION("composite alpha")
     {
-        for (vk::CompositeAlphaFlagBitsKHR mode : supportedCompositeAlpha(*fixture->foundry))
+        for (vk::CompositeAlphaFlagBitsKHR mode : supportedCompositeAlpha(*fixture))
         {
             INFO("composite alpha " << vk::to_string(mode));
             spock::SwapchainOptions options;
@@ -231,6 +327,7 @@ TEST_CASE("Renderer::setAcquireTimeout bounds the wait for a swapchain image", "
 
     NoOpRenderer renderer(
         fixture->foundry,
+        *fixture->surface,
         vk::Extent2D(32, 32),
         vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
         vk::ClearDepthStencilValue(1.0f, 0),
@@ -260,10 +357,10 @@ TEST_CASE("Presenter reports the present mode and composite alpha it was created
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
 
-    std::vector<vk::CompositeAlphaFlagBitsKHR> const compositeAlphas = supportedCompositeAlpha(*fixture->foundry);
+    std::vector<vk::CompositeAlphaFlagBitsKHR> const compositeAlphas = supportedCompositeAlpha(*fixture);
     REQUIRE_FALSE(compositeAlphas.empty());
 
-    for (vk::PresentModeKHR mode : supportedPresentModes(*fixture->foundry))
+    for (vk::PresentModeKHR mode : supportedPresentModes(*fixture))
     {
         INFO("present mode " << vk::to_string(mode));
         spock::SwapchainOptions options;
@@ -271,7 +368,7 @@ TEST_CASE("Presenter reports the present mode and composite alpha it was created
         // Prefer the last supported composite alpha, so it is not just the default choice.
         options.compositeAlpha = {compositeAlphas.back()};
 
-        spock::Presenter presenter(fixture->foundry, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, nullptr, options);
+        spock::Presenter presenter(fixture->foundry, *fixture->surface, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, nullptr, options);
         CHECK(presenter.presentMode() == mode);
         CHECK(presenter.compositeAlpha() == compositeAlphas.back());
 
@@ -287,18 +384,18 @@ namespace
     {
     public:
         explicit LinesFrame(spock::FoundryPtr const &foundry)
-            : spock::FrameState(
-                foundry->device(), foundry->commandPool()),
-                lines(foundry, 2 * sizeof(spock::DebugLines::Vertex), vk::BufferUsageFlagBits::eVertexBuffer) {}
+            : spock::FrameState(foundry)
+			, lines(foundry, 2 * sizeof(spock::DebugLines::Vertex), vk::BufferUsageFlagBits::eVertexBuffer) {}
         spock::BufferWrapper lines;
     };
 
     class LinesRenderer : public spock::Renderer
     {
     public:
-        explicit LinesRenderer(spock::FoundryPtr const &foundry)
+        LinesRenderer(spock::FoundryPtr const &foundry, vk::SurfaceKHR surface)
             : spock::Renderer(
                 foundry,
+                surface,
                 {64, 64},
                 vk::ClearColorValue(std::array<float, 4>{0, 0, 0, 1}),
                 vk::ClearDepthStencilValue{1, 0})
@@ -326,7 +423,7 @@ TEST_CASE("DebugLines retains separate geometry in each acquired frame", "[gpu]"
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    LinesRenderer renderer(fixture->foundry);
+    LinesRenderer renderer(fixture->foundry, *fixture->surface);
     renderer.lines.addLine({0, 0, 0}, {1, 0, 0}, {1, 0, 0, 1});
     renderer.renderFrame(std::chrono::microseconds(0));
     auto *firstFrame = renderer.lastFrame;
@@ -351,7 +448,7 @@ TEST_CASE("Renderer returns borrowed frames when command recording throws", "[gp
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    LinesRenderer renderer(fixture->foundry);
+    LinesRenderer renderer(fixture->foundry, *fixture->surface);
     renderer.throwWhileRecording = true;
     CHECK_THROWS_AS(renderer.renderFrame(std::chrono::microseconds(0)), std::runtime_error);
     // Reset destroys the abandoned commands and signaled acquisition semaphore before retrying.
@@ -371,7 +468,7 @@ TEST_CASE("Presenter owns one framebuffer per image across moves and rebuilds", 
     // Attachments outlive all Presenters that reference them.
     spock::DepthBufferWrapper depth;
     vk::raii::RenderPass renderPass{nullptr};
-    spock::Presenter presenter(fixture->foundry, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3);
+    spock::Presenter presenter(fixture->foundry, *fixture->surface, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3);
     if (useDepthBuffer)
         depth = spock::DepthBufferWrapper(fixture->foundry, vk::Format::eD16Unorm, presenter.extent());
     renderPass = spock::createRenderPass(fixture->foundry->device(), presenter.colorFormat(),
@@ -392,7 +489,7 @@ TEST_CASE("Presenter owns one framebuffer per image across moves and rebuilds", 
 
     // A surface can only have one live swapchain (MoltenVK reports ErrorNativeWindowInUseKHR
     // otherwise), so hand the existing one over exactly as Renderer::resizeWindow does.
-    spock::Presenter assigned(fixture->foundry, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, &moved);
+    spock::Presenter assigned(fixture->foundry, *fixture->surface, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, &moved);
     assigned.createFramebuffers(renderPass, useDepthBuffer ? &depth.imageView() : nullptr);
     fixture->foundry->waitIdle();
     assigned = std::move(moved);

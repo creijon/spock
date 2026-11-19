@@ -182,7 +182,7 @@ class VideoFrameState : public spock::FrameState
 {
 public:
     explicit VideoFrameState(spock::FoundryPtr const &foundry)
-        : spock::FrameState(foundry->device(), foundry->commandPool())
+        : spock::FrameState(foundry)
     {
     }
 
@@ -245,10 +245,12 @@ class VideoRendererSW : public spock::Renderer
 public:
     VideoRendererSW(
         spock::FoundryPtr const &foundry,
+        vk::SurfaceKHR surface,
         vk::Extent2D const& extents,
         std::shared_ptr<const VideoDecoderSW> const &decoder)
         : spock::Renderer(
             foundry,
+            surface,
             extents,
             {0.0f, 0.0f, 0.0f, 1.0},
             {1.0f, 0},
@@ -397,7 +399,7 @@ public:
 protected:
     std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<VideoRendererSW>(m_foundry, m_window.extents(), m_decoder);
+        return std::make_unique<VideoRendererSW>(m_foundry, m_window.surface(), m_window.extents(), m_decoder);
     }
 
     void update() override

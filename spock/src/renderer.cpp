@@ -7,22 +7,30 @@
 #include "spock/helpers.hpp"
 #include "spock/presenter.hpp"
 
+#include <stdexcept>
+
 namespace spock
 {
     Renderer::Renderer(
         FoundryPtr const &foundry,
+        vk::SurfaceKHR surface,
         vk::Extent2D const &extents,
         vk::ClearColorValue const &clearColor,
         vk::ClearDepthStencilValue const &clearDepthStencil,
         bool useDepthBuffer,
         SwapchainOptions const& swapchainOptions)
         : m_foundry(foundry)
+        , m_surface(surface)
         , m_useDepthBuffer(useDepthBuffer)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
         , m_swapchainOptions(swapchainOptions)
     {
-        resizeWindow(extents);
+        if (!m_surface)
+        {
+            throw std::invalid_argument("Renderer: the surface is null");
+        }
+        buildSwapchain(extents);
     }
 
     Renderer::~Renderer()
@@ -34,6 +42,37 @@ namespace spock
 
     void Renderer::resizeWindow(vk::Extent2D const &extents)
     {
+        if (!m_surface)
+        {
+            throw std::logic_error("Renderer::resizeWindow: the surface has been released, call setSurface() instead");
+        }
+        releaseSwapchainResources();
+        buildSwapchain(extents);
+    }
+
+    void Renderer::releaseSurface()
+    {
+        // The swapchain must be destroyed before its surface, and the GPU may still be using it.
+        m_foundry->waitIdle();
+        releaseSwapchainResources();
+        m_presenter.reset();
+        m_surface = nullptr;
+    }
+
+    void Renderer::setSurface(vk::SurfaceKHR surface, vk::Extent2D const &extents)
+    {
+        if (!surface)
+        {
+            throw std::invalid_argument("Renderer::setSurface: the surface is null");
+        }
+        // A swapchain can only be handed over to one for the same surface, so the old one is destroyed first.
+        releaseSurface();
+        m_surface = surface;
+        buildSwapchain(extents);
+    }
+
+    void Renderer::releaseSwapchainResources()
+    {
         // Tearing down the FrameStatePool waits for GPU completion.
         m_framePool.reset();
 
@@ -42,12 +81,15 @@ namespace spock
             m_presenter->clearFramebuffers();
         }
         m_depthBuffer = DepthBufferWrapper();
-        m_renderPass = nullptr;
+    }
 
+    void Renderer::buildSwapchain(vk::Extent2D const &extents)
+    {
         // The old presenter is kept alive until its replacement exists so its swapchain can be handed over.
         // Assigning the new one then destroys the old one, including its retired swapchain.
         m_presenter = std::make_unique<Presenter>(
             m_foundry,
+            m_surface,
             extents,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
             m_framesInFlight,
@@ -80,6 +122,12 @@ namespace spock
     vk::Result Renderer::renderFrame(std::chrono::microseconds frameTime)
     {
         m_frameTime = frameTime;
+
+        if (!m_presenter)
+        {
+            // The surface has been released, so there is nothing to render to until setSurface().
+            return vk::Result::eErrorSurfaceLostKHR;
+        }
 
         if (!m_framePool)
         {

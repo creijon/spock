@@ -60,17 +60,18 @@ struct SwapchainOptions
     public:
         // For the moment, device with graphics and present queues is always required.
         // I'll support headless compute-only devices in the future, but for now this is a graphics app.
+        // presentSurface: used only to choose a device and present queue that can present to it. The Foundry
+        // doesn't keep it, so the surface can be destroyed and replaced, e.g. when an Android app is paused.
         // requiredQueues: in addition to the graphics and present, but prefers dedicated families.
         // preferredDevice: devices of this type are chosen first; otherwise discrete > integrated > virtual > CPU.
         Foundry(
             vk::raii::Instance const &instance,
-            vk::raii::SurfaceKHR windowSurface,
+            vk::SurfaceKHR presentSurface,
             DeviceRequirements const& requirements = {});
 
         ~Foundry();
 
         vk::raii::PhysicalDevice const &physicalDevice() const { return m_physicalDevice; }
-        vk::raii::SurfaceKHR const &surface() const { return m_surface; }
         vk::raii::Device const &device() const { return m_device; }
 
         // For the moment there is always a graphics and present queue, because they are needed for the Presenter.
@@ -93,10 +94,13 @@ struct SwapchainOptions
         // True if the device was created with the named extension.
         bool hasExtension(char const* name) const;
 
-        // Create a swapchain for the surface.
+        // Create a swapchain for the surface, which must outlive it.
+        // Throws std::runtime_error if the present queue can't present to the surface.
         // desiredImageCount: clamped to what the surface supports for the Swapchain imageCount.
-        // oldSwapchain: the current swapchain so the driver can reuse its resources.  The caller must still destroy it.
+        // oldSwapchain: the current swapchain so the driver can reuse its resources.  It must belong to the same surface.
+        //   The caller must still destroy it.
         SwapchainInfo createSwapchain(
+            vk::SurfaceKHR surface,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
             uint32_t desiredImageCount,
@@ -123,7 +127,6 @@ struct SwapchainOptions
 
     private:
         vk::raii::PhysicalDevice m_physicalDevice{nullptr};
-        vk::raii::SurfaceKHR m_surface{nullptr};
         vk::raii::Device m_device{nullptr};
 
         vk::raii::CommandPool m_commandPool{nullptr};

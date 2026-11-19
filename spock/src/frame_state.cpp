@@ -17,18 +17,16 @@ namespace
 
     std::unique_ptr<spock::FrameState> defaultCreateFrame(spock::FoundryPtr const &foundry)
     {
-        return std::make_unique<spock::FrameState>(foundry->device(), foundry->commandPool());
+        return std::make_unique<spock::FrameState>(foundry);
     }
 }
 
 namespace spock
 {
-    FrameState::FrameState(
-        vk::raii::Device const& device,
-        vk::raii::CommandPool const& commandPool)
-        : commandBuffer(spock::createCommandBuffer(device, commandPool))
-        , semaphore(device.createSemaphore(vk::SemaphoreCreateInfo{}))
-        , timeline(device.createSemaphore(vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo>{
+    FrameState::FrameState(FoundryPtr const &foundry)
+        : commandBuffer(spock::createCommandBuffer(foundry->device(), foundry->commandPool()))
+        , semaphore(foundry->device().createSemaphore(vk::SemaphoreCreateInfo{}))
+        , timeline(foundry->device().createSemaphore(vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo>{
             {}, { vk::SemaphoreType::eTimeline, 0 } }.get()))
         , imageIndex(0)
     {

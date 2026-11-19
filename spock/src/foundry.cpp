@@ -87,9 +87,8 @@ namespace spock
 
     Foundry::Foundry(
         vk::raii::Instance const &instance,
-        vk::raii::SurfaceKHR windowSurface,
+        vk::SurfaceKHR presentSurface,
         DeviceRequirements const& requirements)
-        : m_surface(std::move(windowSurface))
     {
         std::vector<char const*> deviceExtensions{
             VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -102,7 +101,7 @@ namespace spock
         vk::QueueFlags const requiredQueues = requirements.queues;
         std::tie(m_physicalDevice, m_queueFamilies) = selectDevice(
             instance,
-            *m_surface,
+            presentSurface,
             requiredQueues,
             requirements.preferredDeviceType,
             deviceExtensions,
@@ -189,15 +188,22 @@ namespace spock
     }
 
     SwapchainInfo Foundry::createSwapchain(
+        vk::SurfaceKHR surface,
         vk::Extent2D const &extent,
         vk::ImageUsageFlags usage,
         uint32_t desiredImageCount,
         vk::SwapchainKHR oldSwapchain,
         SwapchainOptions const& options) const
     {
-        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(*m_surface));
+        // The device was chosen for the surface it was created with, which may not be this one.
+        if (!m_physicalDevice.getSurfaceSupportKHR(m_queueFamilies.present, surface))
+        {
+            throw std::runtime_error("Foundry::createSwapchain: the present queue can't present to the surface");
+        }
 
-        vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(*m_surface);
+        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(surface));
+
+        vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(surface);
         vk::Extent2D swapchainExtent;
         if (surfaceCapabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)())
         {
@@ -223,11 +229,11 @@ namespace spock
             surfaceCapabilities.currentTransform;
 
         vk::CompositeAlphaFlagBitsKHR const compositeAlpha = pickCompositeAlpha(surfaceCapabilities.supportedCompositeAlpha, options.compositeAlpha);
-        vk::PresentModeKHR const presentMode = pickPresentMode(m_physicalDevice.getSurfacePresentModesKHR(*m_surface), options.presentModes);
+        vk::PresentModeKHR const presentMode = pickPresentMode(m_physicalDevice.getSurfacePresentModesKHR(surface), options.presentModes);
         uint32_t imageCount = clampSurfaceImageCount(desiredImageCount, surfaceCapabilities.minImageCount, surfaceCapabilities.maxImageCount);
         vk::SwapchainCreateInfoKHR swapChainCreateInfo(
             {},
-            *m_surface,
+            surface,
             imageCount,
             surfaceFormat.format,
             surfaceFormat.colorSpace,

@@ -19,10 +19,12 @@ namespace spock
     class Presenter
     {
     public:
-        // When replacing an existing presenter, e.g. on resize, pass it as `oldPresenter` so its swapchain
-        // is handed over to the new one.
+        // The surface must outlive the Presenter.
+        // When replacing an existing presenter for the same surface, e.g. on resize, pass it as `oldPresenter` so
+        // its swapchain is handed over to the new one.  A presenter for a different surface can't be handed over.
         Presenter(
             FoundryPtr const &foundry,
+            vk::SurfaceKHR surface,
             vk::Extent2D const &extent,
             vk::ImageUsageFlags usage,
             uint32_t framesInFlight,

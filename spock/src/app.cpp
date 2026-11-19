@@ -53,14 +53,14 @@ App::App(
     uint32_t apiVersion)
     : m_context()
     , m_instance(createInstance(m_context, name, {}, getDefaultInstanceExtensions(), apiVersion))
-    , m_window(name, {windowWidth, windowHeight})
+    , m_window(name, {windowWidth, windowHeight}, m_instance)
     , m_frameDuration(frameDuration)
 {
 }
 
 FoundryPtr App::createFoundry() const
 {
-    return std::make_shared<const Foundry>(m_instance, m_window.createSurface(m_instance));
+    return std::make_shared<const Foundry>(m_instance, m_window.surface());
 }
 
 void App::run()

@@ -90,10 +90,12 @@ class ComputeSortRenderer : public spock::Renderer
 public:
     ComputeSortRenderer(
         spock::FoundryPtr const &foundry,
+        vk::SurfaceKHR surface,
         vk::Extent2D const& extents,
         bool multithreaded)
         : spock::Renderer(
             foundry,
+            surface,
             extents,
             {0.05f, 0.05f, 0.05f, 1.0f},
             {1.0f, 0},
@@ -390,13 +392,13 @@ protected:
 
         return std::make_shared<const spock::Foundry>(
             m_instance,
-            m_window.createSurface(m_instance),
+            m_window.surface(),
             requirements);
     }
 
     std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<ComputeSortRenderer>(m_foundry, m_window.extents(), m_multithreaded);
+        return std::make_unique<ComputeSortRenderer>(m_foundry, m_window.surface(), m_window.extents(), m_multithreaded);
     }
 
     void update() override
