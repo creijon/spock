@@ -47,7 +47,7 @@ namespace
     // NOTE: must match the SUBGROUP_SIZE specialization constant default in multi_radixsort.comp.
     constexpr uint32_t REQUIRED_SUBGROUP_SIZE = 32;
 
-    const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/VkRadixSort/";
+    const std::string SHADER_PATH = "shaders/VkRadixSort/";
     const std::string HISTOGRAM_SHADER = "multi_radixsort_histograms.comp";
     const std::string RADIXSORT_SHADER = "multi_radixsort.comp";
 

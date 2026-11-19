@@ -14,8 +14,9 @@ namespace spock
         vk::ShaderStageFlagBits shaderStage,
         std::string const& shaderSource);
 
+    // Reads the GLSL source with loadAsset() and compiles it.
     vk::raii::ShaderModule loadShader(
         vk::raii::Device const& device,
         vk::ShaderStageFlagBits shaderStage,
-        std::string const& path);
+        std::string const& name);
 } // namespace spock

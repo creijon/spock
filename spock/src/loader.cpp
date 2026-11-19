@@ -3,12 +3,14 @@
 
 #include "spock/loader.hpp"
 
+#include "spock/assets.hpp"
 #include "spock/helpers.hpp"
 #include "spock/foundry.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#include <cstddef>
 #include <cstring>
 #include <memory>
 #include <stdexcept>
@@ -23,18 +25,22 @@ namespace
 
 using ImagePixels = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
 
-// Decodes an image file to tightly packed 8-bit RGBA, whatever its channel count on disk.
-ImagePixels loadRgba(std::string const &path, unsigned &width, unsigned &height)
+// Decodes an image asset to tightly packed 8-bit RGBA, whatever its channel count.
+ImagePixels loadRgba(std::string const &name, unsigned &width, unsigned &height)
 {
+    std::vector<std::byte> const encoded = loadAsset(name);
     int w = 0;
     int h = 0;
     int channels = 0;
     ImagePixels pixels(
-        stbi_load(path.c_str(), &w, &h, &channels, STBI_rgb_alpha),
+        stbi_load_from_memory(
+            reinterpret_cast<stbi_uc const *>(encoded.data()),
+            static_cast<int>(encoded.size()),
+            &w, &h, &channels, STBI_rgb_alpha),
         &stbi_image_free);
     if (!pixels)
     {
-        throw std::runtime_error("Failed to load texture '" + path + "': " + stbi_failure_reason());
+        throw std::runtime_error("Failed to load texture '" + name + "': " + stbi_failure_reason());
     }
     width = static_cast<unsigned>(w);
     height = static_cast<unsigned>(h);
@@ -45,12 +51,12 @@ ImagePixels loadRgba(std::string const &path, unsigned &width, unsigned &height)
 
 TextureWrapper Loader::texture(
     FoundryPtr const &foundry,
-    std::string const &path,
+    std::string const &name,
     vk::raii::Sampler sampler)
 {
     unsigned width = 0;
     unsigned height = 0;
-    auto pixels = loadRgba(path, width, height);
+    auto pixels = loadRgba(name, width, height);
 
     TextureWrapper texture(foundry, {width, height}, std::move(sampler));
 
@@ -70,7 +76,7 @@ TextureWrapper Loader::texture(
 
 CubemapWrapper Loader::cubemap(
     FoundryPtr const &foundry,
-    std::array<std::string, CUBEMAP_FACE_COUNT> const &paths,
+    std::array<std::string, CUBEMAP_FACE_COUNT> const &names,
     vk::raii::Sampler sampler)
 {
     std::vector<ImagePixels> facePixels;
@@ -81,10 +87,10 @@ CubemapWrapper Loader::cubemap(
     {
         unsigned width = 0;
         unsigned height = 0;
-        facePixels.push_back(loadRgba(paths[i], width, height));
+        facePixels.push_back(loadRgba(names[i], width, height));
         if (width != height || (i > 0 && width != size))
         {
-            throw std::runtime_error("Cubemap face '" + paths[i] + "' must be square and the same size as the other faces");
+            throw std::runtime_error("Cubemap face '" + names[i] + "' must be square and the same size as the other faces");
         }
         size = width;
     }

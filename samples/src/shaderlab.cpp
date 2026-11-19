@@ -6,6 +6,7 @@
 // fragment shader can be experimented with in real-time.
 
 #include "spock/app.hpp"
+#include "spock/assets.hpp"
 #include "spock/creators.hpp"
 #include "spock/file_watcher.hpp"
 #include "spock/helpers.hpp"
@@ -44,7 +45,7 @@ static const ShaderLabVertex SHADERLAB_VERTEX_DATA[] =
 static const uint32_t SHADERLAB_VERTEX_BUFFER_SIZE{sizeof(SHADERLAB_VERTEX_DATA)};
 static const uint32_t SHADERLAB_VERTEX_COUNT{std::size(SHADERLAB_VERTEX_DATA)};
 
-static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/shaderlab/";
+static const std::string SHADER_PATH = "shaders/shaderlab/";
 static const std::string VERTEX_SHADER = "default.vert";
 static const std::string FRAGMENT_SHADER = "default.frag";
 
@@ -194,7 +195,7 @@ class ShaderLabApp : public spock::App
 public:
     ShaderLabApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::App("ShaderLab", windowWidth, windowHeight)
-        , m_watcher(SHADER_PATH)
+        , m_watcher((spock::assetDirectory() / SHADER_PATH).string())
     {
     }
 

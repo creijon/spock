@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <filesystem>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -25,4 +26,7 @@ namespace spock
     }
 
     void writeLog(const std::string& message);
+
+    // The directory containing the running executable, with symlinks resolved.
+    std::filesystem::path executableDirectory();
 } // namespace spock

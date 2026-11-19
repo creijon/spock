@@ -11,6 +11,7 @@
 #include "splat_loader.h"
 
 #include "spock/app.hpp"
+#include "spock/assets.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/file_watcher.hpp"
@@ -78,7 +79,7 @@ struct FrameConstants
     glm::vec4 viewport;
 };
 
-static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/";
+static const std::string SHADER_PATH = "shaders/";
 static const std::string VERTEX_SHADER = "splat.vert";
 static const std::string FRAGMENT_SHADER = "splat.frag";
 
@@ -89,7 +90,7 @@ static const std::array<std::string, 4> SPLAT_FILES = {
     "tetrarthria"
 };
 
-static const std::string SPLAT_PATH = std::string(SPOCK_DIR) + "/samples/assets/splats/";
+static const std::string SPLAT_PATH = "splats/";
 
 // Splat scenes use the OpenCV convention (+Y down, +Z forward), rotate 180 degrees about X to get to our Y-up world.
 static const glm::mat4 SPLAT_TO_WORLD = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, -1.0f));
@@ -332,7 +333,7 @@ public:
             windowWidth,
             windowHeight)
         , m_sceneIndex(sceneIndex)
-        , m_watcher(SHADER_PATH)
+        , m_watcher((spock::assetDirectory() / SHADER_PATH).string())
     {
     }
 

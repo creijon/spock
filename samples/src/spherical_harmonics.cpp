@@ -5,6 +5,7 @@
 // reconstruct their colour on the same sphere mesh as textured_sphere.
 
 #include "spock/app.hpp"
+#include "spock/assets.hpp"
 #include "spock/camera.hpp"
 #include "spock/creators.hpp"
 #include "spock/helpers.hpp"
@@ -122,7 +123,7 @@ static void generateSphereMesh(
     }
 }
 
-static const std::string CUBEMAP_PATH = std::string(SPOCK_DIR) + "/samples/assets/textures/";
+static const std::string CUBEMAP_PATH = "textures/";
 
 static const std::array<std::string, 6> CUBEMAP_FACES {
     CUBEMAP_PATH + "xpos.png",
@@ -139,14 +140,19 @@ static spherical_harmonics::Coefficients loadSphericalHarmonics()
     using Pixels = std::unique_ptr<stbi_uc, decltype(&stbi_image_free)>;
     std::vector<Pixels> faces;
     int faceSize = 0;
-    for (auto const& path : CUBEMAP_FACES)
+    for (auto const& name : CUBEMAP_FACES)
     {
+        std::vector<std::byte> const encoded = spock::loadAsset(name);
         int width = 0, height = 0, channels = 0;
-        Pixels pixels(stbi_load(path.c_str(), &width, &height, &channels, STBI_rgb_alpha), stbi_image_free);
+        Pixels pixels(
+            stbi_load_from_memory(
+                reinterpret_cast<stbi_uc const*>(encoded.data()), static_cast<int>(encoded.size()),
+                &width, &height, &channels, STBI_rgb_alpha),
+            stbi_image_free);
         if (!pixels)
-            throw std::runtime_error("Failed to load cubemap face: " + path);
+            throw std::runtime_error("Failed to load cubemap face: " + name);
         if (width <= 0 || width != height || (faceSize && width != faceSize))
-            throw std::runtime_error("Cubemap faces must be square and equally sized: " + path);
+            throw std::runtime_error("Cubemap faces must be square and equally sized: " + name);
         faceSize = width;
         faces.push_back(std::move(pixels));
     }

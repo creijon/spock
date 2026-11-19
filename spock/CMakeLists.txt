@@ -7,6 +7,7 @@ ENDIF ()
 
 set(SOURCE
     src/app.cpp
+    src/assets.cpp
     src/camera.cpp
     src/creators.cpp
     src/debug_lines.cpp
@@ -27,6 +28,7 @@ set(SOURCE
 
 set(HEADERS
     include/spock/app.hpp
+    include/spock/assets.hpp
     include/spock/camera.hpp
     include/spock/creators.hpp
     include/spock/debug_lines.hpp

@@ -121,7 +121,7 @@ static void generateSphereMesh(
     }
 }
 
-static const std::string CUBEMAP_PATH = std::string(SPOCK_DIR) + "/samples/assets/textures/";
+static const std::string CUBEMAP_PATH = "textures/";
 
 static const std::array<std::string, spock::CUBEMAP_FACE_COUNT> CUBEMAP_FACES {
     CUBEMAP_PATH + "xpos.png",

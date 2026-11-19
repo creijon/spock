@@ -78,3 +78,17 @@ TEST_CASE("writeLog does not throw or crash", "[utils]")
     CHECK_NOTHROW(spock::writeLog("spock writeLog smoke test"));
 }
 #endif
+
+TEST_CASE("executableDirectory is the directory holding the test binary", "[utils]")
+{
+    std::filesystem::path const directory = spock::executableDirectory();
+    CHECK(directory.is_absolute());
+    CHECK(std::filesystem::is_directory(directory));
+
+    bool containsTestBinary = false;
+    for (auto const &entry : std::filesystem::directory_iterator(directory))
+    {
+        containsTestBinary |= entry.path().stem() == "spock_tests";
+    }
+    CHECK(containsTestBinary);
+}

@@ -96,7 +96,7 @@ static const CubeVertex CUBE_VERTEX_DATA[] =
 static constexpr uint32_t CUBE_VERTEX_BUFFER_SIZE{sizeof(CUBE_VERTEX_DATA)};
 static constexpr uint32_t CUBE_VERTEX_COUNT{std::size(CUBE_VERTEX_DATA)};
 
-static const std::string TEXTURE_PATH = std::string(SPOCK_DIR) + "/samples/assets/textures/uvmapping.png";
+static const std::string TEXTURE_PATH = "textures/uvmapping.png";
 
 static const std::string VERTEX_SHADER_SOURCE = R"(
 #version 400

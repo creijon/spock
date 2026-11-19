@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
 add_executable(spock_tests
+    assets_tests.cpp
     camera_tests.cpp
     creators_tests.cpp
     device_selector_tests.cpp

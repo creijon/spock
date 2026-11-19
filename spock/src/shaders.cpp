@@ -3,13 +3,14 @@
 
 #include "spock/shaders.hpp"
 
+#include "spock/assets.hpp"
+
 #include "glslang/SPIRV/GlslangToSpv.h"
 #include "glslang/Public/ResourceLimits.h"
 #include "glslang/Public/ShaderLang.h"
 
 #include <cassert>
-#include <fstream>
-#include <sstream>
+#include <cstddef>
 #include <stdexcept>
 #include <vector>
 
@@ -140,25 +141,17 @@ namespace spock
     vk::raii::ShaderModule loadShader(
         vk::raii::Device const& device,
         vk::ShaderStageFlagBits shaderStage,
-        std::string const &path)
+        std::string const &name)
     {
-        std::ifstream t(path);
-
-        if (!t.is_open())
-        {
-            throw std::runtime_error("ERROR: Failed to open shader source: " + path);
-        }
-
-        std::stringstream buffer;
-        buffer << t.rdbuf();
+        std::vector<std::byte> const source = loadAsset(name);
 
         try
         {
-            return compileShader(device, shaderStage, buffer.str());
+            return compileShader(device, shaderStage, std::string(reinterpret_cast<char const *>(source.data()), source.size()));
         }
         catch (std::exception const& e)
         {
-            throw std::runtime_error("ERROR: Shader compilation failed: " + path + "\n" + e.what());
+            throw std::runtime_error("ERROR: Shader compilation failed: " + name + "\n" + e.what());
         }
     }
 } // namespace spock

@@ -6,6 +6,7 @@
 // transferred to the graphics queue; otherwise it is the graphics queue and no transfer is needed.
 
 #include "spock/app.hpp"
+#include "spock/assets.hpp"
 #include "spock/creators.hpp"
 #include "spock/file_watcher.hpp"
 #include "spock/foundry.hpp"
@@ -111,7 +112,7 @@ struct ComputeConstants
 };
 static_assert(offsetof(ComputeConstants, iTime) == 28 && offsetof(ComputeConstants, iFrame) == 32);
 
-static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/shaderlab/";
+static const std::string SHADER_PATH = "shaders/shaderlab/";
 static const std::string COMPUTE_SHADER = "clouds.comp";
 
 // Each frame in flight has its own image, so the compute work for one frame can overlap the drawing of another.
@@ -476,7 +477,7 @@ public:
             "ShaderLab Compute",
             windowWidth,
             windowHeight)
-        , m_watcher(SHADER_PATH)
+        , m_watcher((spock::assetDirectory() / SHADER_PATH).string())
     {
     }
 

@@ -6,14 +6,17 @@
 
 #pragma once
 
+#include "spock/assets.hpp"
 #include "spock/math.hpp"
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
-#include <fstream>
+#include <istream>
 #include <stdexcept>
+#include <streambuf>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -165,17 +168,24 @@ inline const Property& requireProperty(const std::unordered_map<std::string, std
     return properties[it->second];
 }
 
+// Lets the parser read a loaded asset as a stream.
+struct MemoryBuffer : std::streambuf {
+    explicit MemoryBuffer(std::vector<std::byte>& data) {
+        char* begin = reinterpret_cast<char*>(data.data());
+        setg(begin, begin, begin + data.size());
+    }
+};
+
 } // namespace plyDetail
 
-inline void loadPly(const std::string& path, SplatScene& scene) {
-    std::ifstream file(path, std::ios::binary);
-    if (!file) {
-        throw std::runtime_error("Could not open PLY file: " + path);
-    }
+inline void loadPly(const std::string& name, SplatScene& scene) {
+    std::vector<std::byte> data = spock::loadAsset(name);
+    plyDetail::MemoryBuffer buffer(data);
+    std::istream file(&buffer);
 
     std::string line;
     if (!std::getline(file, line) || line != "ply") {
-        throw std::runtime_error("Not a PLY file: " + path);
+        throw std::runtime_error("Not a PLY file: " + name);
     }
 
     bool sawFormat = false;

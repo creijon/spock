@@ -127,11 +127,12 @@ classDiagram
 |---|---|
 | `device_selector.hpp` | `selectDevice`, which picks the physical device and its queue families for a surface given the required queues, preferred device type and device extensions. |
 | `creators.hpp` | Free functions that build Vulkan objects with sensible defaults: `createInstance`, `createRenderPass`, `createGraphicsPipeline`, `createComputePipeline`, `createDescriptorSetLayout`, `createDescriptorPool`, `createFramebuffers`, `createSampler`, `updateDescriptorSets`. |
-| `shaders.hpp` | `compileShader` (GLSL source to SPIR-V via glslang at runtime) and `loadShader` (from a file). |
+| `assets.hpp` | `loadAsset`, which reads a whole asset into memory, and `assetDirectory`, which defaults to an `assets` folder next to the executable. |
+| `shaders.hpp` | `compileShader` (GLSL source to SPIR-V via glslang at runtime) and `loadShader` (from an asset). |
 | `helpers.hpp` | Low-level helpers: `oneTimeSubmit`, `setImageLayout`, `allocateDeviceMemory`, `copyToDevice`, `pushConstants`, surface format and present mode selection. |
 | `math.hpp` | GLM configuration plus `Transform` (quaternion, translation, uniform scale), `f16` and random helpers. |
 | `camera.hpp` | `OrbitCamera` and a `viewProjMatrix` convenience function. |
-| `utils.hpp` | `checked_cast` and logging. |
+| `utils.hpp` | `checked_cast`, logging and `executableDirectory`. |
 | `types.hpp` | Forward declarations and simple types, includes no Spock, Vulkan or GLM headers. |
 
 ## Samples
@@ -160,6 +161,8 @@ cmake --build build --target cube
 cmake --build build --target splat
 cmake --build build --target shaderlab
 ```
+
+The build copies `samples/assets` into an `assets` folder next to the sample binaries, for example `build/bin/Debug/assets`, and the samples load their files from there. Only changed files are copied.
 
 To create an optimized release build:
 

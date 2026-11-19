@@ -27,5 +27,5 @@ TEST_CASE("loadShader throws when the shader file does not exist", "[shaders]")
 
     CHECK_THROWS_WITH(
         spock::loadShader(device, vk::ShaderStageFlagBits::eVertex, "/nonexistent/path/to/shader.vert"),
-        Catch::Matchers::ContainsSubstring("Failed to open shader source"));
+        Catch::Matchers::ContainsSubstring("Failed to open asset"));
 }

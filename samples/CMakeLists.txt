@@ -10,6 +10,22 @@ else()
 find_package(TBB REQUIRED)
 endif()
 
+# The samples load their assets from an assets folder next to the binary.
+get_property(MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if (MULTI_CONFIG)
+    set(SAMPLE_ASSETS_DIR "${CMAKE_BINARY_DIR}/bin/$<CONFIG>/assets")
+else()
+    set(SAMPLE_ASSETS_DIR "${CMAKE_BINARY_DIR}/bin/assets")
+endif()
+
+add_custom_target(sample_assets
+    COMMAND ${CMAKE_COMMAND}
+        -DSOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/assets
+        -DDEST_DIR=${SAMPLE_ASSETS_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/copy_assets.cmake
+    COMMENT "Copying the sample assets"
+    VERBATIM)
+
 function(add_sample_target target_name source_file)
     if (WIN32)
         add_executable(${target_name} WIN32 ${source_file} ${ARGN})
@@ -18,10 +34,7 @@ function(add_sample_target target_name source_file)
         target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} TBB::tbb)
     endif()
     target_link_libraries(${target_name} PRIVATE ${BINARY_NAME} efsw)
-
-    target_compile_definitions(${target_name} PRIVATE
-        SPOCK_DIR="${PROJECT_SOURCE_DIR}"
-    )
+    add_dependencies(${target_name} sample_assets)
 
     target_include_directories(${target_name} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
@@ -86,6 +99,7 @@ set_target_properties(
     textured_cube
     textured_sphere
     spherical_harmonics
+    sample_assets
     PROPERTIES FOLDER "samples")
 
 if (SPOCK_BUILD_TESTS)

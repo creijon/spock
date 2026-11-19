@@ -16,17 +16,18 @@ namespace spock
 {
     static constexpr uint32_t CUBEMAP_FACE_COUNT{6};
 
+    // Reads the images with loadAsset().
     class Loader
     {
     public:
         static TextureWrapper texture(
             FoundryPtr const &foundry,
-            std::string const &path,
+            std::string const &name,
             vk::raii::Sampler sampler);
 
         static CubemapWrapper cubemap(
             FoundryPtr const &foundry,
-            std::array<std::string, CUBEMAP_FACE_COUNT> const& paths,
+            std::array<std::string, CUBEMAP_FACE_COUNT> const& names,
             vk::raii::Sampler sampler);
     };
 }
