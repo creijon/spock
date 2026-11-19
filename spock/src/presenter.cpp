@@ -30,6 +30,7 @@ namespace spock
         m_swapchain = std::move(swapchain.swapchain);
         m_colorFormat = swapchain.colorFormat;
         m_extent = swapchain.extent;
+        m_preTransform = swapchain.preTransform;
         m_presentMode = swapchain.presentMode;
         m_compositeAlpha = swapchain.compositeAlpha;
         m_images = m_swapchain.getImages();
@@ -67,6 +68,7 @@ namespace spock
         , m_swapchain(std::move(other.m_swapchain))
         , m_colorFormat(other.m_colorFormat)
         , m_extent(other.m_extent)
+        , m_preTransform(other.m_preTransform)
         , m_presentMode(other.m_presentMode)
         , m_compositeAlpha(other.m_compositeAlpha)
         , m_images(std::move(other.m_images))
@@ -90,6 +92,7 @@ namespace spock
             m_swapchain = std::move(other.m_swapchain);
             m_colorFormat = other.m_colorFormat;
             m_extent = other.m_extent;
+            m_preTransform = other.m_preTransform;
             m_presentMode = other.m_presentMode;
             m_compositeAlpha = other.m_compositeAlpha;
             m_images = std::move(other.m_images);

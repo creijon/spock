@@ -27,7 +27,6 @@ function(add_sample_target target_name source_file)
         ${CMAKE_CURRENT_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/deps/glm
         ${CMAKE_SOURCE_DIR}/deps/efsw/include
-        ${OPENGL_INCLUDE_DIRS}
         ${Vulkan_INCLUDE_DIRS})
 
     set_target_properties(${target_name} PROPERTIES
@@ -40,7 +39,7 @@ add_sample_target(shaderlab ${CMAKE_CURRENT_SOURCE_DIR}/src/shaderlab.cpp)
 add_sample_target(instancing ${CMAKE_CURRENT_SOURCE_DIR}/src/instancing.cpp)
 add_sample_target(splat_hybrid ${CMAKE_CURRENT_SOURCE_DIR}/src/splat_hybrid.cpp)
 add_sample_target(compute_sort ${CMAKE_CURRENT_SOURCE_DIR}/src/compute_sort.cpp)
-add_sample_target(compute_quad ${CMAKE_CURRENT_SOURCE_DIR}/src/compute_quad.cpp)
+add_sample_target(shaderlab_compute ${CMAKE_CURRENT_SOURCE_DIR}/src/shaderlab_compute.cpp)
 add_sample_target(debug_lines ${CMAKE_CURRENT_SOURCE_DIR}/src/debug_lines.cpp)
 add_sample_target(textured_cube ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_cube.cpp)
 add_sample_target(textured_sphere ${CMAKE_CURRENT_SOURCE_DIR}/src/textured_sphere.cpp)
@@ -82,7 +81,7 @@ set_target_properties(
     instancing
     splat_hybrid
     compute_sort
-    compute_quad
+    shaderlab_compute
     debug_lines
     textured_cube
     textured_sphere

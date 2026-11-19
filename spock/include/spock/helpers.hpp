@@ -68,6 +68,16 @@ namespace spock
         vk::CompositeAlphaFlagsKHR supported,
         std::vector<vk::CompositeAlphaFlagBitsKHR> const& preferred);
 
+    // The surface's current transform, so the presentation engine doesn't rotate each frame.
+    vk::SurfaceTransformFlagBitsKHR pickPreTransform(
+        vk::SurfaceCapabilitiesKHR const &capabilities);
+
+    // Swaps the width and height when preTransform rotates by 90 or 270 degrees.
+    vk::Extent2D pickSwapchainExtent(
+        vk::SurfaceCapabilitiesKHR const &capabilities,
+        vk::Extent2D const &requested,
+        vk::SurfaceTransformFlagBitsKHR preTransform);
+
     uint32_t texelSize(vk::Format format);
 
     VKAPI_ATTR vk::Bool32 VKAPI_CALL debugUtilsMessengerCallback(

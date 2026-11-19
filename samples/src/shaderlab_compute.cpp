@@ -96,11 +96,6 @@ void main()
 }
 )";
 
-// nimitz's "Protean clouds" ShaderToy shader, ported from a fragment shader to a compute shader.
-// The inputs are in the image's pixels, not the window's.
-static const std::string COMPUTE_SHADER_SOURCE = R"(
-)";
-
 struct VertexConstants
 {
     glm::vec2 aspect;
@@ -116,14 +111,14 @@ struct ComputeConstants
 };
 static_assert(offsetof(ComputeConstants, iTime) == 28 && offsetof(ComputeConstants, iFrame) == 32);
 
-static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/";
-static const std::string COMPUTE_SHADER = "compute_clouds.cs";
+static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/shaderlab/";
+static const std::string COMPUTE_SHADER = "clouds.comp";
 
 // Each frame in flight has its own image, so the compute work for one frame can overlap the drawing of another.
-class ComputeQuadFrameState : public spock::FrameState
+class ShaderLabComputeFrameState : public spock::FrameState
 {
 public:
-    explicit ComputeQuadFrameState(spock::FoundryPtr const& foundry)
+    explicit ShaderLabComputeFrameState(spock::FoundryPtr const& foundry)
         : spock::FrameState(foundry)
         , computeCommandBuffer(spock::createCommandBuffer(foundry->device(), foundry->computeCommandPool()))
         , computeTimeline(foundry->device().createSemaphore(
@@ -142,10 +137,10 @@ public:
     uint64_t computeTimelineValue{0};
 };
 
-class ComputeQuadRenderer : public spock::Renderer
+class ShaderLabComputeRenderer : public spock::Renderer
 {
 public:
-    ComputeQuadRenderer(
+    ShaderLabComputeRenderer(
         spock::FoundryPtr const &foundry,
         vk::SurfaceKHR surface,
         vk::Extent2D const& extents)
@@ -167,7 +162,7 @@ public:
         createPipelines();
     }
 
-    ~ComputeQuadRenderer() override
+    ~ShaderLabComputeRenderer() override
     {
         // The frames' descriptor sets are freed back to m_descriptorPool, so release them while it still exists.
         m_framePool.reset();
@@ -271,7 +266,7 @@ protected:
 
     std::unique_ptr<spock::FrameState> createFrameState(spock::FoundryPtr const& foundry) const
     {
-        auto frameState = std::make_unique<ComputeQuadFrameState>(foundry);
+        auto frameState = std::make_unique<ShaderLabComputeFrameState>(foundry);
 
         frameState->graphicsDescSet = std::move(vk::raii::DescriptorSets(
             foundry->device(), { m_descriptorPool, *m_graphics.descSetLayout }).front());
@@ -326,7 +321,7 @@ protected:
     {
 		if (m_compute.pipeline == nullptr) return; // Don't run compute if the shader compilation failed.
 
-        auto& frameData = static_cast<ComputeQuadFrameState&>(frame);
+        auto& frameData = static_cast<ShaderLabComputeFrameState&>(frame);
         auto& computeCommandBuffer = frameData.computeCommandBuffer;
 
         uint32_t const computeFamily = m_foundry->queueFamilies().compute;
@@ -410,7 +405,7 @@ protected:
 
     void render(spock::FrameState &frame) override
     {
-        auto& frameData = static_cast<ComputeQuadFrameState&>(frame);
+        auto& frameData = static_cast<ShaderLabComputeFrameState&>(frame);
         auto& commandBuffer = frameData.commandBuffer;
 
         // Bind the pipeline and vertex buffers.
@@ -473,12 +468,12 @@ private:
     vk::raii::Sampler m_sampler{nullptr};
 };
 
-class ComputeQuadApp : public spock::App
+class ShaderLabComputeApp : public spock::App
 {
 public:
-    ComputeQuadApp(uint32_t windowWidth, uint32_t windowHeight)
+    ShaderLabComputeApp(uint32_t windowWidth, uint32_t windowHeight)
         : spock::App(
-            "Compute Quad",
+            "ShaderLab Compute",
             windowWidth,
             windowHeight)
         , m_watcher(SHADER_PATH)
@@ -502,12 +497,12 @@ protected:
 
     std::unique_ptr<spock::Renderer> createRenderer() override
     {
-        return std::make_unique<ComputeQuadRenderer>(m_foundry, m_window.surface(), m_window.extents());
+        return std::make_unique<ShaderLabComputeRenderer>(m_foundry, m_window.surface(), m_window.extents());
     }
 
     void update() override
     {
-        ComputeQuadRenderer* renderer = static_cast<ComputeQuadRenderer*>(m_renderer.get());
+        ShaderLabComputeRenderer* renderer = static_cast<ShaderLabComputeRenderer*>(m_renderer.get());
 
         // Check the file watcher for any modified shader files and rebuild the pipeline if necessary.
         auto modifiedFiles = m_watcher.takeModified();
@@ -528,5 +523,5 @@ private:
 
 int main()
 {
-    return spock::runApp<ComputeQuadApp>(500, 500);
+    return spock::runApp<ShaderLabComputeApp>(500, 500);
 }

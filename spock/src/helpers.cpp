@@ -6,10 +6,13 @@
 #include "spock/utils.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 namespace spock
 {
@@ -279,6 +282,54 @@ namespace spock
 
         // The specification requires at least one bit to be set.
         throw std::runtime_error("pickCompositeAlpha: the surface reports no composite alpha mode");
+    }
+
+    vk::SurfaceTransformFlagBitsKHR pickPreTransform(vk::SurfaceCapabilitiesKHR const &capabilities)
+    {
+        if (capabilities.supportedTransforms & capabilities.currentTransform)
+        {
+            return capabilities.currentTransform;
+        }
+
+        auto const supported = static_cast<uint32_t>(capabilities.supportedTransforms);
+        if (supported == 0)
+        {
+            // The specification requires at least one bit to be set.
+            throw std::runtime_error("pickPreTransform: the surface reports no supported transform");
+        }
+        return static_cast<vk::SurfaceTransformFlagBitsKHR>(uint32_t{1} << std::countr_zero(supported));
+    }
+
+    vk::Extent2D pickSwapchainExtent(
+        vk::SurfaceCapabilitiesKHR const &capabilities,
+        vk::Extent2D const &requested,
+        vk::SurfaceTransformFlagBitsKHR preTransform)
+    {
+        // A defined surface size must be matched exactly.
+        bool const sizeDefined = capabilities.currentExtent.width != (std::numeric_limits<uint32_t>::max)();
+        vk::Extent2D extent = sizeDefined ? capabilities.currentExtent : requested;
+
+        using Transform = vk::SurfaceTransformFlagBitsKHR;
+        if (preTransform == Transform::eRotate90 ||
+            preTransform == Transform::eRotate270 ||
+            preTransform == Transform::eHorizontalMirrorRotate90 ||
+            preTransform == Transform::eHorizontalMirrorRotate270)
+        {
+            std::swap(extent.width, extent.height);
+        }
+
+        if (!sizeDefined)
+        {
+            extent.width = std::clamp(
+                extent.width,
+                capabilities.minImageExtent.width,
+                capabilities.maxImageExtent.width);
+            extent.height = std::clamp(
+                extent.height,
+                capabilities.minImageExtent.height,
+                capabilities.maxImageExtent.height);
+        }
+        return extent;
     }
 
     uint32_t texelSize(vk::Format format)

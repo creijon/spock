@@ -149,20 +149,17 @@ namespace spock
 
         try
         {
-            // The derived class records anything that has to happen outside the render pass.
             prepare(frameState);
 
-            // Begin the render pass.
-            vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
+			{
+            	vk::ClearValue clearValues[]{ m_clearColor, m_clearDepthStencil };
+				vk::RenderPassBeginInfo renderPassBeginInfo(
+					*m_renderPass,
+					*m_presenter->framebuffer(frameState.imageIndex),
+					vk::Rect2D(vk::Offset2D(0, 0), m_extents),
+					clearValues);
 
-            vk::RenderPassBeginInfo renderPassBeginInfo(
-                *m_renderPass,
-                *m_presenter->framebuffer(frameState.imageIndex),
-                vk::Rect2D(vk::Offset2D(0, 0), m_extents),
-                clearValues);
-
-            {
-                RenderPassWrapper renderPass(
+				RenderPassWrapper renderPass(
                     frameState.commandBuffer,
                     renderPassBeginInfo);
 
@@ -179,9 +176,6 @@ namespace spock
                 // The derived class renders using the current frame state.
                 render(frameState);
             }
-
-            // The derived class records anything that has to happen after the render pass.
-            finish(frameState);
         }
         catch (...)
         {

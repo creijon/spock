@@ -53,6 +53,12 @@ namespace spock
             return m_extent;
         }
 
+        // The renderer must rotate its output by this.
+        vk::SurfaceTransformFlagBitsKHR preTransform() const
+        {
+            return m_preTransform;
+        }
+
         // Call after creating the render pass and optional depth attachment.
         // The GPU must be idle before replacing or clearing existing framebuffers.
         void createFramebuffers(
@@ -88,6 +94,7 @@ namespace spock
         vk::raii::SwapchainKHR m_swapchain{nullptr};
         vk::Format m_colorFormat{};
         vk::Extent2D m_extent{};
+        vk::SurfaceTransformFlagBitsKHR m_preTransform{vk::SurfaceTransformFlagBitsKHR::eIdentity};
         vk::PresentModeKHR m_presentMode{vk::PresentModeKHR::eFifo};
         vk::CompositeAlphaFlagBitsKHR m_compositeAlpha{vk::CompositeAlphaFlagBitsKHR::eOpaque};
     

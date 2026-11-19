@@ -47,6 +47,8 @@ struct SwapchainOptions
         vk::raii::SwapchainKHR swapchain{nullptr};
         vk::Format colorFormat{vk::Format::eUndefined};
         vk::Extent2D extent{};
+        // The renderer must rotate its output by this.
+        vk::SurfaceTransformFlagBitsKHR preTransform{vk::SurfaceTransformFlagBitsKHR::eIdentity};
         vk::PresentModeKHR presentMode{vk::PresentModeKHR::eFifo};
         vk::CompositeAlphaFlagBitsKHR compositeAlpha{vk::CompositeAlphaFlagBitsKHR::eOpaque};
     };

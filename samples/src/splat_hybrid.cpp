@@ -79,8 +79,8 @@ struct FrameConstants
 };
 
 static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/";
-static const std::string VERTEX_SHADER = "splat.vs";
-static const std::string FRAGMENT_SHADER = "splat.fs";
+static const std::string VERTEX_SHADER = "splat.vert";
+static const std::string FRAGMENT_SHADER = "splat.frag";
 
 static const std::array<std::string, 4> SPLAT_FILES = {
     "amphimallon",

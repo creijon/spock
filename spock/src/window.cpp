@@ -3,6 +3,8 @@
 
 #include "spock/window.hpp"
 
+// Keeps GLFW from including the OpenGL headers.
+#define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 
 #include <iostream>
@@ -49,9 +51,6 @@ namespace
         (void)glfwCtx;
 
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-#ifdef __APPLE__
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#endif
         GLFWwindow* window = glfwCreateWindow(extent.width, extent.height, windowName.c_str(), nullptr, nullptr);
 
         if (window == nullptr)

@@ -51,7 +51,6 @@ add_library(${BINARY_NAME} STATIC ${SOURCE} ${HEADERS})
 target_include_directories(
     ${BINARY_NAME} PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${OPENGL_INCLUDE_DIRS}
     ${Vulkan_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/deps/glm)
 
@@ -59,7 +58,6 @@ target_include_directories(${BINARY_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/deps/stb)
 
 target_link_libraries(
     ${BINARY_NAME} PUBLIC
-    ${OPENGL_LIBRARIES}
     ${Vulkan_LIBRARIES}
     Vulkan::Headers
     efsw

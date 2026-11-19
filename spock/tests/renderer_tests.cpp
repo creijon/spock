@@ -232,14 +232,10 @@ namespace
         {
             calls.push_back({'r', &frame});
         }
-        void finish(spock::FrameState &frame) override
-        {
-            calls.push_back({'f', &frame});
-        }
     };
 } // namespace
 
-TEST_CASE("Renderer calls prepare, render and finish in order for each frame", "[gpu]")
+TEST_CASE("Renderer calls prepareFrame, render and finish in order for each frame", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");

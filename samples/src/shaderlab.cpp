@@ -45,8 +45,8 @@ static const uint32_t SHADERLAB_VERTEX_BUFFER_SIZE{sizeof(SHADERLAB_VERTEX_DATA)
 static const uint32_t SHADERLAB_VERTEX_COUNT{std::size(SHADERLAB_VERTEX_DATA)};
 
 static const std::string SHADER_PATH = std::string(SPOCK_DIR) + "/samples/assets/shaders/shaderlab/";
-static const std::string VERTEX_SHADER = "default.vs";
-static const std::string FRAGMENT_SHADER = "default.fs";
+static const std::string VERTEX_SHADER = "default.vert";
+static const std::string FRAGMENT_SHADER = "default.frag";
 
 // PushConstants have been defined to be mostly compatible with the ShaderToy interface.
 // The full set is too big for the 42 byte push constant limit, so it'll have to be a uniform buffer.

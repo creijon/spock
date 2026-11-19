@@ -289,6 +289,8 @@ TEST_CASE("Foundry::createSwapchain builds a swapchain for the headless surface"
     CHECK(swapchain.extent.width > 0);
     CHECK(swapchain.extent.height > 0);
 
+    CHECK(swapchain.preTransform == fixture->foundry->physicalDevice().getSurfaceCapabilitiesKHR(*fixture->surface).currentTransform);
+
     // The requested count is a minimum; the driver may hand back more images, but never fewer.
     CHECK(swapchain.swapchain.getImages().size() >= 2);
 }

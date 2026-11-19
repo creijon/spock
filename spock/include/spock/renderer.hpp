@@ -75,10 +75,6 @@ namespace spock
         // Records the commands inside the render pass.
         virtual void render(FrameState &frame) = 0;
 
-        // Records commands that must come after the render pass, such as handing images back to another owner.
-        virtual void finish(FrameState&)
-        {
-        }
         FoundryPtr m_foundry;
         // Borrowed from the window. Null after releaseSurface().
         vk::SurfaceKHR m_surface;

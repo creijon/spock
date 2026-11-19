@@ -13,7 +13,6 @@
 #include <cassert>
 #include <cstring>
 #include <iterator>
-#include <limits>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -204,29 +203,8 @@ namespace spock
         vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(surface));
 
         vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(surface);
-        vk::Extent2D swapchainExtent;
-        if (surfaceCapabilities.currentExtent.width == (std::numeric_limits<uint32_t>::max)())
-        {
-            // If the surface size is undefined, the size is set to the size of the images requested.
-            swapchainExtent.width = std::clamp(
-                extent.width,
-                surfaceCapabilities.minImageExtent.width,
-                surfaceCapabilities.maxImageExtent.width);
-            swapchainExtent.height = std::clamp(
-                extent.height,
-                surfaceCapabilities.minImageExtent.height,
-                surfaceCapabilities.maxImageExtent.height);
-        }
-        else
-        {
-            // If the surface size is defined, the swap chain size must match
-            swapchainExtent = surfaceCapabilities.currentExtent;
-        }
-
-        auto preTransform =
-            (surfaceCapabilities.supportedTransforms & vk::SurfaceTransformFlagBitsKHR::eIdentity) ?
-            vk::SurfaceTransformFlagBitsKHR::eIdentity :
-            surfaceCapabilities.currentTransform;
+        vk::SurfaceTransformFlagBitsKHR const preTransform = pickPreTransform(surfaceCapabilities);
+        vk::Extent2D const swapchainExtent = pickSwapchainExtent(surfaceCapabilities, extent, preTransform);
 
         vk::CompositeAlphaFlagBitsKHR const compositeAlpha = pickCompositeAlpha(surfaceCapabilities.supportedCompositeAlpha, options.compositeAlpha);
         vk::PresentModeKHR const presentMode = pickPresentMode(m_physicalDevice.getSurfacePresentModesKHR(surface), options.presentModes);
@@ -260,6 +238,7 @@ namespace spock
         info.swapchain = vk::raii::SwapchainKHR(m_device, swapChainCreateInfo);
         info.colorFormat = surfaceFormat.format;
         info.extent = swapchainExtent;
+        info.preTransform = preTransform;
         info.presentMode = presentMode;
         info.compositeAlpha = compositeAlpha;
         return info;
