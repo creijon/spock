@@ -7,6 +7,7 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <optional>
 #include <utility>
 #include <vector>
 

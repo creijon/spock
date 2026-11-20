@@ -70,7 +70,7 @@ struct SortingEntry
 };
 
 
-// Padded to match the std140 layout of the FrameConstants uniform block in splat.vs
+// Padded to match the std140 layout of the FrameConstants uniform block in splat.vert
 struct FrameConstants
 {
     glm::mat4 view;

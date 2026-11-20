@@ -15,7 +15,7 @@ namespace spherical_harmonics
 using Coefficients = std::array<glm::vec4, 16>;
 static_assert(sizeof(Coefficients) == 256, "SH coefficients must match the std140 shader block");
 
-// Same real SH basis as shaders/splat.vs; direction must be a unit vector.
+// Same real SH basis as shaders/splat.vert; direction must be a unit vector.
 inline std::array<double, 16> basis(glm::dvec3 const& direction)
 {
     const double x = direction.x, y = direction.y, z = direction.z;

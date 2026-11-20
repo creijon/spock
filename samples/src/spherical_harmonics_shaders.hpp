@@ -18,7 +18,7 @@ inline const std::string fragmentShader = R"(#version 450
 layout(std140, binding = 0) uniform SphericalHarmonics { vec4 coefficients[16]; } sh;
 layout(location = 0) in vec3 direction;
 layout(location = 0) out vec4 outColor;
-// Basis and reconstruction follow splat.vs, with float RGB coefficients in std140.
+// Basis and reconstruction follow splat.vert, with float RGB coefficients in std140.
 const float SH_C0 = 0.28209479177387814;
 const float SH_C1 = 0.4886025119029199;
 const float SH_C2_0 = 1.0925484305920792;
