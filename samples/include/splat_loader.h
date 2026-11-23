@@ -41,6 +41,15 @@ using half4 = std::array<spock::f16, 4>;
 
 inline glm::vec3 toVec3(float3 const& v) { return glm::vec3(v[0], v[1], v[2]); }
 
+// Splat scenes use the OpenCV convention (+Y down, +Z forward), rotate 180 degrees about X to get to our Y-up world.
+static const glm::mat4 SPLAT_TO_WORLD = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, -1.0f));
+static const glm::quat SPLAT_TO_WORLD_ROTATION = glm::quat_cast(SPLAT_TO_WORLD);
+
+// SH coefficient signs under SPLAT_TO_WORLD: basis functions odd in y and z change sign.
+static const float SH1_TO_WORLD[SH_DEGREE1_COUNT] = { -1.0f, -1.0f, 1.0f };
+static const float SH2_TO_WORLD[SH_DEGREE2_COUNT] = { -1.0f, 1.0f, 1.0f, -1.0f, 1.0f };
+static const float SH3_TO_WORLD[SH_DEGREE3_COUNT] = { -1.0f, 1.0f, -1.0f, -1.0f, 1.0f, -1.0f, 1.0f };
+
 struct SplatInstance
 {
     float3 position;
@@ -298,18 +307,19 @@ inline void loadPly(const std::string& name, SplatScene& scene) {
         }
 
         SplatInstance splat;
-        splat.position = {
+        glm::vec4 pos = SPLAT_TO_WORLD * glm::vec4(
             plyDetail::readAsFloat(row, x),
             plyDetail::readAsFloat(row, y),
             plyDetail::readAsFloat(row, z),
-        };
+            1.0f);
+        splat.position = {pos.x, pos.y, pos.z};
 
-        splat.rotation = {
-            plyDetail::readAsFloat(row, rot1),  // x
-            plyDetail::readAsFloat(row, rot2),  // y
-            plyDetail::readAsFloat(row, rot3),  // z
-            plyDetail::readAsFloat(row, rot0),  // w
-        };
+        glm::quat rotation = SPLAT_TO_WORLD_ROTATION * glm::quat(
+            plyDetail::readAsFloat(row, rot0),
+            plyDetail::readAsFloat(row, rot1),
+            plyDetail::readAsFloat(row, rot2),
+            plyDetail::readAsFloat(row, rot3));
+        splat.rotation = {rotation.x, rotation.y, rotation.z, rotation.w};
 
         splat.scale = {
             plyDetail::readAsFloat(row, scale0),
@@ -336,16 +346,16 @@ inline void loadPly(const std::string& name, SplatScene& scene) {
         const uint32_t offsetG = harmonicCount;
         const uint32_t offsetB = harmonicCount * 2;
 
-        auto readSHDegree = [&](half3 shDegree[], uint32_t offset, uint32_t count)
+        auto readSHDegree = [&](half3 shDegree[], uint32_t offset, uint32_t count, const float toWorld[])
         {
             if (harmonicCount >= offset + count)
             {
                 for (size_t i = 0; i < count; ++i)
                 {
                     shDegree[i] = {
-                        plyDetail::readAsFloat(row, *shRest[offsetR + offset + i]),
-                        plyDetail::readAsFloat(row, *shRest[offsetG + offset + i]),
-                        plyDetail::readAsFloat(row, *shRest[offsetB + offset + i])
+                        toWorld[i] * plyDetail::readAsFloat(row, *shRest[offsetR + offset + i]),
+                        toWorld[i] * plyDetail::readAsFloat(row, *shRest[offsetG + offset + i]),
+                        toWorld[i] * plyDetail::readAsFloat(row, *shRest[offsetB + offset + i])
                     };
                 }
             }
@@ -358,9 +368,9 @@ inline void loadPly(const std::string& name, SplatScene& scene) {
             }
         };
 
-        readSHDegree(splat.sh1, SH_DEGREE1_OFFSET, SH_DEGREE1_COUNT);
-        readSHDegree(splat.sh2, SH_DEGREE2_OFFSET, SH_DEGREE2_COUNT);
-        readSHDegree(splat.sh3, SH_DEGREE3_OFFSET, SH_DEGREE3_COUNT);
+        readSHDegree(splat.sh1, SH_DEGREE1_OFFSET, SH_DEGREE1_COUNT, SH1_TO_WORLD);
+        readSHDegree(splat.sh2, SH_DEGREE2_OFFSET, SH_DEGREE2_COUNT, SH2_TO_WORLD);
+        readSHDegree(splat.sh3, SH_DEGREE3_OFFSET, SH_DEGREE3_COUNT, SH3_TO_WORLD);
 
         scene.instances.emplace_back(splat);
     }

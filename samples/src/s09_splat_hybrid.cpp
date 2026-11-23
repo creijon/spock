@@ -92,9 +92,6 @@ static const std::array<std::string, 4> SPLAT_FILES = {
 
 static const std::string SPLAT_PATH = "splats/";
 
-// Splat scenes use the OpenCV convention (+Y down, +Z forward), rotate 180 degrees about X to get to our Y-up world.
-static const glm::mat4 SPLAT_TO_WORLD = glm::scale(glm::mat4(1.0f), glm::vec3(1.0f, -1.0f, -1.0f));
-
 class SplatFrameState : public spock::FrameState
 {
 public:
@@ -167,9 +164,9 @@ public:
     {
         // App::update runs before frame acquisition, so only prepare host data here.
         m_frameConstants = FrameConstants{
-            camera.view() * SPLAT_TO_WORLD,
+            camera.view(),
             camera.projection(viewExtents),
-            SPLAT_TO_WORLD * glm::vec4(camera.position(), 1.0f), // Camera position in splat space (the transform is its own inverse).
+            glm::vec4(camera.position(), 1.0f),
             glm::vec4(viewExtents.width, viewExtents.height, 0.0f, 0.0f)
         };
 
@@ -381,7 +378,7 @@ protected:
         loadScene();
         renderer->createResources(m_scene);
 
-        m_camera.setFocus(glm::vec3(SPLAT_TO_WORLD * glm::vec4(glm::vec3(m_sceneBounds), 1.0f)));
+        m_camera.setFocus(glm::vec3(m_sceneBounds));
         m_camera.setDistanceRange(m_sceneBounds.w * 1.5f, m_sceneBounds.w * 5.0f);
         m_camera.setDistance(m_sceneBounds.w * 4.0f);
 
