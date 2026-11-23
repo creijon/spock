@@ -139,17 +139,17 @@ classDiagram
 
 There are a set of samples which demonstrate functions of Vulkan and the framework:
 
-- `cube` — a completely self-contained renderer: the cube geometry and both shaders are defined inline in the source, with no external asset or shader files to load.
-- `quad` — an even simpler example: a single textured quad, useful as a basis for 2D samples.
-- `shaderlab` — demonstrates automatic shader compilation and hot-reloading via `FileWatcher`. The default shaders implement a simple ShaderToy-like interface.
-- `instancing` — renders a 16x16 grid of sprites. The vertex buffer contains a single quad and the instance buffer contains position and color data for each instance.
-- `textured_cube` — extends `cube` by loading a PNG from disk with `Loader::texture` and sampling it through a combined image sampler.
-- `textured_sphere` — generates a sphere by subdividing and normalising the faces of a cube, then projects a cubemap onto it using the normals.
-- `debug_lines` — demonstrates `spock::DebugLines` and per-frame resources.
-- `compute` — sorts a buffer of random floats on the GPU using VkRadixSort compute shaders on the compute queue.
-- `splat` — demonstrates instanced rendering and the use of uniform and storage buffers. Derived from the tutorial “3D Gaussian Splatting in a Weekend”.
-- `video_player_sw` — decodes a video file with FFmpeg and writes each YUV frame straight into persistently mapped. Only built when FFmpeg is found via `pkg-config`.
-- `video_player_hw` — decodes a video on the GPU with Vulkan Video and FFmpeg. Only built with FFmpeg 7.1 or later.
+- `s01_cube` — a completely self-contained renderer: the cube geometry and both shaders are defined inline in the source, with no external asset or shader files to load.
+- `s02_shaderlab` — demonstrates automatic shader compilation and hot-reloading via `FileWatcher`. The default shaders implement a simple ShaderToy-like interface.
+- `s03_instancing` — renders a 16x16 grid of sprites. The vertex buffer contains a single quad and the instance buffer contains position and color data for each instance.
+- `s04_debug_lines` — demonstrates `spock::DebugLines` and per-frame resources.
+- `s05_quad` — an even simpler example: a single textured quad, useful as a basis for 2D samples.
+- `s06_textured_cube` — extends `s01_cube` by loading a PNG from disk with `Loader::texture` and sampling it through a combined image sampler.
+- `s07_textured_sphere` — generates a sphere by subdividing and normalising the faces of a cube, then projects a cubemap onto it using the normals.
+- `s09_splat_hybrid` — demonstrates instanced rendering and the use of uniform and storage buffers. Derived from the tutorial “3D Gaussian Splatting in a Weekend”.
+- `s10_video_player_sw` — decodes a video file with FFmpeg and writes each YUV frame straight into persistently mapped. Only built when FFmpeg is found via `pkg-config`.
+- `s11_video_player_hw` — decodes a video on the GPU with Vulkan Video and FFmpeg. Only built with FFmpeg 7.1 or later.
+- `s12_compute_sort` — sorts a buffer of random floats on the GPU using VkRadixSort compute shaders on the compute queue.
 
 ## Building
 
@@ -157,9 +157,9 @@ Example:
 
 ```bash
 cmake -S . -B build
-cmake --build build --target cube
-cmake --build build --target splat
-cmake --build build --target shaderlab
+cmake --build build --target s01_cube
+cmake --build build --target s09_splat_hybrid
+cmake --build build --target s02_shaderlab
 ```
 
 The build copies `samples/assets` into an `assets` folder next to the sample binaries, for example `build/bin/Debug/assets`, and the samples load their files from there. Only changed files are copied.
@@ -227,7 +227,7 @@ Installed on your system:
 - C++20 compiler
 - Vulkan SDK with Vulkan 1.4 headers (`createInstance` requests `VK_API_VERSION_1_4` by default)
 - TBB (Linux and MacOS only, for the parallel sort in the samples)
-- FFmpeg (`libavformat`, `libavcodec`, `libavutil`, `libswscale`), optional; found via `pkg-config` and only needed for the `video_player_sw` and `video_player_hw` samples. `video_player_hw` needs FFmpeg 7.1 or later, built with Vulkan support.
+- FFmpeg (`libavformat`, `libavcodec`, `libavutil`, `libswscale`), optional; found via `pkg-config` and only needed for the `s10_video_player_sw` and `s11_video_player_hw` samples. `s11_video_player_hw` needs FFmpeg 7.1 or later, built with Vulkan support.
 
 Bundled as git submodules under `deps/` and built as part of the project — no separate installation needed:
 - GLFW

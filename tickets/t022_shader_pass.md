@@ -1,6 +1,6 @@
 [t022] Shader Pass
 
-#### Goal
+### Goal
 
 Create the concept of a Shader Pass:
 - A set of GPU commands that all use the same shader loadout.
@@ -8,10 +8,10 @@ Create the concept of a Shader Pass:
 - Simplifies buffer bindings, using SPIV to populate them.
 - Clean up the interface into creating and managing buffers.
 
-#### Related
+### Related
 
 t001
 t017
 
 
-#### Claude
+### Claude

@@ -1,13 +1,13 @@
 [t015] Presenter Error Handling
 
-#### Goal
+### Goal
 
 Presenter error handling around VK_ERROR_SURFACE_LOST_KHR etc
 
-#### Related
+### Related
 
 t001
 t002
 
 
-#### Claude
+### Claude

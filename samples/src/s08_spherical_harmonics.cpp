@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 // Project six cubemap faces into Splat-compatible degree-three RGB SH, then
-// reconstruct their colour on the same sphere mesh as textured_sphere.
+// reconstruct their colour on the same sphere mesh as s07_textured_sphere.
 
 #include "spock/app.hpp"
 #include "spock/assets.hpp"

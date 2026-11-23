@@ -1,8 +1,8 @@
 [t001] Render Stages and Renderer Refactor
 
-#### Goal
+### Goal
 
-#### Related
+### Related
 
 t002
 t003
@@ -10,7 +10,7 @@ t015
 t022
 t024
 
-#### Claude
+### Claude
 
 __Me:__
 
@@ -23,7 +23,7 @@ I'd hold off. With the samples you have now, a vector of `RenderStage`s would ma
 
 **How the hooks are used today**
 - **`render()`:** 11 of the 13 sample renderers override only this.
-- **`prepare()`:** only two samples use it, [shaderlab_compute.cpp:320](samples/src/shaderlab_compute.cpp#L320) and [video_player_hw.cpp:327](samples/src/video_player_hw.cpp#L327). Both use it for barriers and semaphore waits ahead of a single draw.
+- **`prepare()`:** only two samples use it, [s13_shaderlab_compute.cpp:320](samples/src/s13_shaderlab_compute.cpp#L320) and [s11_video_player_hw.cpp:327](samples/src/s11_video_player_hw.cpp#L327). Both use it for barriers and semaphore waits ahead of a single draw.
 - **`finish()`:** only the hook-order test overrides it.
 
 So the current hooks already cover every sample. A vector would just put the same fixed sequence into a different shape.

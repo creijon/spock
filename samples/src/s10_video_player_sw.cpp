@@ -5,7 +5,7 @@
 // Each decoded YUV 4:2:0 frame is written straight into persistently mapped, linearly tiled
 // Y, U and V textures, which the fragment shader samples and converts to RGB.
 //
-// Usage: video_player_sw <video file>
+// Usage: s10_video_player_sw <video file>
 
 #include "video_decoder_sw.h"
 

@@ -318,7 +318,7 @@ void VideoDecoderHW::decodeNext()
                 throwIfUnsupported();
 
                 // Skip corrupt packets rather than stopping playback.
-                std::cerr << "video_player_hw: dropping a packet the decoder rejected\n";
+                std::cerr << "s11_video_player_hw: dropping a packet the decoder rejected\n";
             }
         }
         av_packet_unref(m_packet.get());

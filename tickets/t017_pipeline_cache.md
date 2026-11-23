@@ -1,12 +1,12 @@
 [t017] Pipeline Cache
 
-#### Goal
+### Goal
 
 createGraphicsPipeline creates a new pipeline cache for each call, which makes it useless.
 
-#### Related
+### Related
 
 t022
 
 
-#### Claude
+### Claude

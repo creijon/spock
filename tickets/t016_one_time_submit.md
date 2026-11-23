@@ -1,17 +1,17 @@
 [t016] oneTimeSubmit() Improvements
 
-#### Goal
+### Goal
 
 oneTimeSubmit() improvements, so it doesn't wait at end.
 
 - This could be part of the wider resource registry story.
 
-#### Related
+### Related
 
 t023
 
 
-#### Claude
+### Claude
 
 __Claude:__ (2026-11-19)
 

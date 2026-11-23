@@ -156,7 +156,7 @@ void VideoDecoderSW::decodeNext()
             if (result < 0 && result != AVERROR(EAGAIN))
             {
                 // Skip corrupt packets rather than stopping playback.
-                std::cerr << "video_player_sw: dropping a packet the decoder rejected\n";
+                std::cerr << "s10_video_player_sw: dropping a packet the decoder rejected\n";
             }
         }
         av_packet_unref(m_packet.get());

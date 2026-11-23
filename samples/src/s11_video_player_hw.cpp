@@ -1,12 +1,12 @@
 // Copyright (c) 2026 Jon Creighton
 // SPDX-License-Identifier: MIT
 
-// Plays a video file decoded on the GPU with Vulkan Video, based on the video_player_sw sample.
+// Plays a video file decoded on the GPU with Vulkan Video, based on the s10_video_player_sw sample.
 // FFmpeg's Vulkan hwaccel decodes on spock's device, so each frame stays in the image it was decoded into.
 // The fragment shader samples the luma and chroma planes of that image through separate image views, then
-// converts to RGB as video_player_sw does.
+// converts to RGB as s10_video_player_sw does.
 //
-// Usage: video_player_hw <video file>
+// Usage: s11_video_player_hw <video file>
 // Mesa's Intel driver only exposes its video queues when run with ANV_DEBUG=video-decode.
 
 #include "video_decoder_hw.h"
@@ -129,7 +129,7 @@ struct PushConstants
 };
 
 // Maps (Y, U, V, 1) as sampled from the textures to (R, G, B, 1).
-// BT.601 limited range, with the same coefficients as the video_player_sw sample.
+// BT.601 limited range, with the same coefficients as the s10_video_player_sw sample.
 static glm::mat4 bt601LimitedRangeMatrix()
 {
     // Remove the black level from Y and the midpoint from U and V.
@@ -456,7 +456,7 @@ protected:
         }
         catch (...)
         {
-            std::cerr << "video_player_hw: decoding this video needs a device with a video decode queue and "
+            std::cerr << "s11_video_player_hw: decoding this video needs a device with a video decode queue and "
                       << extensions.back() << ".\n"
                       << "Mesa's Intel driver only exposes them when run with ANV_DEBUG=video-decode.\n";
             throw;

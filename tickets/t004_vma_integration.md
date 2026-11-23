@@ -1,12 +1,12 @@
 [t004] VMA Integration
 
-#### Goal
+### Goal
 
 VMA integration - P0 importance
 
-#### Related
+### Related
 
 t021
 
 
-#### Claude
+### Claude

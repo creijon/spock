@@ -20,11 +20,14 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <iterator>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -196,7 +199,7 @@ public:
         {
             if ((m_compShader == nullptr) || (shaderStages & vk::ShaderStageFlagBits::eCompute))
 			{
-				m_compShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eCompute, SHADER_PATH + COMPUTE_SHADER);
+				m_compShader = spock::loadShader(m_foundry->device(), vk::ShaderStageFlagBits::eCompute, SHADER_PATH + COMPUTE_SHADER, &m_compIncludes);
             }
         }
         catch (std::exception const& e)
@@ -214,6 +217,16 @@ public:
 				m_compute.layout);
 	    }
 	}
+
+    // True if the compute shader or a file it includes is among the modified file names.
+    bool computeShaderModified(std::set<std::string> const& modifiedFiles) const
+    {
+        return modifiedFiles.contains(COMPUTE_SHADER) ||
+            std::ranges::any_of(m_compIncludes, [&](std::filesystem::path const& include)
+            {
+                return modifiedFiles.contains(include.filename().string());
+            });
+    }
 
 protected:
     void createResources()
@@ -460,6 +473,7 @@ private:
     PipelineData m_compute;
 
     vk::raii::ShaderModule m_compShader{nullptr};
+    std::set<std::filesystem::path> m_compIncludes;
 
     spock::BufferWrapper m_vertexBuffer;
 
@@ -508,7 +522,7 @@ protected:
         // Check the file watcher for any modified shader files and rebuild the pipeline if necessary.
         auto modifiedFiles = m_watcher.takeModified();
         vk::ShaderStageFlags modifiedShaders{0};
-        if (modifiedFiles.contains(COMPUTE_SHADER)) modifiedShaders |= vk::ShaderStageFlagBits::eCompute;
+        if (renderer->computeShaderModified(modifiedFiles)) modifiedShaders |= vk::ShaderStageFlagBits::eCompute;
 
         if (modifiedShaders)
         {

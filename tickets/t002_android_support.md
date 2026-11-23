@@ -1,10 +1,10 @@
 [t002] Android Support
 
-#### Goal
+### Goal
 
 Build and run the spock samples on Android, starting with cube.
 
-#### Related
+### Related
 
 t001
 t014
@@ -12,7 +12,7 @@ t015
 t023
 
 
-#### Claude
+### Claude
 
 **Already in place**
 - **Window loss:** `Renderer::releaseSurface()` and `setSurface()` drop and rebuild the swapchain when the window goes away and comes back. They keep the device, pipelines and buffers, and tests cover them.

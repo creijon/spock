@@ -1,12 +1,12 @@
 [t006] Multithreaded Dispatch
 
-#### Goal
+### Goal
 
 Multithreaded dispatch
 
-#### Related
+### Related
 
 t005
 
 
-#### Claude
+### Claude
