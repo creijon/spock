@@ -46,6 +46,7 @@ namespace spock
         void releaseSurface();
 
         // Builds a swapchain for a new surface, e.g. the one recreated after releaseSurface().
+        // Throws std::runtime_error if the surface needs a different color format from the render pass.
         void setSurface(vk::SurfaceKHR surface, vk::Extent2D const &extents);
 
         bool hasSurface() const
@@ -78,15 +79,14 @@ namespace spock
         FoundryPtr m_foundry;
         // Borrowed from the window. Null after releaseSurface().
         vk::SurfaceKHR m_surface;
+        // Built once for these formats, before the Presenter whose framebuffers are built for it.
+        vk::raii::RenderPass m_renderPass{nullptr};
+        vk::Format m_colorFormat{vk::Format::eUndefined};
+        const vk::Format m_depthFormat;
         std::unique_ptr<Presenter> m_presenter;
         std::unique_ptr<FrameStatePool> m_framePool;
         // Set by the derived constructor. Frames are allocated lazily by renderFrame, after construction.
         FrameStatePool::CreateFrameFunc m_createFrameFunc{nullptr};
-
-        // Presenter framebuffers are cleared before these attachments are replaced or destroyed.
-        DepthBufferWrapper m_depthBuffer;
-        vk::raii::RenderPass m_renderPass{nullptr};
-        bool m_useDepthBuffer{true};
 
         vk::Extent2D m_extents;
 
@@ -100,11 +100,7 @@ namespace spock
         std::chrono::nanoseconds m_acquireTimeout{std::chrono::seconds(1)};
 
     private:
-        // Tears down the frames, framebuffers and depth buffer, which all depend on the swapchain.
-        void releaseSwapchainResources();
-
-        // Builds a swapchain for m_surface, handing over the current presenter's, then the depth buffer,
-        // render pass and framebuffers to match it.
+        // Replaces the presenter with one for m_surface, handing over the current presenter's swapchain.
         void buildSwapchain(vk::Extent2D const &extents);
     };
 } // namespace spock

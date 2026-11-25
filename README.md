@@ -104,7 +104,6 @@ classDiagram
     }
     class ImageWrapper {
     }
-    class DepthBufferWrapper
     class TextureWrapper {
     }
     class CubemapWrapper {
@@ -114,7 +113,6 @@ classDiagram
     class Loader {
     }
 
-    ImageWrapper <|-- DepthBufferWrapper
     TextureWrapper *-- ImageWrapper
     TextureWrapper *-- BufferWrapper : staging
     CubemapWrapper *-- ImageWrapper

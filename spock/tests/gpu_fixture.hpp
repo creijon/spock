@@ -6,6 +6,7 @@
 #include "spock/creators.hpp"
 #include "spock/foundry.hpp"
 #include "spock/types.hpp"
+#include "spock/wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -36,6 +37,20 @@ namespace spock_test
     inline vk::raii::SurfaceKHR createHeadlessSurface(vk::raii::Instance const &instance)
     {
         return vk::raii::SurfaceKHR(instance, vk::HeadlessSurfaceCreateInfoEXT{});
+    }
+
+    // A depth attachment, made the way the Presenter makes its depth buffer.
+    inline spock::ImageWrapper createDepthImage(spock::FoundryPtr const &foundry, vk::Extent2D extent)
+    {
+        return spock::ImageWrapper(
+            foundry,
+            vk::Format::eD16Unorm,
+            extent,
+            vk::ImageTiling::eOptimal,
+            vk::ImageUsageFlagBits::eDepthStencilAttachment,
+            vk::ImageLayout::eUndefined,
+            vk::MemoryPropertyFlagBits::eDeviceLocal,
+            vk::ImageAspectFlagBits::eDepth);
     }
 
     inline std::unique_ptr<GpuFixture> createGpuFixture()

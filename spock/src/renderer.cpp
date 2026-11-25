@@ -21,7 +21,7 @@ namespace spock
         SwapchainOptions const& swapchainOptions)
         : m_foundry(foundry)
         , m_surface(surface)
-        , m_useDepthBuffer(useDepthBuffer)
+        , m_depthFormat(useDepthBuffer ? vk::Format::eD16Unorm : vk::Format::eUndefined)
         , m_clearColor(clearColor)
         , m_clearDepthStencil(clearDepthStencil)
         , m_swapchainOptions(swapchainOptions)
@@ -30,14 +30,14 @@ namespace spock
         {
             throw std::invalid_argument("Renderer: the surface is null");
         }
+        m_colorFormat = pickSurfaceFormat(m_foundry->physicalDevice(), m_surface).format;
+        m_renderPass = createRenderPass(m_foundry->device(), m_colorFormat, m_depthFormat);
         buildSwapchain(extents);
     }
 
     Renderer::~Renderer()
     {
         m_foundry->waitIdleNoThrow();
-        // Renderer owns the render pass and depth attachment referenced by Presenter's framebuffers.
-        if (m_presenter) m_presenter->clearFramebuffers();
     }
 
     void Renderer::resizeWindow(vk::Extent2D const &extents)
@@ -46,7 +46,8 @@ namespace spock
         {
             throw std::logic_error("Renderer::resizeWindow: the surface has been released, call setSurface() instead");
         }
-        releaseSwapchainResources();
+        // Destroying the frames waits for the GPU, so the old presenter can go once its replacement exists.
+        m_framePool.reset();
         buildSwapchain(extents);
     }
 
@@ -54,7 +55,7 @@ namespace spock
     {
         // The swapchain must be destroyed before its surface, and the GPU may still be using it.
         m_foundry->waitIdle();
-        releaseSwapchainResources();
+        m_framePool.reset();
         m_presenter.reset();
         m_surface = nullptr;
     }
@@ -65,22 +66,14 @@ namespace spock
         {
             throw std::invalid_argument("Renderer::setSurface: the surface is null");
         }
+        if (pickSurfaceFormat(m_foundry->physicalDevice(), surface).format != m_colorFormat)
+        {
+            throw std::runtime_error("Renderer::setSurface: the surface needs a different color format from the render pass");
+        }
         // A swapchain can only be handed over to one for the same surface, so the old one is destroyed first.
         releaseSurface();
         m_surface = surface;
         buildSwapchain(extents);
-    }
-
-    void Renderer::releaseSwapchainResources()
-    {
-        // Tearing down the FrameStatePool waits for GPU completion.
-        m_framePool.reset();
-
-        if (m_presenter)
-        {
-            m_presenter->clearFramebuffers();
-        }
-        m_depthBuffer = DepthBufferWrapper();
     }
 
     void Renderer::buildSwapchain(vk::Extent2D const &extents)
@@ -91,27 +84,16 @@ namespace spock
             m_foundry,
             m_surface,
             extents,
+            m_renderPass,
+            m_depthFormat,
             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
             m_framesInFlight,
             m_presenter.get(),
             m_swapchainOptions);
 
-        // The surface may constrain the swapchain extent, so everything sized to the swapchain
-        // (depth buffer, framebuffers, viewport, scissor) uses the extent it was actually created with.
-        m_extents = m_presenter->extent();
-
-        if (m_useDepthBuffer)
-        {
-            m_depthBuffer = DepthBufferWrapper(m_foundry, vk::Format::eD16Unorm, m_extents);
-        }
-
-        m_renderPass = createRenderPass(
-            m_foundry->device(),
-            m_presenter->colorFormat(),
-            m_useDepthBuffer ? m_depthBuffer.format() : vk::Format::eUndefined);
-
+        // The surface may constrain the swapchain extent, so the viewport and scissor use the extent it was created with.
         // Frames are allocated by the next renderFrame, so a derived constructor can set m_createFrameFunc first.
-        m_presenter->createFramebuffers(m_renderPass, m_useDepthBuffer ? &m_depthBuffer.imageView() : nullptr);
+        m_extents = m_presenter->extent();
     }
 
     void Renderer::waitIdle() const

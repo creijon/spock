@@ -60,6 +60,11 @@ namespace spock
     vk::SurfaceFormatKHR pickSurfaceFormat(
         std::vector<vk::SurfaceFormatKHR> const &formats);
 
+    // Choose from the formats the physical device supports for the surface.
+    vk::SurfaceFormatKHR pickSurfaceFormat(
+        vk::raii::PhysicalDevice const &physicalDevice,
+        vk::SurfaceKHR surface);
+
     vk::PresentModeKHR pickPresentMode(
         std::vector<vk::PresentModeKHR> const &presentModes,
         std::vector<vk::PresentModeKHR> const& preferred);

@@ -5,6 +5,7 @@
 
 #include "foundry.hpp"
 #include "types.hpp"
+#include "wrappers.hpp"
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -22,19 +23,20 @@ namespace spock
         // The surface must outlive the Presenter.
         // When replacing an existing presenter for the same surface, e.g. on resize, pass it as `oldPresenter` so
         // its swapchain is handed over to the new one.  A presenter for a different surface can't be handed over.
+        // The framebuffers are built for renderPass, with a depth buffer unless depthFormat is eUndefined.
+        // The GPU must have finished with the framebuffers and depth buffer before the Presenter is destroyed.
         Presenter(
             FoundryPtr const &foundry,
             vk::SurfaceKHR surface,
             vk::Extent2D const &extent,
+            vk::raii::RenderPass const &renderPass,
+            vk::Format depthFormat,
             vk::ImageUsageFlags usage,
             uint32_t framesInFlight,
             Presenter const *oldPresenter = nullptr,
             SwapchainOptions const& options = {});
-        Presenter() = default;
         Presenter(const Presenter &) = delete;
-        Presenter(Presenter && other) noexcept;
-        // The GPU must have finished using this Presenter's resources before move assignment.
-        Presenter const& operator=(Presenter && other);
+        Presenter &operator=(const Presenter &) = delete;
 
         std::vector<vk::raii::ImageView> const& imageViews() const
         {
@@ -58,13 +60,6 @@ namespace spock
         {
             return m_preTransform;
         }
-
-        // Call after creating the render pass and optional depth attachment.
-        // The GPU must be idle before replacing or clearing existing framebuffers.
-        void createFramebuffers(
-            vk::raii::RenderPass const &renderPass,
-            vk::raii::ImageView const *depthImageView = nullptr);
-        void clearFramebuffers();
 
         vk::raii::Framebuffer const &framebuffer(uint32_t imageIndex) const
         {
@@ -91,16 +86,18 @@ namespace spock
 
         std::vector<vk::raii::Semaphore> m_renderSemaphores;
 
+		// Order is important for swapchain and imageview destruction.
         vk::raii::SwapchainKHR m_swapchain{nullptr};
-        vk::Format m_colorFormat{};
+        std::vector<vk::Image> m_images;
+        std::vector<vk::raii::ImageView> m_imageViews;
+		ImageWrapper m_depthBuffer;
+        std::vector<vk::raii::Framebuffer> m_frameBuffers;
+
+		vk::Format m_colorFormat{};
         vk::Extent2D m_extent{};
         vk::SurfaceTransformFlagBitsKHR m_preTransform{vk::SurfaceTransformFlagBitsKHR::eIdentity};
         vk::PresentModeKHR m_presentMode{vk::PresentModeKHR::eFifo};
         vk::CompositeAlphaFlagBitsKHR m_compositeAlpha{vk::CompositeAlphaFlagBitsKHR::eOpaque};
     
-        std::vector<vk::Image> m_images;
-        std::vector<vk::raii::ImageView> m_imageViews;
-        // Destroy framebuffers before the swapchain image views they reference.
-        std::vector<vk::raii::Framebuffer> m_frameBuffers;
     };
 } // namespace spock

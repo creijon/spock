@@ -295,6 +295,25 @@ TEST_CASE("Foundry::createSwapchain builds a swapchain for the headless surface"
     CHECK(swapchain.swapchain.getImages().size() >= 2);
 }
 
+TEST_CASE("pickSurfaceFormat for a surface is the format createSwapchain uses", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    vk::Format const format = spock::pickSurfaceFormat(fixture->foundry->physicalDevice(), *fixture->surface).format;
+    CHECK(format != vk::Format::eUndefined);
+
+    spock::SwapchainInfo swapchain = fixture->foundry->createSwapchain(
+        *fixture->surface,
+        vk::Extent2D{64, 64},
+        vk::ImageUsageFlagBits::eColorAttachment,
+        2);
+    CHECK(swapchain.colorFormat == format);
+}
+
 TEST_CASE("Foundry::createSwapchain recreates a swapchain from the old one", "[gpu]")
 {
     auto fixture = createGpuFixture();
@@ -524,7 +543,7 @@ TEST_CASE("BufferWrapper::flush does nothing for host coherent memory", "[gpu]")
     CHECK_NOTHROW(buffer.flush(16, 16));
 }
 
-TEST_CASE("DepthBufferWrapper creates a bound image, memory and image view", "[gpu]")
+TEST_CASE("ImageWrapper creates a depth attachment with bound memory and an image view", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -532,10 +551,15 @@ TEST_CASE("DepthBufferWrapper creates a bound image, memory and image view", "[g
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    spock::DepthBufferWrapper depthBuffer(
+    spock::ImageWrapper depthBuffer(
         fixture->foundry,
         vk::Format::eD16Unorm,
-        vk::Extent2D(64, 64));
+        vk::Extent2D(64, 64),
+        vk::ImageTiling::eOptimal,
+        vk::ImageUsageFlagBits::eDepthStencilAttachment,
+        vk::ImageLayout::eUndefined,
+        vk::MemoryPropertyFlagBits::eDeviceLocal,
+        vk::ImageAspectFlagBits::eDepth);
 
     CHECK(depthBuffer.format() == vk::Format::eD16Unorm);
     CHECK(*depthBuffer.image() != VK_NULL_HANDLE);
@@ -546,7 +570,7 @@ TEST_CASE("DepthBufferWrapper creates a bound image, memory and image view", "[g
 
     // Move assignment carries the extent and layout along with the handles.
     depthBuffer.setLayout(vk::ImageLayout::eDepthStencilAttachmentOptimal);
-    spock::DepthBufferWrapper assigned;
+    spock::ImageWrapper assigned;
     assigned = std::move(depthBuffer);
     CHECK(assigned.format() == vk::Format::eD16Unorm);
     CHECK(assigned.extent() == vk::Extent2D(64, 64));
@@ -761,7 +785,7 @@ TEST_CASE("ImageWrapper::upload rejects regions it cannot copy", "[gpu]")
     CHECK(image.layout() == vk::ImageLayout::eUndefined);
 
     // Only formats texelSize knows can be uploaded.
-    spock::DepthBufferWrapper depth(foundry, vk::Format::eD16Unorm, extent);
+    spock::ImageWrapper depth = createDepthImage(foundry, extent);
     CHECK_THROWS_AS(depth.upload(foundry, {region(pixels.data(), {0, 0}, {2, 2})}), std::invalid_argument);
 }
 
@@ -846,7 +870,7 @@ TEST_CASE("createRenderPass and createFramebuffers build a color+depth render ta
         fixture->foundry->device(),
         vk::ImageViewCreateInfo({}, colorImage, vk::ImageViewType::e2D, colorFormat, {}, {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}));
 
-    spock::DepthBufferWrapper depthBuffer(fixture->foundry, vk::Format::eD16Unorm, extent);
+    spock::ImageWrapper depthBuffer = createDepthImage(fixture->foundry, extent);
 
     vk::raii::RenderPass renderPass = spock::createRenderPass(fixture->foundry->device(), colorFormat, depthBuffer.format());
     CHECK(*renderPass != VK_NULL_HANDLE);

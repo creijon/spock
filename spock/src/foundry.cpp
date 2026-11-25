@@ -200,7 +200,7 @@ namespace spock
             throw std::runtime_error("Foundry::createSwapchain: the present queue can't present to the surface");
         }
 
-        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice.getSurfaceFormatsKHR(surface));
+        vk::SurfaceFormatKHR surfaceFormat = pickSurfaceFormat(m_physicalDevice, surface);
 
         vk::SurfaceCapabilitiesKHR surfaceCapabilities = m_physicalDevice.getSurfaceCapabilitiesKHR(surface);
         vk::SurfaceTransformFlagBitsKHR const preTransform = pickPreTransform(surfaceCapabilities);

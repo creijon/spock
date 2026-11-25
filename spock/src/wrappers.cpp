@@ -315,43 +315,6 @@ void BufferWrapper::flush(
         m_layout = finalLayout;
     }
 
-    DepthBufferWrapper::DepthBufferWrapper(
-        FoundryPtr const &foundry,
-        vk::Format format,
-        vk::Extent2D const &extent)
-        : ImageWrapper(
-            foundry,
-            format,
-            extent,
-            vk::ImageTiling::eOptimal,
-            vk::ImageUsageFlagBits::eDepthStencilAttachment,
-            vk::ImageLayout::eUndefined,
-            vk::MemoryPropertyFlagBits::eDeviceLocal,
-            vk::ImageAspectFlagBits::eDepth)
-    {
-    }
-    
-    DepthBufferWrapper::DepthBufferWrapper(DepthBufferWrapper&& other) noexcept
-        : ImageWrapper(std::move(other))
-    {
-    }
-
-    DepthBufferWrapper const& DepthBufferWrapper::operator=(DepthBufferWrapper&& other)
-    {
-        if (this != &other)
-        {
-            // Release the view and image before the memory they are bound to.
-            m_imageView = std::move(other.m_imageView);
-            m_image = std::move(other.m_image);
-            m_deviceMemory = std::move(other.m_deviceMemory);
-            m_format = other.m_format;
-            m_extent = other.m_extent;
-            m_layout = other.m_layout;
-        }
-
-        return *this;
-    }
-
     TextureWrapper::TextureWrapper(
         FoundryPtr const &foundry,
         vk::Extent2D extent,

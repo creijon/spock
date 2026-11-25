@@ -161,6 +161,34 @@ TEST_CASE("Renderer moves its swapchain to a new surface", "[gpu]")
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }
 
+TEST_CASE("Renderer keeps its render pass through a resize and a new surface", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    vk::raii::SurfaceKHR secondSurface = createHeadlessSurface(fixture->instance);
+
+    NoOpRenderer renderer(
+        fixture->foundry,
+        *fixture->surface,
+        vk::Extent2D(64, 64),
+        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
+        vk::ClearDepthStencilValue(1.0f, 0));
+    vk::RenderPass const renderPass = renderer.renderPass();
+
+    renderer.resizeWindow(vk::Extent2D(128, 96));
+    CHECK(renderer.renderPass() == renderPass);
+
+    renderer.setSurface(*secondSurface, vk::Extent2D(96, 48));
+    CHECK(renderer.renderPass() == renderPass);
+
+    vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
+    CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+}
+
 TEST_CASE("Renderer rejects a null surface", "[gpu]")
 {
     auto fixture = createGpuFixture();
@@ -235,7 +263,7 @@ namespace
     };
 } // namespace
 
-TEST_CASE("Renderer calls prepareFrame, render and finish in order for each frame", "[gpu]")
+TEST_CASE("Renderer calls prepare and render in order for each frame", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
@@ -254,16 +282,14 @@ TEST_CASE("Renderer calls prepareFrame, render and finish in order for each fram
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
 
-    REQUIRE(renderer.calls.size() == size_t(3 * frameCount));
+    REQUIRE(renderer.calls.size() == size_t(2 * frameCount));
     for (int frame = 0; frame < frameCount; ++frame)
     {
         INFO("frame " << frame);
-        HookRenderer::Call const *calls = &renderer.calls[size_t(3 * frame)];
+        HookRenderer::Call const *calls = &renderer.calls[size_t(2 * frame)];
         CHECK(calls[0].hook == 'p');
         CHECK(calls[1].hook == 'r');
-        CHECK(calls[2].hook == 'f');
         CHECK(calls[1].frame == calls[0].frame);
-        CHECK(calls[2].frame == calls[0].frame);
     }
 }
 
@@ -356,6 +382,11 @@ TEST_CASE("Presenter reports the present mode and composite alpha it was created
     std::vector<vk::CompositeAlphaFlagBitsKHR> const compositeAlphas = supportedCompositeAlpha(*fixture);
     REQUIRE_FALSE(compositeAlphas.empty());
 
+    vk::raii::RenderPass renderPass = spock::createRenderPass(
+        fixture->foundry->device(),
+        spock::pickSurfaceFormat(fixture->foundry->physicalDevice(), *fixture->surface).format,
+        vk::Format::eUndefined);
+
     for (vk::PresentModeKHR mode : supportedPresentModes(*fixture))
     {
         INFO("present mode " << vk::to_string(mode));
@@ -364,13 +395,11 @@ TEST_CASE("Presenter reports the present mode and composite alpha it was created
         // Prefer the last supported composite alpha, so it is not just the default choice.
         options.compositeAlpha = {compositeAlphas.back()};
 
-        spock::Presenter presenter(fixture->foundry, *fixture->surface, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, nullptr, options);
+        spock::Presenter presenter(
+            fixture->foundry, *fixture->surface, {64, 64}, renderPass, vk::Format::eUndefined,
+            vk::ImageUsageFlagBits::eColorAttachment, 3, nullptr, options);
         CHECK(presenter.presentMode() == mode);
         CHECK(presenter.compositeAlpha() == compositeAlphas.back());
-
-        spock::Presenter moved(std::move(presenter));
-        CHECK(moved.presentMode() == mode);
-        CHECK(moved.compositeAlpha() == compositeAlphas.back());
     }
 }
 
@@ -453,47 +482,36 @@ TEST_CASE("Renderer returns borrowed frames when command recording throws", "[gp
     CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
 }
 
-TEST_CASE("Presenter owns one framebuffer per image across moves and rebuilds", "[gpu]")
+TEST_CASE("Presenter builds one framebuffer per image, and so does its replacement", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    bool useDepthBuffer = true;
-    SECTION("with depth") { useDepthBuffer = true; }
-    SECTION("without depth") { useDepthBuffer = false; }
+    vk::Format depthFormat = vk::Format::eD16Unorm;
+    SECTION("with depth") { depthFormat = vk::Format::eD16Unorm; }
+    SECTION("without depth") { depthFormat = vk::Format::eUndefined; }
 
-    // Attachments outlive all Presenters that reference them.
-    spock::DepthBufferWrapper depth;
-    vk::raii::RenderPass renderPass{nullptr};
-    spock::Presenter presenter(fixture->foundry, *fixture->surface, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3);
-    if (useDepthBuffer)
-        depth = spock::DepthBufferWrapper(fixture->foundry, vk::Format::eD16Unorm, presenter.extent());
-    renderPass = spock::createRenderPass(fixture->foundry->device(), presenter.colorFormat(),
-        useDepthBuffer ? depth.format() : vk::Format::eUndefined);
-    presenter.createFramebuffers(renderPass, useDepthBuffer ? &depth.imageView() : nullptr);
-    std::vector<vk::Framebuffer> handles;
+    // The render pass outlives every Presenter whose framebuffers are built for it.
+    vk::raii::RenderPass renderPass = spock::createRenderPass(
+        fixture->foundry->device(),
+        spock::pickSurfaceFormat(fixture->foundry->physicalDevice(), *fixture->surface).format,
+        depthFormat);
+    spock::Presenter presenter(
+        fixture->foundry, *fixture->surface, {64, 64}, renderPass, depthFormat, vk::ImageUsageFlagBits::eColorAttachment, 3);
+    REQUIRE_FALSE(presenter.imageViews().empty());
     for (uint32_t image = 0; image < presenter.imageViews().size(); ++image)
     {
-        REQUIRE(*presenter.framebuffer(image) != vk::Framebuffer{});
-        handles.push_back(*presenter.framebuffer(image));
+        CHECK(*presenter.framebuffer(image) != vk::Framebuffer{});
     }
-    REQUIRE(!handles.empty());
-    CHECK_THROWS_AS(presenter.framebuffer(static_cast<uint32_t>(handles.size())), std::out_of_range);
-
-    spock::Presenter moved(std::move(presenter));
-    for (uint32_t image = 0; image < handles.size(); ++image)
-        CHECK(*moved.framebuffer(image) == handles[image]);
+    CHECK_THROWS_AS(presenter.framebuffer(static_cast<uint32_t>(presenter.imageViews().size())), std::out_of_range);
 
     // A surface can only have one live swapchain (MoltenVK reports ErrorNativeWindowInUseKHR
     // otherwise), so hand the existing one over exactly as Renderer::resizeWindow does.
-    spock::Presenter assigned(fixture->foundry, *fixture->surface, {64, 64}, vk::ImageUsageFlagBits::eColorAttachment, 3, &moved);
-    assigned.createFramebuffers(renderPass, useDepthBuffer ? &depth.imageView() : nullptr);
-    fixture->foundry->waitIdle();
-    assigned = std::move(moved);
-    for (uint32_t image = 0; image < handles.size(); ++image)
-        CHECK(*assigned.framebuffer(image) == handles[image]);
-    assigned.clearFramebuffers();
-    CHECK_THROWS_AS(assigned.framebuffer(0), std::out_of_range);
-    assigned.createFramebuffers(renderPass, useDepthBuffer ? &depth.imageView() : nullptr);
-    for (uint32_t image = 0; image < handles.size(); ++image)
-        CHECK(*assigned.framebuffer(image) != vk::Framebuffer{});
+    spock::Presenter replacement(
+        fixture->foundry, *fixture->surface, {96, 48}, renderPass, depthFormat, vk::ImageUsageFlagBits::eColorAttachment, 3,
+        &presenter);
+    REQUIRE_FALSE(replacement.imageViews().empty());
+    for (uint32_t image = 0; image < replacement.imageViews().size(); ++image)
+    {
+        CHECK(*replacement.framebuffer(image) != vk::Framebuffer{});
+    }
 }

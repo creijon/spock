@@ -325,19 +325,6 @@ namespace spock
         vk::raii::ImageView m_imageView{nullptr};
     };
 
-    class DepthBufferWrapper : public ImageWrapper
-    {
-    public:
-        DepthBufferWrapper(
-            FoundryPtr const &foundry,
-            vk::Format format,
-            vk::Extent2D const &extent);
-        DepthBufferWrapper() = default;
-        DepthBufferWrapper(const DepthBufferWrapper &) = delete;
-        DepthBufferWrapper(DepthBufferWrapper&& other) noexcept;
-        DepthBufferWrapper const& operator=(DepthBufferWrapper&& other);
-    };
-
     class TextureWrapper
     {
     public:

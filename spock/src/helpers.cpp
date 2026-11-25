@@ -241,6 +241,13 @@ namespace spock
         return pickedFormat;
     }
 
+    vk::SurfaceFormatKHR pickSurfaceFormat(
+        vk::raii::PhysicalDevice const &physicalDevice,
+        vk::SurfaceKHR surface)
+    {
+        return pickSurfaceFormat(physicalDevice.getSurfaceFormatsKHR(surface));
+    }
+
     vk::PresentModeKHR pickPresentMode(
         std::vector<vk::PresentModeKHR> const& presentModes,
         std::vector<vk::PresentModeKHR> const& preferred)

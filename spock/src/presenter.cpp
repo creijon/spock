@@ -19,6 +19,8 @@ namespace spock
         FoundryPtr const &foundry,
         vk::SurfaceKHR surface,
         vk::Extent2D const &extent,
+        vk::raii::RenderPass const &renderPass,
+        vk::Format depthFormat,
         vk::ImageUsageFlags usage,
         uint32_t framesInFlight,
         Presenter const* oldPresenter,
@@ -60,58 +62,23 @@ namespace spock
         {
             m_renderSemaphores.push_back(device.createSemaphore(vk::SemaphoreCreateInfo{}));
         }
-    }
 
-    Presenter::Presenter(Presenter&& other) noexcept
-        : m_foundry(std::move(other.m_foundry))
-        , m_renderSemaphores(std::move(other.m_renderSemaphores))
-        , m_swapchain(std::move(other.m_swapchain))
-        , m_colorFormat(other.m_colorFormat)
-        , m_extent(other.m_extent)
-        , m_preTransform(other.m_preTransform)
-        , m_presentMode(other.m_presentMode)
-        , m_compositeAlpha(other.m_compositeAlpha)
-        , m_images(std::move(other.m_images))
-        , m_imageViews(std::move(other.m_imageViews))
-        , m_frameBuffers(std::move(other.m_frameBuffers))
-    {
-    }
-
-    Presenter const& Presenter::operator=(Presenter&& other)
-    {
-        if (this != &other)
+        bool const useDepthBuffer = depthFormat != vk::Format::eUndefined;
+        if (useDepthBuffer)
         {
-            // Retire dependent objects before dropping their views, swapchain, or device owner. The render
-            // semaphores go after the swapchain, which is what completes the presentation waits on them.
-            m_frameBuffers.clear();
-            m_imageViews.clear();
-            m_images.clear();
-            m_swapchain = nullptr;
-            m_renderSemaphores.clear();
-            m_foundry = std::move(other.m_foundry);
-            m_swapchain = std::move(other.m_swapchain);
-            m_colorFormat = other.m_colorFormat;
-            m_extent = other.m_extent;
-            m_preTransform = other.m_preTransform;
-            m_presentMode = other.m_presentMode;
-            m_compositeAlpha = other.m_compositeAlpha;
-            m_images = std::move(other.m_images);
-            m_imageViews = std::move(other.m_imageViews);
-            m_frameBuffers = std::move(other.m_frameBuffers);
-            m_renderSemaphores = std::move(other.m_renderSemaphores);
+            m_depthBuffer = ImageWrapper(
+                foundry,
+                depthFormat,
+                m_extent,
+                vk::ImageTiling::eOptimal,
+                vk::ImageUsageFlagBits::eDepthStencilAttachment,
+                vk::ImageLayout::eUndefined,
+                vk::MemoryPropertyFlagBits::eDeviceLocal,
+                vk::ImageAspectFlagBits::eDepth);
         }
 
-        return *this;
-    }
-
-    void Presenter::createFramebuffers(vk::raii::RenderPass const &renderPass, vk::raii::ImageView const *depthImageView)
-    {
-        m_frameBuffers = spock::createFramebuffers(m_foundry->device(), renderPass, m_imageViews, depthImageView, m_extent);
-    }
-
-    void Presenter::clearFramebuffers()
-    {
-        m_frameBuffers.clear();
+        m_frameBuffers = createFramebuffers(
+            device, renderPass, m_imageViews, useDepthBuffer ? &m_depthBuffer.imageView() : nullptr, m_extent);
     }
 
     vk::Result Presenter::acquireFrame(FrameState& frame, std::chrono::nanoseconds timeout)
