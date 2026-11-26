@@ -153,12 +153,12 @@ class DebugLinesRenderer : public spock::Renderer
 public:
     DebugLinesRenderer(
         spock::FoundryPtr const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const& extents)
+        vk::Format colorFormat,
+        uint32_t framesInFlight)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             {0.02f, 0.02f, 0.05f, 1.0f},
             {1.0f, 0},
             true)
@@ -230,9 +230,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        return std::make_unique<DebugLinesRenderer>(m_foundry, m_window.surface(), m_window.extents());
+        return std::make_unique<DebugLinesRenderer>(m_foundry, colorFormat, framesInFlight);
     }
 
     void update() override

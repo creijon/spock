@@ -13,33 +13,34 @@
 
 namespace spock
 {
-// What the logical device has to provide.
-struct DeviceRequirements
-{
-    // Queues in addition to graphics and present.
-    vk::QueueFlags queues{vk::QueueFlagBits::eGraphics};
-    vk::PhysicalDeviceType preferredDeviceType{vk::PhysicalDeviceType::eDiscreteGpu};
-    std::vector<char const*> extensions;
-    std::vector<char const*> optionalExtensions;
-    void const* features{nullptr};
-};
+    // What the logical device has to provide.
+    struct DeviceRequirements
+    {
+        // Queues in addition to graphics and present.
+        vk::QueueFlags queues{vk::QueueFlagBits::eGraphics};
+        vk::PhysicalDeviceType preferredDeviceType{vk::PhysicalDeviceType::eDiscreteGpu};
+        std::vector<char const*> extensions;
+        std::vector<char const*> optionalExtensions;
+        void const* features{nullptr};
+    };
 
-struct SwapchainOptions
-{
-    // FIFO is the fallback when none of these is supported, because every surface supports it.
-    std::vector<vk::PresentModeKHR> presentModes{
-        vk::PresentModeKHR::eMailbox,
-        vk::PresentModeKHR::eImmediate,
-        vk::PresentModeKHR::eFifo};
+    struct SwapchainOptions
+    {
+        // FIFO is the fallback when none of these is supported, because every surface supports it.
+        std::vector<vk::PresentModeKHR> presentModes{
+            vk::PresentModeKHR::eMailbox,
+            vk::PresentModeKHR::eImmediate,
+            vk::PresentModeKHR::eFifo};
 
-    // The default keeps the window opaque. Put ePreMultiplied first so that transparent pixels show what
-    // is behind the window. If none is supported, the first mode the surface supports is used.
-    std::vector<vk::CompositeAlphaFlagBitsKHR> compositeAlpha{
-        vk::CompositeAlphaFlagBitsKHR::eOpaque,
-        vk::CompositeAlphaFlagBitsKHR::ePreMultiplied,
-        vk::CompositeAlphaFlagBitsKHR::ePostMultiplied,
-        vk::CompositeAlphaFlagBitsKHR::eInherit};
-};
+        // The default keeps the window opaque. Put ePreMultiplied first so that transparent pixels show what
+        // is behind the window. If none is supported, the first mode the surface supports is used.
+        std::vector<vk::CompositeAlphaFlagBitsKHR> compositeAlpha{
+            vk::CompositeAlphaFlagBitsKHR::eOpaque,
+            vk::CompositeAlphaFlagBitsKHR::ePreMultiplied,
+            vk::CompositeAlphaFlagBitsKHR::ePostMultiplied,
+            vk::CompositeAlphaFlagBitsKHR::eInherit};
+    };
+
     // The result of Foundry::createSwapchain.
     // The extent is the one the swapchain was actually created with, which may differ from requested.
     struct SwapchainInfo

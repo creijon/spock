@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "controller.hpp"
 #include "types.hpp"
 #include "window.hpp"
 
@@ -16,8 +17,6 @@ using namespace std::chrono_literals;
 
 namespace spock
 {
-    class Renderer;
-
     class App
     {
     public:
@@ -34,19 +33,27 @@ namespace spock
 
     protected:
         virtual FoundryPtr createFoundry() const;
-        virtual std::unique_ptr<Renderer> createRenderer() = 0;
+
+        // Called by the Controller, which picks the color format and the number of frames in flight.
+        virtual std::unique_ptr<Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) = 0;
 
         // Called once per frame before rendering.
         virtual void update() = 0;
 
-        // Members are destroyed in reverse order, which matters here: the renderer's swapchain must go
+        template <typename T>
+        T &renderer()
+        {
+            return static_cast<T &>(m_controller->renderer());
+        }
+
+        // Members are destroyed in reverse order, which matters here: the controller's swapchain must go
         // before the window's surface, and the surface before the instance.
         vk::raii::Context m_context{};
         vk::raii::Instance m_instance{nullptr};
 
         Window m_window;
         FoundryPtr m_foundry;
-        std::unique_ptr<Renderer> m_renderer;
+        std::unique_ptr<Controller> m_controller;
 
         std::chrono::microseconds m_time{};
 

@@ -245,13 +245,13 @@ class VideoRendererSW : public spock::Renderer
 public:
     VideoRendererSW(
         spock::FoundryPtr const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const& extents,
+        vk::Format colorFormat,
+        uint32_t framesInFlight,
         std::shared_ptr<const VideoDecoderSW> const &decoder)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             {0.0f, 0.0f, 0.0f, 1.0},
             {1.0f, 0},
             false)
@@ -292,12 +292,6 @@ public:
             { {vk::DescriptorType::eCombinedImageSampler, PLANE_COUNT * m_framesInFlight} });
 
         createPipeline();
-    }
-
-    ~VideoRendererSW() override
-    {
-        // The frames' descriptor sets are freed back to Renderer::m_descriptorPool, so release them while it still exists.
-        m_framePool.reset();
     }
 
 protected:
@@ -397,9 +391,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        return std::make_unique<VideoRendererSW>(m_foundry, m_window.surface(), m_window.extents(), m_decoder);
+        return std::make_unique<VideoRendererSW>(m_foundry, colorFormat, framesInFlight, m_decoder);
     }
 
     void update() override

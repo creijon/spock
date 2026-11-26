@@ -67,12 +67,12 @@ class ShaderLabRenderer : public spock::Renderer
 public:
     ShaderLabRenderer(
         spock::FoundryPtr const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const &extents)
+        vk::Format colorFormat,
+        uint32_t framesInFlight)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             { 0.2f, 0.2f, 0.3f, 1.0 },
             { 1.0f, 0 })
     {
@@ -200,23 +200,23 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        return std::make_unique<ShaderLabRenderer>(m_foundry, m_window.surface(), m_window.extents());
+        return std::make_unique<ShaderLabRenderer>(m_foundry, colorFormat, framesInFlight);
     }
 
     void update() override
     {
-        ShaderLabRenderer* renderer = static_cast<ShaderLabRenderer*>(m_renderer.get());
+        ShaderLabRenderer &renderer = this->renderer<ShaderLabRenderer>();
 
         // Store the mouse position and click position for use in the next frame.
         vk::Offset2D mousePos{0, 0};
 
         mousePos = m_window.cursorPosition();
-        renderer->setMousePos(mousePos);
+        renderer.setMousePos(mousePos);
         if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
         {
-            renderer->setMouseClickPos(mousePos);
+            renderer.setMouseClickPos(mousePos);
         }
 
         // Check the file watcher for any modified shader files and rebuild the pipeline if necessary.
@@ -228,8 +228,8 @@ protected:
         if (modifiedShaders)
         {
             // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-            renderer->waitIdle();
-            renderer->createPipeline(modifiedShaders);
+            renderer.waitIdle();
+            renderer.createPipeline(modifiedShaders);
         }
     }
 

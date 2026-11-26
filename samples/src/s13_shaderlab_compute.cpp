@@ -146,12 +146,12 @@ class ShaderLabComputeRenderer : public spock::Renderer
 public:
     ShaderLabComputeRenderer(
         spock::FoundryPtr const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const& extents)
+        vk::Format colorFormat,
+        uint32_t framesInFlight)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0},
             false)
@@ -164,12 +164,6 @@ public:
 
         createResources();
         createPipelines();
-    }
-
-    ~ShaderLabComputeRenderer() override
-    {
-        // The frames' descriptor sets are freed back to m_descriptorPool, so release them while it still exists.
-        m_framePool.reset();
     }
 
     void createPipelines(vk::ShaderStageFlags shaderStages = vk::ShaderStageFlagBits::eAllGraphics)
@@ -510,25 +504,25 @@ protected:
         );
     }
 
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        return std::make_unique<ShaderLabComputeRenderer>(m_foundry, m_window.surface(), m_window.extents());
+        return std::make_unique<ShaderLabComputeRenderer>(m_foundry, colorFormat, framesInFlight);
     }
 
     void update() override
     {
-        ShaderLabComputeRenderer* renderer = static_cast<ShaderLabComputeRenderer*>(m_renderer.get());
+        ShaderLabComputeRenderer &renderer = this->renderer<ShaderLabComputeRenderer>();
 
         // Check the file watcher for any modified shader files and rebuild the pipeline if necessary.
         auto modifiedFiles = m_watcher.takeModified();
         vk::ShaderStageFlags modifiedShaders{0};
-        if (renderer->computeShaderModified(modifiedFiles)) modifiedShaders |= vk::ShaderStageFlagBits::eCompute;
+        if (renderer.computeShaderModified(modifiedFiles)) modifiedShaders |= vk::ShaderStageFlagBits::eCompute;
 
         if (modifiedShaders)
         {
             // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-            renderer->waitIdle();
-            renderer->createPipelines(modifiedShaders);
+            renderer.waitIdle();
+            renderer.createPipelines(modifiedShaders);
         }
     }
 

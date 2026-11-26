@@ -7,11 +7,16 @@
 #include "spock/foundry.hpp"
 #include "spock/frame_state.hpp"
 
-#include <algorithm>
+#include <chrono>
 #include <limits>
 #include <tuple>
 #include <utility>
 #include <vector>
+
+namespace
+{
+    constexpr std::chrono::nanoseconds ACQUIRE_TIMEOUT{std::chrono::seconds(1)};
+}
 
 namespace spock
 {
@@ -81,13 +86,13 @@ namespace spock
             device, renderPass, m_imageViews, useDepthBuffer ? &m_depthBuffer.imageView() : nullptr, m_extent);
     }
 
-    vk::Result Presenter::acquireFrame(FrameState& frame, std::chrono::nanoseconds timeout)
+    vk::Result Presenter::acquireFrame(FrameState& frame)
     {
         try
         {
             vk::Result result = vk::Result::eSuccess;
             std::tie(result, frame.imageIndex) = m_swapchain.acquireNextImage(
-                static_cast<uint64_t>((std::max)(timeout.count(), std::chrono::nanoseconds::rep(0))),
+                static_cast<uint64_t>(ACQUIRE_TIMEOUT.count()),
                 *frame.semaphore);
             return result;
         }

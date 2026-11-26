@@ -158,12 +158,12 @@ class TexturedCubeRenderer : public spock::Renderer
 public:
     TexturedCubeRenderer(
         spock::FoundryPtr const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const& extents)
+        vk::Format colorFormat,
+        uint32_t framesInFlight)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             {0.2f, 0.2f, 0.3f, 1.0},
             {1.0f, 0})
     {
@@ -276,9 +276,9 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        return std::make_unique<TexturedCubeRenderer>(m_foundry, m_window.surface(), m_window.extents());
+        return std::make_unique<TexturedCubeRenderer>(m_foundry, colorFormat, framesInFlight);
     }
 
     void update() override
@@ -286,10 +286,10 @@ protected:
         using Seconds = std::chrono::duration<double>;
         double angle = std::chrono::duration_cast<Seconds>(m_time).count();
 
-        TexturedCubeRenderer* renderer = static_cast<TexturedCubeRenderer*>(m_renderer.get());
+        TexturedCubeRenderer &renderer = this->renderer<TexturedCubeRenderer>();
 
         const float radius = 5.0f;
-        renderer->setView(glm::vec3(sinf(angle) * radius, 3.0f, cosf(angle) * radius));
+        renderer.setView(glm::vec3(sinf(angle) * radius, 3.0f, cosf(angle) * radius));
     }
 };
 

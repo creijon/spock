@@ -90,13 +90,13 @@ class ComputeSortRenderer : public spock::Renderer
 public:
     ComputeSortRenderer(
         spock::FoundryPtr const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const& extents,
+        vk::Format colorFormat,
+        uint32_t framesInFlight,
         bool multithreaded)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             {0.05f, 0.05f, 0.05f, 1.0f},
             {1.0f, 0},
             true)
@@ -396,9 +396,9 @@ protected:
             requirements);
     }
 
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        return std::make_unique<ComputeSortRenderer>(m_foundry, m_window.surface(), m_window.extents(), m_multithreaded);
+        return std::make_unique<ComputeSortRenderer>(m_foundry, colorFormat, framesInFlight, m_multithreaded);
     }
 
     void update() override

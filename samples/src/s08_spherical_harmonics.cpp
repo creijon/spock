@@ -170,12 +170,12 @@ class SphericalHarmonicsSphereRenderer : public spock::Renderer
 public:
     SphericalHarmonicsSphereRenderer(
         std::shared_ptr<const spock::Foundry> const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const& extents)
+        vk::Format colorFormat,
+        uint32_t framesInFlight)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             {0.0f, 0.0f, 0.0f, 1.0},
             {1.0f, 0},
             true)
@@ -304,14 +304,14 @@ public:
     }
 
 protected:
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        return std::make_unique<SphericalHarmonicsSphereRenderer>(m_foundry, m_window.surface(), m_window.extents());
+        return std::make_unique<SphericalHarmonicsSphereRenderer>(m_foundry, colorFormat, framesInFlight);
     }
 
     void update() override
     {
-        SphericalHarmonicsSphereRenderer* renderer = static_cast<SphericalHarmonicsSphereRenderer*>(m_renderer.get());
+        SphericalHarmonicsSphereRenderer &renderer = this->renderer<SphericalHarmonicsSphereRenderer>();
 
         vk::Offset2D cursor = m_window.cursorPosition();
         if (m_window.isMouseButtonPressed(spock::MouseButton::Left))
@@ -322,7 +322,7 @@ protected:
                 static_cast<float>(cursor.y - m_previousCursor.y) * sensitivity));
         }
         m_previousCursor = cursor;
-        renderer->update(m_camera.viewProjMatrix(m_window.extents()));
+        renderer.update(m_camera.viewProjMatrix(m_window.extents()));
     }
 
     vk::Offset2D m_previousCursor{};

@@ -5,7 +5,6 @@
 
 #include "spock/creators.hpp"
 #include "spock/foundry.hpp"
-#include "spock/renderer.hpp"
 
 #include <exception>
 #include <iostream>
@@ -66,7 +65,11 @@ FoundryPtr App::createFoundry() const
 void App::run()
 {
     m_foundry = createFoundry();
-    m_renderer = createRenderer();
+    m_controller = std::make_unique<Controller>(
+        m_foundry,
+        m_window.surface(),
+        m_window.extents(),
+        [this](vk::Format colorFormat, uint32_t framesInFlight) { return createRenderer(colorFormat, framesInFlight); });
 
     auto startTime{std::chrono::steady_clock::now()};
     m_time = std::chrono::microseconds(0);
@@ -77,7 +80,7 @@ void App::run()
 
         // Update and render frame.
         update();
-        vk::Result result = m_renderer->renderFrame(m_time);
+        vk::Result result = m_controller->renderFrame(m_time);
 
         // Check for window resize.
         vk::Extent2D fbExtents = m_window.framebufferSize();
@@ -91,8 +94,7 @@ void App::run()
             if (fbExtents.width != 0 && fbExtents.height != 0)
             {
                 m_window.setExtents(fbExtents);
-                m_renderer->waitIdle();
-                m_renderer->resizeWindow(fbExtents);
+                m_controller->resizeWindow(fbExtents);
             }
             else
             {
@@ -104,7 +106,7 @@ void App::run()
         std::this_thread::sleep_until(startTime + m_time);
     }
 
-    m_renderer->waitIdle();
+    m_controller->waitIdle();
 }
 
 int reportUncaughtException()

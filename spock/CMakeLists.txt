@@ -9,6 +9,7 @@ set(SOURCE
     src/app.cpp
     src/assets.cpp
     src/camera.cpp
+    src/controller.cpp
     src/creators.cpp
     src/debug_lines.cpp
     src/device_selector.cpp

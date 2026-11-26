@@ -138,12 +138,12 @@ class SplatRenderer : public spock::Renderer
 public:
     SplatRenderer(
         spock::FoundryPtr const &foundry,
-        vk::SurfaceKHR surface,
-        vk::Extent2D const& extents)
+        vk::Format colorFormat,
+        uint32_t framesInFlight)
         : spock::Renderer(
             foundry,
-            surface,
-            extents,
+            colorFormat,
+            framesInFlight,
             {0.05f, 0.08f, 0.15f, 1.0f},
             {1.0f, 0},
             false)
@@ -152,12 +152,6 @@ public:
         {
             return std::make_unique<SplatFrameState>(foundry);
         };
-    }
-
-    ~SplatRenderer() override
-    {
-        // The frames' descriptor sets are freed back to m_descriptorPool, so release them while it still exists.
-        m_framePool.reset();
     }
 
     void update(SplatScene const &scene, spock::OrbitCamera const &camera, bool cameraMoved, vk::Extent2D const &viewExtents)
@@ -200,9 +194,8 @@ public:
 
     void createResources(SplatScene const& scene)
     {
+        // Runs before the first frame: frames would hold descriptor sets from the pool this replaces.
         waitIdle();
-        // Drop frames holding resources from the previous scene; renderFrame recreates them with m_createFrameFunc.
-        m_framePool.reset();
         m_splatCount = uint32_t(scene.instances.size());
 
         m_descriptorSetLayout = spock::createDescriptorSetLayout(
@@ -371,9 +364,9 @@ protected:
             requirements);
     }
 
-    std::unique_ptr<spock::Renderer> createRenderer() override
+    std::unique_ptr<spock::Renderer> createRenderer(vk::Format colorFormat, uint32_t framesInFlight) override
     {
-        auto renderer = std::make_unique<SplatRenderer>(m_foundry, m_window.surface(), m_window.extents());
+        auto renderer = std::make_unique<SplatRenderer>(m_foundry, colorFormat, framesInFlight);
 
         loadScene();
         renderer->createResources(m_scene);
@@ -387,7 +380,7 @@ protected:
 
     void update() override
     {
-        SplatRenderer* renderer = static_cast<SplatRenderer*>(m_renderer.get());
+        SplatRenderer &renderer = this->renderer<SplatRenderer>();
 
         vk::Offset2D cursor = m_window.cursorPosition();
 
@@ -410,7 +403,7 @@ protected:
             cameraMoved = true;
         }
 
-        renderer->update(m_scene, m_camera, cameraMoved, m_window.extents());
+        renderer.update(m_scene, m_camera, cameraMoved, m_window.extents());
         m_previousCursor = cursor;
 
         // Check the file watcher for any modified shader files and rebuild the pipeline if necessary.
@@ -422,8 +415,8 @@ protected:
         if (modifiedShaders)
         {
             // If the shader source is changed then rebuild the shaders and recreate the graphics pipeline.
-            renderer->waitIdle();
-            renderer->createPipeline(modifiedShaders);
+            renderer.waitIdle();
+            renderer.createPipeline(modifiedShaders);
         }
     }
 

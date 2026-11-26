@@ -3,6 +3,7 @@
 
 #include "gpu_fixture.hpp"
 
+#include "spock/controller.hpp"
 #include "spock/creators.hpp"
 #include "spock/debug_lines.hpp"
 #include "spock/presenter.hpp"
@@ -24,18 +25,23 @@ namespace
 {
     // The simplest possible Renderer subclass: it records no draw commands of
     // its own, relying entirely on the base class's begin/end render pass and
-    // presentation machinery. Good enough to prove the Renderer/Presenter/
-    // creators/wrappers pipeline actually works end to end.
+    // presentation machinery. Good enough to prove the Controller/Renderer/
+    // Presenter/creators/wrappers pipeline actually works end to end.
     class NoOpRenderer : public spock::Renderer
     {
     public:
-        using spock::Renderer::Renderer;
-        std::set<spock::FrameState*> frames;
-
-        vk::RenderPass renderPass() const
+        NoOpRenderer(spock::FoundryPtr const &foundry, vk::Format colorFormat, uint32_t framesInFlight, bool useDepthBuffer = true)
+            : spock::Renderer(
+                foundry,
+                colorFormat,
+                framesInFlight,
+                vk::ClearColorValue(std::array<float, 4>{0.1f, 0.2f, 0.3f, 1.0f}),
+                vk::ClearDepthStencilValue(1.0f, 0),
+                useDepthBuffer)
         {
-            return *m_renderPass;
         }
+
+        std::set<spock::FrameState*> frames;
 
     protected:
         void render(spock::FrameState &frame) override
@@ -43,9 +49,32 @@ namespace
             frames.insert(&frame);
         }
     };
+
+    // A Controller whose factory makes a RendererT from the foundry, color format, frame count and any further arguments.
+    template <typename RendererT = NoOpRenderer, typename... Args>
+    std::unique_ptr<spock::Controller> createController(
+        GpuFixture const &fixture,
+        vk::SurfaceKHR surface,
+        vk::Extent2D extent,
+        Args... args)
+    {
+        return std::make_unique<spock::Controller>(
+            fixture.foundry,
+            surface,
+            extent,
+            [&](vk::Format colorFormat, uint32_t framesInFlight) {
+                return std::make_unique<RendererT>(fixture.foundry, colorFormat, framesInFlight, args...);
+            });
+    }
+
+    template <typename RendererT = NoOpRenderer>
+    RendererT &rendererOf(spock::Controller &controller)
+    {
+        return static_cast<RendererT &>(controller.renderer());
+    }
 } // namespace
 
-TEST_CASE("Renderer renders and presents frames against a headless surface", "[gpu]")
+TEST_CASE("Controller renders and presents frames against a headless surface", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -53,25 +82,17 @@ TEST_CASE("Renderer renders and presents frames against a headless surface", "[g
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    vk::Extent2D extent(64, 64);
-
-    NoOpRenderer renderer(
-        fixture->foundry,
-        *fixture->surface,
-        extent,
-        vk::ClearColorValue(std::array<float, 4>{0.1f, 0.2f, 0.3f, 1.0f}),
-        vk::ClearDepthStencilValue(1.0f, 0),
-        /*useDepthBuffer=*/true);
+    auto controller = createController(*fixture, *fixture->surface, vk::Extent2D(64, 64));
 
     for (int frame = 0; frame < 12; frame++)
     {
-        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        vk::Result result = controller->renderFrame(std::chrono::microseconds(frame * 16666));
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
-    CHECK(renderer.frames.size() == 3);
+    CHECK(rendererOf(*controller).frames.size() == 3);
 }
 
-TEST_CASE("Renderer::resizeWindow rebuilds the swapchain and framebuffers at a new extent", "[gpu]")
+TEST_CASE("Controller::resizeWindow replaces the Presenter at a new extent", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -83,26 +104,21 @@ TEST_CASE("Renderer::resizeWindow rebuilds the swapchain and framebuffers at a n
     SECTION("with depth") { useDepthBuffer = true; }
     SECTION("without depth") { useDepthBuffer = false; }
 
-    NoOpRenderer renderer(
-        fixture->foundry,
-        *fixture->surface,
-        vk::Extent2D(64, 64),
-        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-        vk::ClearDepthStencilValue(1.0f, 0), useDepthBuffer);
+    auto controller = createController(*fixture, *fixture->surface, vk::Extent2D(64, 64), useDepthBuffer);
 
-    CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
+    CHECK_NOTHROW(controller->renderFrame(std::chrono::microseconds(0)));
 
     // Resize itself waits for submitted commands before retiring their attachments.
-    CHECK_NOTHROW(renderer.resizeWindow(vk::Extent2D(128, 96)));
+    CHECK_NOTHROW(controller->resizeWindow(vk::Extent2D(128, 96)));
 
     for (int frame = 0; frame < 6; ++frame)
     {
-        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        vk::Result result = controller->renderFrame(std::chrono::microseconds(frame * 16666));
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
 }
 
-TEST_CASE("Renderer moves its swapchain to a new surface", "[gpu]")
+TEST_CASE("Controller moves its swapchain to a new surface", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -110,58 +126,51 @@ TEST_CASE("Renderer moves its swapchain to a new surface", "[gpu]")
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    // Both surfaces are declared before the renderer, so they outlive any swapchain it builds for them.
+    // Both surfaces are declared before the controller, so they outlive any swapchain it builds for them.
     vk::raii::SurfaceKHR firstSurface = createHeadlessSurface(fixture->instance);
     vk::raii::SurfaceKHR secondSurface = createHeadlessSurface(fixture->instance);
 
-    NoOpRenderer renderer(
-        fixture->foundry,
-        *firstSurface,
-        vk::Extent2D(64, 64),
-        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-        vk::ClearDepthStencilValue(1.0f, 0));
-    REQUIRE(renderer.hasSurface());
-    CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
+    auto controller = createController(*fixture, *firstSurface, vk::Extent2D(64, 64));
+    REQUIRE(controller->presenter() != nullptr);
+    CHECK_NOTHROW(controller->renderFrame(std::chrono::microseconds(0)));
 
     SECTION("after releasing the old one, as an Android app does when its window goes away")
     {
-        renderer.releaseSurface();
-        CHECK_FALSE(renderer.hasSurface());
-        CHECK(renderer.presenter() == nullptr);
+        controller->releaseSurface();
+        CHECK(controller->presenter() == nullptr);
         // Pipelines may still need building while there is no surface.
-        CHECK(renderer.renderPass() != VK_NULL_HANDLE);
+        CHECK(*controller->renderer().renderPass() != VK_NULL_HANDLE);
 
-        // The renderer no longer refers to the surface, so it can go.
+        // The controller no longer refers to the surface, so it can go.
         firstSurface.clear();
 
-        CHECK(renderer.renderFrame(std::chrono::microseconds(16666)) == vk::Result::eErrorSurfaceLostKHR);
-        CHECK_THROWS_AS(renderer.resizeWindow(vk::Extent2D(64, 64)), std::logic_error);
+        CHECK(controller->renderFrame(std::chrono::microseconds(16666)) == vk::Result::eErrorSurfaceLostKHR);
+        CHECK_THROWS_AS(controller->resizeWindow(vk::Extent2D(64, 64)), std::logic_error);
         // Releasing twice is harmless.
-        CHECK_NOTHROW(renderer.releaseSurface());
+        CHECK_NOTHROW(controller->releaseSurface());
 
-        renderer.setSurface(*secondSurface, vk::Extent2D(96, 48));
+        controller->setSurface(*secondSurface, vk::Extent2D(96, 48));
     }
     SECTION("directly, without releasing the old one first")
     {
-        renderer.setSurface(*secondSurface, vk::Extent2D(96, 48));
+        controller->setSurface(*secondSurface, vk::Extent2D(96, 48));
         firstSurface.clear();
     }
 
-    CHECK(renderer.hasSurface());
-    REQUIRE(renderer.presenter() != nullptr);
+    REQUIRE(controller->presenter() != nullptr);
     for (int frame = 0; frame < 6; ++frame)
     {
-        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        vk::Result result = controller->renderFrame(std::chrono::microseconds(frame * 16666));
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
 
     // A resize on the new surface hands its swapchain over as usual.
-    CHECK_NOTHROW(renderer.resizeWindow(vk::Extent2D(128, 96)));
-    vk::Result result = renderer.renderFrame(std::chrono::microseconds(6 * 16666));
+    CHECK_NOTHROW(controller->resizeWindow(vk::Extent2D(128, 96)));
+    vk::Result result = controller->renderFrame(std::chrono::microseconds(6 * 16666));
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }
 
-TEST_CASE("Renderer keeps its render pass through a resize and a new surface", "[gpu]")
+TEST_CASE("Controller keeps the renderer's render pass through a resize and a new surface", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -171,25 +180,20 @@ TEST_CASE("Renderer keeps its render pass through a resize and a new surface", "
 
     vk::raii::SurfaceKHR secondSurface = createHeadlessSurface(fixture->instance);
 
-    NoOpRenderer renderer(
-        fixture->foundry,
-        *fixture->surface,
-        vk::Extent2D(64, 64),
-        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-        vk::ClearDepthStencilValue(1.0f, 0));
-    vk::RenderPass const renderPass = renderer.renderPass();
+    auto controller = createController(*fixture, *fixture->surface, vk::Extent2D(64, 64));
+    vk::RenderPass const renderPass = *controller->renderer().renderPass();
 
-    renderer.resizeWindow(vk::Extent2D(128, 96));
-    CHECK(renderer.renderPass() == renderPass);
+    controller->resizeWindow(vk::Extent2D(128, 96));
+    CHECK(*controller->renderer().renderPass() == renderPass);
 
-    renderer.setSurface(*secondSurface, vk::Extent2D(96, 48));
-    CHECK(renderer.renderPass() == renderPass);
+    controller->setSurface(*secondSurface, vk::Extent2D(96, 48));
+    CHECK(*controller->renderer().renderPass() == renderPass);
 
-    vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
+    vk::Result result = controller->renderFrame(std::chrono::microseconds(0));
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }
 
-TEST_CASE("Renderer rejects a null surface", "[gpu]")
+TEST_CASE("Controller rejects a null surface and a factory that makes no renderer", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -197,26 +201,24 @@ TEST_CASE("Renderer rejects a null surface", "[gpu]")
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    auto createRenderer = [&](vk::SurfaceKHR surface) {
-        return NoOpRenderer(
+    CHECK_THROWS_AS(createController(*fixture, vk::SurfaceKHR{}, vk::Extent2D(32, 32)), std::invalid_argument);
+    CHECK_THROWS_AS(
+        spock::Controller(
             fixture->foundry,
-            surface,
+            *fixture->surface,
             vk::Extent2D(32, 32),
-            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-            vk::ClearDepthStencilValue(1.0f, 0));
-    };
+            [](vk::Format, uint32_t) { return std::unique_ptr<spock::Renderer>(); }),
+        std::invalid_argument);
 
-    CHECK_THROWS_AS(createRenderer(vk::SurfaceKHR{}), std::invalid_argument);
-
-    // A rejected setSurface leaves the renderer on the surface it had.
-    NoOpRenderer renderer = createRenderer(*fixture->surface);
-    CHECK_THROWS_AS(renderer.setSurface(vk::SurfaceKHR{}, vk::Extent2D(32, 32)), std::invalid_argument);
-    CHECK(renderer.hasSurface());
-    vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
+    // A rejected setSurface leaves the controller on the surface it had.
+    auto controller = createController(*fixture, *fixture->surface, vk::Extent2D(32, 32));
+    CHECK_THROWS_AS(controller->setSurface(vk::SurfaceKHR{}, vk::Extent2D(32, 32)), std::invalid_argument);
+    CHECK(controller->presenter() != nullptr);
+    vk::Result result = controller->renderFrame(std::chrono::microseconds(0));
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }
 
-TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
+TEST_CASE("Renderer rejects an undefined color format", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture)
@@ -224,25 +226,31 @@ TEST_CASE("Renderer can run without a depth buffer", "[gpu]")
         SKIP("No usable Vulkan device available in this environment");
     }
 
-    NoOpRenderer renderer(
-        fixture->foundry,
-        *fixture->surface,
-        vk::Extent2D(32, 32),
-        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-        vk::ClearDepthStencilValue(1.0f, 0),
-        /*useDepthBuffer=*/false);
+    CHECK_THROWS_AS(NoOpRenderer(fixture->foundry, vk::Format::eUndefined, 3), std::invalid_argument);
+}
 
-    vk::Result result = renderer.renderFrame(std::chrono::microseconds(0));
+TEST_CASE("Controller can run without a depth buffer", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture)
+    {
+        SKIP("No usable Vulkan device available in this environment");
+    }
+
+    auto controller = createController(*fixture, *fixture->surface, vk::Extent2D(32, 32), /*useDepthBuffer=*/false);
+    CHECK(controller->renderer().depthFormat() == vk::Format::eUndefined);
+
+    vk::Result result = controller->renderFrame(std::chrono::microseconds(0));
     CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
 }
 
 namespace
 {
     // Records the order in which the Renderer calls its hooks, and for which frame.
-    class HookRenderer : public spock::Renderer
+    class HookRenderer : public NoOpRenderer
     {
     public:
-        using spock::Renderer::Renderer;
+        using NoOpRenderer::NoOpRenderer;
 
         struct Call
         {
@@ -268,17 +276,13 @@ TEST_CASE("Renderer calls prepare and render in order for each frame", "[gpu]")
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
 
-    HookRenderer renderer(
-        fixture->foundry,
-        *fixture->surface,
-        vk::Extent2D(32, 32),
-        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-        vk::ClearDepthStencilValue(1.0f, 0));
+    auto controller = createController<HookRenderer>(*fixture, *fixture->surface, vk::Extent2D(32, 32));
+    HookRenderer &renderer = rendererOf<HookRenderer>(*controller);
 
     int const frameCount = 4;
     for (int frame = 0; frame < frameCount; ++frame)
     {
-        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
+        vk::Result result = controller->renderFrame(std::chrono::microseconds(frame * 16666));
         CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
 
@@ -293,20 +297,21 @@ TEST_CASE("Renderer calls prepare and render in order for each frame", "[gpu]")
     }
 }
 
-TEST_CASE("Renderer builds its swapchain from the options it was given", "[gpu]")
+TEST_CASE("Controller builds its swapchain from the options it was given", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
 
-    auto createRenderer = [&](spock::SwapchainOptions const &options) {
-        return std::make_unique<NoOpRenderer>(
+    auto createWith = [&](spock::SwapchainOptions const &swapchainOptions) {
+        return std::make_unique<spock::Controller>(
             fixture->foundry,
             *fixture->surface,
             vk::Extent2D(32, 32),
-            vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-            vk::ClearDepthStencilValue(1.0f, 0),
-            /*useDepthBuffer=*/false,
-            options);
+            [&](vk::Format colorFormat, uint32_t framesInFlight) {
+                return std::make_unique<NoOpRenderer>(fixture->foundry, colorFormat, framesInFlight, /*useDepthBuffer=*/false);
+            },
+            /*framesInFlight=*/3,
+            swapchainOptions);
     };
 
     SECTION("present mode")
@@ -316,13 +321,13 @@ TEST_CASE("Renderer builds its swapchain from the options it was given", "[gpu]"
             INFO("present mode " << vk::to_string(mode));
             spock::SwapchainOptions options;
             options.presentModes = {mode};
-            auto renderer = createRenderer(options);
-            REQUIRE(renderer->presenter() != nullptr);
-            CHECK(renderer->presenter()->presentMode() == mode);
+            auto controller = createWith(options);
+            REQUIRE(controller->presenter() != nullptr);
+            CHECK(controller->presenter()->presentMode() == mode);
 
             // A resize builds a new swapchain, which must keep to the options.
-            renderer->resizeWindow(vk::Extent2D(48, 48));
-            CHECK(renderer->presenter()->presentMode() == mode);
+            controller->resizeWindow(vk::Extent2D(48, 48));
+            CHECK(controller->presenter()->presentMode() == mode);
         }
     }
     SECTION("composite alpha")
@@ -332,45 +337,13 @@ TEST_CASE("Renderer builds its swapchain from the options it was given", "[gpu]"
             INFO("composite alpha " << vk::to_string(mode));
             spock::SwapchainOptions options;
             options.compositeAlpha = {mode};
-            auto renderer = createRenderer(options);
-            REQUIRE(renderer->presenter() != nullptr);
-            CHECK(renderer->presenter()->compositeAlpha() == mode);
+            auto controller = createWith(options);
+            REQUIRE(controller->presenter() != nullptr);
+            CHECK(controller->presenter()->compositeAlpha() == mode);
 
-            renderer->resizeWindow(vk::Extent2D(48, 48));
-            CHECK(renderer->presenter()->compositeAlpha() == mode);
+            controller->resizeWindow(vk::Extent2D(48, 48));
+            CHECK(controller->presenter()->compositeAlpha() == mode);
         }
-    }
-}
-
-TEST_CASE("Renderer::setAcquireTimeout bounds the wait for a swapchain image", "[gpu]")
-{
-    auto fixture = createGpuFixture();
-    if (!fixture) SKIP("No usable headless Vulkan device");
-
-    NoOpRenderer renderer(
-        fixture->foundry,
-        *fixture->surface,
-        vk::Extent2D(32, 32),
-        vk::ClearColorValue(std::array<float, 4>{0.0f, 0.0f, 0.0f, 1.0f}),
-        vk::ClearDepthStencilValue(1.0f, 0),
-        /*useDepthBuffer=*/false);
-
-    // With no time to wait, acquisition may report that no image is ready instead of blocking, but must not throw.
-    renderer.setAcquireTimeout(std::chrono::nanoseconds(0));
-    for (int frame = 0; frame < 6; ++frame)
-    {
-        vk::Result result = vk::Result::eErrorUnknown;
-        CHECK_NOTHROW(result = renderer.renderFrame(std::chrono::microseconds(frame * 16666)));
-        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR ||
-               result == vk::Result::eNotReady || result == vk::Result::eTimeout));
-    }
-
-    // Frames skipped by a timeout must not stop rendering once there is time to wait again.
-    renderer.setAcquireTimeout(std::chrono::seconds(1));
-    for (int frame = 0; frame < 6; ++frame)
-    {
-        vk::Result result = renderer.renderFrame(std::chrono::microseconds(frame * 16666));
-        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
     }
 }
 
@@ -417,11 +390,11 @@ namespace
     class LinesRenderer : public spock::Renderer
     {
     public:
-        LinesRenderer(spock::FoundryPtr const &foundry, vk::SurfaceKHR surface)
+        LinesRenderer(spock::FoundryPtr const &foundry, vk::Format colorFormat, uint32_t framesInFlight)
             : spock::Renderer(
                 foundry,
-                surface,
-                {64, 64},
+                colorFormat,
+                framesInFlight,
                 vk::ClearColorValue(std::array<float, 4>{0, 0, 0, 1}),
                 vk::ClearDepthStencilValue{1, 0})
             , lines(foundry, m_renderPass, 2)
@@ -448,38 +421,45 @@ TEST_CASE("DebugLines retains separate geometry in each acquired frame", "[gpu]"
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    LinesRenderer renderer(fixture->foundry, *fixture->surface);
+    auto controller = createController<LinesRenderer>(*fixture, *fixture->surface, {64, 64});
+    LinesRenderer &renderer = rendererOf<LinesRenderer>(*controller);
     renderer.lines.addLine({0, 0, 0}, {1, 0, 0}, {1, 0, 0, 1});
-    renderer.renderFrame(std::chrono::microseconds(0));
+    controller->renderFrame(std::chrono::microseconds(0));
     auto *firstFrame = renderer.lastFrame;
     std::array<spock::DebugLines::Vertex, 2> firstVertices;
     std::memcpy(firstVertices.data(), firstFrame->lines.map(), sizeof(firstVertices));
     renderer.lines.clear();
     renderer.lines.addLine({0, 0, 0}, {0, 1, 0}, {0, 1, 0, 1});
-    renderer.renderFrame(std::chrono::microseconds(1 * 16666));
+    controller->renderFrame(std::chrono::microseconds(1 * 16666));
     REQUIRE(renderer.lastFrame != firstFrame);
     CHECK(*renderer.lastFrame->lines.buffer() != *firstFrame->lines.buffer());
     CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.map(), sizeof(firstVertices)) == 0);
     // No new geometry is added: the third frame must still receive the same current lines.
     auto *secondFrame = renderer.lastFrame;
-    renderer.renderFrame(std::chrono::microseconds(2 * 16666));
+    controller->renderFrame(std::chrono::microseconds(2 * 16666));
     CHECK(std::memcmp(secondFrame->lines.map(), renderer.lastFrame->lines.map(), sizeof(firstVertices)) == 0);
-    renderer.renderFrame(std::chrono::microseconds(3 * 16666));
+    controller->renderFrame(std::chrono::microseconds(3 * 16666));
     CHECK(renderer.lastFrame == firstFrame);
     CHECK(std::memcmp(firstVertices.data(), firstFrame->lines.map(), sizeof(firstVertices)) != 0);
 }
 
-TEST_CASE("Renderer returns borrowed frames when command recording throws", "[gpu]")
+TEST_CASE("Controller recovers a frame whose recording throws", "[gpu]")
 {
     auto fixture = createGpuFixture();
     if (!fixture) SKIP("No usable headless Vulkan device");
-    LinesRenderer renderer(fixture->foundry, *fixture->surface);
+    auto controller = createController<LinesRenderer>(*fixture, *fixture->surface, {64, 64});
+    LinesRenderer &renderer = rendererOf<LinesRenderer>(*controller);
     renderer.throwWhileRecording = true;
-    CHECK_THROWS_AS(renderer.renderFrame(std::chrono::microseconds(0)), std::runtime_error);
-    // Reset destroys the abandoned commands and signaled acquisition semaphore before retrying.
-    CHECK_NOTHROW(renderer.resizeWindow({64, 64}));
+    CHECK_THROWS_AS(controller->renderFrame(std::chrono::microseconds(0)), std::runtime_error);
+    // The abandoned frame's image was acquired but never presented, so a new swapchain gives it back.
+    CHECK_NOTHROW(controller->resizeWindow({64, 64}));
     renderer.throwWhileRecording = false;
-    CHECK_NOTHROW(renderer.renderFrame(std::chrono::microseconds(0)));
+    // The frames survive the resize, so this comes back round to the abandoned one.
+    for (int frame = 0; frame < 4; ++frame)
+    {
+        vk::Result result = controller->renderFrame(std::chrono::microseconds(frame * 16666));
+        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+    }
 }
 
 TEST_CASE("Presenter builds one framebuffer per image, and so does its replacement", "[gpu]")
@@ -505,7 +485,7 @@ TEST_CASE("Presenter builds one framebuffer per image, and so does its replaceme
     CHECK_THROWS_AS(presenter.framebuffer(static_cast<uint32_t>(presenter.imageViews().size())), std::out_of_range);
 
     // A surface can only have one live swapchain (MoltenVK reports ErrorNativeWindowInUseKHR
-    // otherwise), so hand the existing one over exactly as Renderer::resizeWindow does.
+    // otherwise), so hand the existing one over exactly as Controller::resizeWindow does.
     spock::Presenter replacement(
         fixture->foundry, *fixture->surface, {96, 48}, renderPass, depthFormat, vk::ImageUsageFlagBits::eColorAttachment, 3,
         &presenter);

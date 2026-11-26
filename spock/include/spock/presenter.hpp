@@ -9,7 +9,6 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
-#include <chrono>
 #include <memory>
 #include <vector>
 
@@ -76,7 +75,7 @@ namespace spock
             return m_compositeAlpha;
         }
 
-        vk::Result acquireFrame(FrameState& frame, std::chrono::nanoseconds timeout);
+        vk::Result acquireFrame(FrameState& frame);
         vk::Result presentFrame(FrameState &frame);
 
     private:

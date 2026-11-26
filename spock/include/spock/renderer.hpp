@@ -16,43 +16,51 @@
 namespace spock
 {
     class FrameState;
-    class Presenter;
 
     class Renderer
     {
     public:
-        // The renderer doesn't own the surface, which must outlive it or be released first with releaseSurface().
+        // Throws std::invalid_argument if the color format is undefined.
         Renderer(
             FoundryPtr const &foundry,
-            vk::SurfaceKHR surface,
-            vk::Extent2D const &extents,
+            vk::Format colorFormat,
+            uint32_t framesInFlight,
             vk::ClearColorValue const &clearColor,
             vk::ClearDepthStencilValue const &clearDepthStencil,
-            bool useDepthBuffer = true,
-            SwapchainOptions const& swapchainOptions = {});
+            bool useDepthBuffer = true);
 
         virtual ~Renderer();
 
-        // Returns eErrorSurfaceLostKHR without rendering anything while the renderer has no surface.
-        vk::Result renderFrame(std::chrono::microseconds frameTime);
-
-        // Rebuilds the swapchain at the new extent, along with everything sized to it.
-        // Throws std::logic_error if the surface has been released.
-        void resizeWindow(vk::Extent2D const &extents);
-
-        // Destroys the swapchain and everything sized to it, so that the surface can be destroyed, e.g. when an
-        // Android app's window goes away.  The render pass is kept, so pipelines can still be built against it.
-        // Waits for the GPU to finish.
-        void releaseSurface();
-
-        // Builds a swapchain for a new surface, e.g. the one recreated after releaseSurface().
-        // Throws std::runtime_error if the surface needs a different color format from the render pass.
-        void setSurface(vk::SurfaceKHR surface, vk::Extent2D const &extents);
-
-        bool hasSurface() const
+        vk::raii::RenderPass const &renderPass() const
         {
-            return static_cast<bool>(m_surface);
+            return m_renderPass;
         }
+
+        vk::Format colorFormat() const
+        {
+            return m_colorFormat;
+        }
+
+        // eUndefined without a depth buffer.
+        vk::Format depthFormat() const
+        {
+            return m_depthFormat;
+        }
+
+        // Set by the derived constructor; the Controller uses it to create the frames.
+        FrameStatePool::CreateFrameFunc const &createFrameFunc() const
+        {
+            return m_createFrameFunc;
+        }
+
+        // The size of the framebuffers that recordFrame() draws into.
+        void setExtent(vk::Extent2D const &extent)
+        {
+            m_extents = extent;
+        }
+
+        // Records prepare() and the render pass into the frame's command buffer, which must be recording.
+        void recordFrame(FrameState &frame, vk::raii::Framebuffer const &framebuffer, std::chrono::microseconds frameTime);
 
         void waitIdle() const;
 
@@ -60,15 +68,7 @@ namespace spock
         {
             m_clearColor = clearColor;
         }
-        void setAcquireTimeout(std::chrono::nanoseconds timeout)
-        {
-            m_acquireTimeout = timeout;
-        }
 
-        Presenter const* presenter() const
-        {
-            return m_presenter.get();
-        }
     protected:
         // Records commands that must come before the render pass, such as image layout transitions.
         virtual void prepare(FrameState &) {}
@@ -77,30 +77,19 @@ namespace spock
         virtual void render(FrameState &frame) = 0;
 
         FoundryPtr m_foundry;
-        // Borrowed from the window. Null after releaseSurface().
-        vk::SurfaceKHR m_surface;
-        // Built once for these formats, before the Presenter whose framebuffers are built for it.
+        // Built once for these formats, so it outlives any one swapchain.
         vk::raii::RenderPass m_renderPass{nullptr};
-        vk::Format m_colorFormat{vk::Format::eUndefined};
+        const vk::Format m_colorFormat;
         const vk::Format m_depthFormat;
-        std::unique_ptr<Presenter> m_presenter;
-        std::unique_ptr<FrameStatePool> m_framePool;
-        // Set by the derived constructor. Frames are allocated lazily by renderFrame, after construction.
         FrameStatePool::CreateFrameFunc m_createFrameFunc{nullptr};
 
         vk::Extent2D m_extents;
 
         std::chrono::microseconds m_frameTime{0};
         uint32_t m_frameCount{0};
-    
+
         vk::ClearColorValue m_clearColor;
         const vk::ClearDepthStencilValue m_clearDepthStencil;
-        const uint32_t m_framesInFlight{3};
-        const SwapchainOptions m_swapchainOptions;
-        std::chrono::nanoseconds m_acquireTimeout{std::chrono::seconds(1)};
-
-    private:
-        // Replaces the presenter with one for m_surface, handing over the current presenter's swapchain.
-        void buildSwapchain(vk::Extent2D const &extents);
+        const uint32_t m_framesInFlight;
     };
 } // namespace spock
