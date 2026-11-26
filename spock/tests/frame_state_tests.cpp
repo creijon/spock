@@ -44,7 +44,7 @@ namespace
         foundry.device().signalSemaphore(vk::SemaphoreSignalInfo(*gate, 1));
     }
 
-    // Submit the frame behind the gate, signalling its timeline the same way Presenter::presentFrame does.
+    // Submit the frame behind the gate, signalling its timeline the same way Controller::submit does.
     void submitWaitingFrame(spock::FrameStatePool &pool, spock::Foundry const &foundry, vk::raii::Semaphore const &gate)
     {
         auto frame = pool.acquireFrame();

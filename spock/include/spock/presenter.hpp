@@ -4,6 +4,7 @@
 #pragma once
 
 #include "foundry.hpp"
+#include "frame_state.hpp"
 #include "types.hpp"
 #include "wrappers.hpp"
 
@@ -14,8 +15,6 @@
 
 namespace spock
 {
-    class FrameState;
-
     class Presenter
     {
     public:
@@ -75,8 +74,17 @@ namespace spock
             return m_compositeAlpha;
         }
 
+        // Acquires the next image into frame.imageIndex, signalling frame.semaphore when it's ready to draw into.
         vk::Result acquireFrame(FrameState& frame);
-        vk::Result presentFrame(FrameState &frame);
+
+        // The wait the frame's submission needs before it draws into the acquired image.
+        FrameState::SemaphoreWait acquireWait(FrameState const &frame) const;
+
+        // The signal the frame's submission must make, so that present() can show the image.
+        FrameState::SemaphoreSignal renderSignal(FrameState const &frame) const;
+
+        // Presents the frame's image once its submission has made renderSignal().
+        vk::Result present(FrameState const &frame);
 
     private:
         // The Foundry has to be the first member since it holds the lifetime of the device and this

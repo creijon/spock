@@ -103,49 +103,23 @@ namespace spock
         }
     }
 
-    vk::Result Presenter::presentFrame(FrameState &frame)
+    FrameState::SemaphoreWait Presenter::acquireWait(FrameState const &frame) const
     {
-        std::vector<vk::Semaphore> waitSemaphores{ *frame.semaphore };
-        std::vector<vk::PipelineStageFlags> waitStages{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
-        std::vector<uint64_t> waitValues{ 0 };
-        for (FrameState::SemaphoreWait const &wait : frame.extraWaitSemaphores)
-        {
-            waitSemaphores.emplace_back(wait.semaphore);
-            waitStages.emplace_back(wait.stageMask);
-            waitValues.emplace_back(wait.value);
-        }
+        return {*frame.semaphore, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput};
+    }
 
-        // The frame's timeline tells the FrameStatePool when the frame can be reused.
-        std::vector<vk::Semaphore> signalSemaphores{ *m_renderSemaphores[frame.imageIndex], *frame.timeline };
-        std::vector<uint64_t> signalValues{ 0, frame.timelineValue + 1 };
-        for (FrameState::SemaphoreSignal const &signal : frame.extraSignalSemaphores)
-        {
-            signalSemaphores.emplace_back(signal.semaphore);
-            signalValues.emplace_back(signal.value);
-        }
+    FrameState::SemaphoreSignal Presenter::renderSignal(FrameState const &frame) const
+    {
+        // Indexed by image, because the presentation engine holds the semaphore until the image is acquired again.
+        return {*m_renderSemaphores.at(frame.imageIndex), 0};
+    }
 
-        vk::SubmitInfo submitInfo(
-            waitSemaphores,
-            waitStages,
-            *frame.commandBuffer,
-            signalSemaphores);
-
-        // The values are ignored for the binary swapchain semaphores.
-        vk::TimelineSemaphoreSubmitInfo timelineSubmitInfo(waitValues, signalValues);
-        submitInfo.pNext = &timelineSubmitInfo;
-
-        frame.extraWaitSemaphores.clear();
-        frame.extraSignalSemaphores.clear();
-
-        m_foundry->graphicsQueue().submit(submitInfo);
-        // Only advance once the submission has been made, so a failed submit leaves the pool nothing to wait for.
-        ++frame.timelineValue;
-
+    vk::Result Presenter::present(FrameState const &frame)
+    {
         try
         {
-            // Present the rendered image to the swapchain.
             vk::PresentInfoKHR presentInfo;
-            presentInfo.setWaitSemaphores(*m_renderSemaphores[frame.imageIndex]);
+            presentInfo.setWaitSemaphores(*m_renderSemaphores.at(frame.imageIndex));
             presentInfo.setSwapchains(*m_swapchain);
             presentInfo.setPImageIndices(&frame.imageIndex);
 
@@ -153,7 +127,7 @@ namespace spock
         }
         catch (vk::SystemError const& error)
         {
-            // The submission went ahead, so the frame's timeline still advances; only presentation failed.
+            // The frame was already submitted, so only presentation failed.
             return static_cast<vk::Result>(error.code().value());
         }
     }

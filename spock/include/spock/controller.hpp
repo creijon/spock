@@ -67,6 +67,9 @@ namespace spock
         // Replaces the Presenter with one for m_surface, handing over the current one's swapchain.
         void createPresenter(vk::Extent2D const &extent);
 
+        // Submits the frame's commands to the graphics queue, signalling its timeline and the Presenter's render signal.
+        void submit(FrameState &frame);
+
         // Ends a frame whose recording failed and consumes its acquire semaphore, so the frame can be used again.
         void abandonFrame(FrameState &frame) noexcept;
 

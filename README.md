@@ -18,14 +18,15 @@ Each of the samples demonstrates a focused use case such as a spinning cube, ins
 
 The framework is built around a handful of classes, each owning one part of the Vulkan lifecycle:
 
-- `App` — owns the `vk::raii::Context` and `vk::raii::Instance`, the `Window`, the `Foundry` and the `Renderer`. `run()` drives a fixed-timestep main loop: poll events, call `update()`, render a frame, then detect window resizes and tell the renderer to rebuild. Subclasses implement `createRenderer()` and `update()`, and can override `createFoundry()` to request extra queues, extensions or device features.
-- `Window` — owns the platform window, its Vulkan surface and its input state (cursor, mouse buttons, scroll wheel). The surface lives exactly as long as the window, so the `Foundry` and `Renderer` only borrow it. GLFW is an implementation detail confined to `window.cpp`.
+- `App` — owns the `vk::raii::Context` and `vk::raii::Instance`, the `Window`, the `Foundry` and the `Controller`. `run()` drives a fixed-timestep main loop: poll events, call `update()`, render a frame, then detect window resizes and tell the controller to rebuild. Subclasses implement `createRenderer(colorFormat, framesInFlight)` and `update()`, and can override `createFoundry()` to request extra queues, extensions or device features. `renderer<T>()` returns the renderer as the subclass's own type.
+- `Window` — owns the platform window, its Vulkan surface and its input state (cursor, mouse buttons, scroll wheel). The surface lives exactly as long as the window, so the `Foundry` and `Controller` only borrow it. GLFW is an implementation detail confined to `window.cpp`.
 - `Foundry` — owns the physical device, logical device, queues (graphics, present, compute, transfer, and video decode when requested) and their command pools, and creates swapchains for a surface. It is given the window's surface only to choose a device that can present to it, and doesn't keep it, so the surface can be replaced without losing the device. It delegates the choice of physical device to `selectDevice()` and keeps the resulting `QueueFamilies`, which record the family index used for each queue, along with the device extensions it enabled.
 - `selectDevice()` — used by the `Foundry` to enumerate physical devices and select the best one that meets the required extensions.  It returns the winning `vk::raii::PhysicalDevice` and its `QueueFamilies`.
-- `Renderer` — owns the render pass, optional depth buffer, `Presenter` and `FrameStatePool`. `renderFrame()` acquires a frame, calls the virtual `prepare(FrameState&)` for the subclass to record anything that must come before the render pass, such as layout transitions, then begins the render pass, sets the viewport and scissor, and calls the pure virtual `render(FrameState&)` for the subclass to record its draw commands. `resizeWindow()` tears everything down and rebuilds it at the new extent. `releaseSurface()` destroys the swapchain so the surface can be destroyed, and `setSurface()` builds a swapchain on a new one, keeping the device, pipelines and buffers; this is what an Android app needs when its window goes away and comes back.
-- `Presenter` — owns the swapchain, its image views, the framebuffers and the per-image render-finished semaphores. `acquireFrame()` and `presentFrame()` handle swapchain image acquisition, queue submission and presentation for a `FrameState`. The swapchain is created with the surface's current transform, so the presentation engine doesn't rotate the images; `preTransform()` returns it, and the renderer must rotate its output to match.
-- `FrameState` - the set of per-frame resources (command buffer, semaphore, fence, etc) for one frame in flight.  A renderer can add semaphores to wait on or signal, to synchronize with other queues.  To extend, subclass and add per-frame resources such as dynamic vertex buffers or descriptor sets.
-- `FrameStatePool` - owns a fixed array of `FrameState` and rotates through them as the frames are rendered; `acquireFrame()` waits on the frame's fence so the CPU never touches resources that the GPU is still using.
+- `Controller` — owns the `Renderer`, the `Presenter` and the `FrameStatePool`, destroying the frames first and the renderer last. `renderFrame()` runs the frame loop and submits each frame to the graphics queue. `resizeWindow()` replaces the `Presenter` at the new extent and keeps the renderer and the frames in flight. `releaseSurface()` destroys the `Presenter` so the surface can be destroyed, and `setSurface()` builds one on a new surface, keeping the device, renderer, pipelines, buffers and frames; this is what an Android app needs when its window goes away and comes back.
+- `Renderer` — owns the render pass, built once for the color and depth formats so it outlives any one swapchain, and the subclass's scene resources such as pipelines and buffers. `recordFrame()` calls the virtual `prepare(FrameState&)` for the subclass to record anything that must come before the render pass, such as layout transitions, then begins the render pass, sets the viewport and scissor, and calls the pure virtual `render(FrameState&)` for the subclass to record its draw commands.
+- `Presenter` — one per swapchain: owns the swapchain, its image views, the depth buffer, the framebuffers for the renderer's render pass and the per-image render-finished semaphores. Its constructor builds all of them and its destructor frees them, so a resize replaces the whole `Presenter`. `acquireFrame()` acquires an image, `acquireWait()` and `renderSignal()` give the semaphores the frame's submission must wait on and signal, and `present()` presents the image. The swapchain is created with the surface's current transform, so the presentation engine doesn't rotate the images; `preTransform()` returns it, and the renderer must rotate its output to match.
+- `FrameState` - the set of per-frame resources (command buffer, acquire semaphore and timeline semaphore) for one frame in flight.  A renderer can add semaphores to wait on or signal, to synchronize with other queues.  To extend, subclass and add per-frame resources such as dynamic vertex buffers or descriptor sets.
+- `FrameStatePool` - owns a fixed array of `FrameState` and rotates through them as the frames are rendered; `acquireFrame()` waits on the frame's timeline semaphore so the CPU never touches resources that the GPU is still using.
 - `FrameStateGuard` - returns the `FrameState` to the pool when it goes out of scope, even if recording throws.
 
 ```mermaid
@@ -48,6 +49,9 @@ classDiagram
     class QueueFamilies {
     }
 
+    class Controller {
+    }
+
     class Renderer {
     }
 
@@ -64,20 +68,24 @@ classDiagram
     }
 
     App *-- Window
-    App *-- Renderer
+    App *-- Controller
     App o-- Foundry : FoundryPtr
     Foundry *-- QueueFamilies
     Foundry ..> selectDevice : chooses the physical device
     selectDevice ..> QueueFamilies : returns
+    Controller o-- Foundry : FoundryPtr
+    Controller *-- Renderer
+    Controller *-- Presenter
+    Controller *-- FrameStatePool
     Renderer o-- Foundry : FoundryPtr
-    Renderer *-- Presenter
-    Renderer *-- FrameStatePool
     Presenter o-- Foundry : FoundryPtr
+    Presenter ..> Renderer : framebuffers for its render pass
     FrameStatePool o-- Foundry : FoundryPtr
     FrameStatePool *-- "framesInFlight" FrameState
     FrameStatePool ..> FrameStateGuard : returns
     FrameStateGuard --> FrameState : borrows
-    Renderer ..> FrameState : acquires
+    Controller ..> FrameState : acquires and submits
+    Renderer ..> FrameState : records
     Presenter ..> FrameState : presents
 ```
 
@@ -86,11 +94,11 @@ classDiagram
 Each iteration of `App::run()` does the following:
 
 1. `Window::pollEvents()` and `App::update()` (the subclass updates its simulation and camera).
-2. `Renderer::renderFrame()` lazily creates the `FrameStatePool` on the first frame (or after a resize), then borrows the next `FrameState`, waiting on its timeline semaphore.
+2. `Controller::renderFrame()` lazily creates the `FrameStatePool` on the first frame, then borrows the next `FrameState`, waiting on its timeline semaphore.
 3. `Presenter::acquireFrame()` acquires the next swapchain image, signalling the frame's semaphore.
-4. `Renderer::renderFrame()` calls `frame.commandBuffer.begin({})`, then `prepare(frame)` to record commands outside the render pass. A `RenderPassWrapper` scopes the render pass; the viewport and scissor are set from the swapchain extent, and `render(frame)` records the subclass's commands. After the render-pass scope ends, `frame.commandBuffer.end()` ends recording. Recording errors propagate before submission.
-5. `Presenter::presentFrame()` submits the command buffer to the graphics queue, signalling the frame's timeline semaphore, and presents the image on the present queue.
-6. Back in `App`, a changed framebuffer size or a suboptimal/out-of-date result triggers `Renderer::resizeWindow()`, which waits for the GPU, rebuilds the swapchain (handing the old one over to the new `Presenter`), depth buffer, render pass, framebuffers and frame pool.
+4. The `Controller` calls `frame.commandBuffer.begin({})`, then `Renderer::recordFrame()` calls `prepare(frame)` to record commands outside the render pass. A `RenderPassWrapper` scopes the render pass into the `Presenter`'s framebuffer for the image; the viewport and scissor are set from the swapchain extent, and `render(frame)` records the subclass's commands. The `Controller` then calls `frame.commandBuffer.end()`. If recording throws, the `Controller` abandons the frame: an empty submission consumes its acquire semaphore and advances its timeline, so the frame can be used again, and the error propagates.
+5. `Controller::submit()` submits the command buffer to the graphics queue. It waits on the `Presenter`'s `acquireWait()` and the frame's extra waits, and signals the frame's timeline semaphore, the `Presenter`'s `renderSignal()` and the frame's extra signals. `Presenter::present()` then presents the image on the present queue.
+6. Back in `App`, a changed framebuffer size or a suboptimal/out-of-date result triggers `Controller::resizeWindow()`, which waits for the GPU and replaces the `Presenter`, handing the old swapchain over to the new one. The renderer, its render pass and the frames in flight are kept.
 
 ### Resource wrappers and helpers
 
@@ -255,8 +263,8 @@ brew install tbb onedpl
 
 ## Adding New Samples
 
-1. Create a class derived from `spock::Renderer` that overrides `render(spock::FrameState &frame)` and does whatever pipeline/buffer setup it needs in its constructor. The base constructor takes the `FoundryPtr`, the window's surface and extents, clear color and clear depth/stencil values, and an optional flag to disable the depth buffer. Use `m_renderPass` from the base class when creating pipelines.
-2. If the renderer needs per-frame resources (dynamic buffers, descriptor sets), derive a class from `spock::FrameState` to hold them and assign `m_createFrameFunc` in the renderer's constructor. The pool creates one instance per frame in flight and hands the matching one to `render()`.
-3. Create a class derived from `spock::App` that overrides `createRenderer()` (to construct your renderer from `m_foundry`, `m_window.surface()` and `m_window.extents()`) and `update()` (called once per frame before rendering). Override `createFoundry()` if you need additional queues, device extensions or features.
+1. Create a class derived from `spock::Renderer` that overrides `render(spock::FrameState &frame)` and does whatever pipeline/buffer setup it needs in its constructor. The base constructor takes the `FoundryPtr`, the color format and number of frames in flight that the `Controller` passes to `createRenderer()`, clear color and clear depth/stencil values, and an optional flag to disable the depth buffer. Use `m_renderPass` from the base class when creating pipelines, and `m_extents` for anything sized to the window.
+2. If the renderer needs per-frame resources (dynamic buffers, descriptor sets), derive a class from `spock::FrameState` to hold them and assign `m_createFrameFunc` in the renderer's constructor. The pool creates one instance per frame in flight and hands the matching one to `prepare()` and `render()`. The frames are destroyed before the renderer, so they can hold descriptor sets from the renderer's descriptor pool.
+3. Create a class derived from `spock::App` that overrides `createRenderer(vk::Format colorFormat, uint32_t framesInFlight)` (to construct your renderer from `m_foundry` and those two values) and `update()` (called once per frame before rendering). In `update()`, `renderer<YourRenderer>()` returns your renderer. Override `createFoundry()` if you need additional queues, device extensions or features.
 4. Give it a `main()` that calls `spock::runApp<YourApp>(...)` with your app's constructor arguments — it constructs the app, runs it, and reports any exception that escapes.
 5. Add a new executable target in `samples/CMakeLists.txt` via `add_sample_target(your_sample src/your_sample.cpp)`.

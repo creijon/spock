@@ -14,9 +14,12 @@
 #include <array>
 #include <chrono>
 #include <cstring>
+#include <future>
 #include <memory>
 #include <set>
 #include <stdexcept>
+#include <thread>
+#include <utility>
 #include <vector>
 
 using namespace spock_test;
@@ -295,6 +298,74 @@ TEST_CASE("Renderer calls prepare and render in order for each frame", "[gpu]")
         CHECK(calls[1].hook == 'r');
         CHECK(calls[1].frame == calls[0].frame);
     }
+}
+
+namespace
+{
+    vk::raii::Semaphore createTimeline(vk::raii::Device const &device)
+    {
+        return device.createSemaphore(vk::StructureChain<vk::SemaphoreCreateInfo, vk::SemaphoreTypeCreateInfo>{
+            {}, { vk::SemaphoreType::eTimeline, 0 } }.get());
+    }
+
+    // Adds the semaphores a test gives it to the next frame it records, as s11 and s13 do for other queues.
+    class SyncRenderer : public NoOpRenderer
+    {
+    public:
+        using NoOpRenderer::NoOpRenderer;
+
+        std::vector<spock::FrameState::SemaphoreWait> waits;
+        std::vector<spock::FrameState::SemaphoreSignal> signals;
+
+    protected:
+        void prepare(spock::FrameState &frame) override
+        {
+            frame.extraWaitSemaphores = std::exchange(waits, {});
+            frame.extraSignalSemaphores = std::exchange(signals, {});
+        }
+    };
+} // namespace
+
+TEST_CASE("Controller submits a frame with its extra wait and signal semaphores", "[gpu]")
+{
+    auto fixture = createGpuFixture();
+    if (!fixture) SKIP("No usable headless Vulkan device");
+
+    // Declared before the controller, whose destructor waits for the submission that uses them.
+    vk::raii::Semaphore gate = createTimeline(fixture->foundry->device());
+    vk::raii::Semaphore done = createTimeline(fixture->foundry->device());
+
+    auto controller = createController<SyncRenderer>(*fixture, *fixture->surface, vk::Extent2D(32, 32));
+    SyncRenderer &renderer = rendererOf<SyncRenderer>(*controller);
+    renderer.waits.push_back({*gate, 1, vk::PipelineStageFlagBits::eAllCommands});
+    renderer.signals.push_back({*done, 1});
+
+    // Some drivers block in present until the frame's work has finished, so it's rendered on another thread.
+    auto rendering = std::async(std::launch::async, [&] { return controller->renderFrame(std::chrono::microseconds(0)); });
+
+    // However long the submission has had, it waits on the gate, so it can't have signalled.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    CHECK(done.getCounterValue() == 0);
+
+    fixture->foundry->device().signalSemaphore(vk::SemaphoreSignalInfo(*gate, 1));
+    REQUIRE(rendering.wait_for(std::chrono::seconds(5)) == std::future_status::ready);
+    vk::Result result = rendering.get();
+    CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+
+    vk::Semaphore const doneHandle = *done;
+    uint64_t const doneValue = 1;
+    uint64_t const timeout = std::chrono::nanoseconds(std::chrono::seconds(5)).count();
+    CHECK(fixture->foundry->device().waitSemaphores(vk::SemaphoreWaitInfo({}, doneHandle, doneValue), timeout) ==
+          vk::Result::eSuccess);
+
+    // The frame's extra semaphores were used once and cleared, so the next frames don't wait on the gate again.
+    for (int frame = 1; frame < 4; ++frame)
+    {
+        result = controller->renderFrame(std::chrono::microseconds(frame * 16666));
+        CHECK((result == vk::Result::eSuccess || result == vk::Result::eSuboptimalKHR));
+    }
+    controller->waitIdle();
+    CHECK(done.getCounterValue() == 1);
 }
 
 TEST_CASE("Controller builds its swapchain from the options it was given", "[gpu]")
