@@ -19,7 +19,11 @@ Efficient 3DGS rendering using compute to bin, project and rasterise the gaussia
 
 OK, done.  Now combine this with splats:
 
-1. A sample to implement indirect dispatch, see T007
+1. A sample which runs a compute shader to do the depth calculations for all the splats and sorts them.  Use the VkRadixSort implementation from s12.  The sorted indirection table is kept on the GPU and then read by the current vertex shader stage for rendering.
+
+This requires merging functionality from three samples: s09, s12 and s13
+
+
 
 ### 4DGS
 
@@ -114,3 +118,5 @@ Sources:
 - A Hierarchical 3D Gaussian Representation for Real-Time Rendering of Very Large Datasets (Kerbl et al. 2024): https://arxiv.org/abs/2406.12080
 - LODGE: Level-of-Detail Large-Scale Gaussian Splatting with Efficient Rendering (NeurIPS 2025): https://arxiv.org/abs/2505.23158v2
 - A LoD of Gaussians: Out-of-Core Training and Rendering for Ultra-Large Scenes: https://arxiv.org/html/2507.01110
+
+

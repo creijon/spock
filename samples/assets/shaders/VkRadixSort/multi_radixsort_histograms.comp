@@ -1,6 +1,7 @@
 /**
 * VkRadixSort written by Mirco Werner: https://github.com/MircoWerner/VkRadixSort
 * Based on implementation of Intel's Embree: https://github.com/embree/embree/blob/v4.0.0-ploc/kernels/rthwif/builder/gpu/sort.h
+* Modified for Spock: sorts float keys (stored as their bits).
 */
 #version 460
 #extension GL_GOOGLE_include_directive: enable
@@ -32,6 +33,12 @@ layout (std430, set = 0, binding = 1) buffer histograms {
 
 shared uint[RADIX_SORT_BINS] histogram;
 
+// Must match the conversion in multi_radixsort.comp.
+uint floatToSortableUint(uint bits)
+{
+    return bits ^ (((bits >> 31) != 0u) ? 0xFFFFFFFFu : 0x80000000u);
+}
+
 void main() {
     // initialize histogram
     if (gl_LocalInvocationID.x < RADIX_SORT_BINS) {
@@ -43,7 +50,7 @@ void main() {
         uint elementId = gl_WorkGroupID.x * g_num_blocks_per_workgroup * WORKGROUP_SIZE + index * WORKGROUP_SIZE + gl_LocalInvocationID.x;
         if (elementId < g_num_elements) {
             // determine the bin
-            const uint bin = uint(g_elements_in[elementId] >> g_shift) & uint(RADIX_SORT_BINS - 1);
+            const uint bin = uint(floatToSortableUint(g_elements_in[elementId]) >> g_shift) & uint(RADIX_SORT_BINS - 1);
             // increment the histogram
             atomicAdd(histogram[bin], 1U);
         }

@@ -20,11 +20,11 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <cstring>
 #include <exception>
 #include <execution>
 #include <iostream>
 #include <memory>
+#include <numeric>
 #include <random>
 #include <string>
 #include <utility>
@@ -62,26 +62,6 @@ namespace
     uint32_t ceilDiv(uint32_t numerator, uint32_t denominator)
     {
         return (numerator + denominator - 1) / denominator;
-    }
-
-    // Maps a float onto a uint32_t whose unsigned ordering matches the float's numeric ordering,
-    // so it can be sorted with an unsigned integer radix sort.
-    uint32_t floatToSortableUint(float value)
-    {
-        uint32_t bits;
-        std::memcpy(&bits, &value, sizeof(bits));
-        uint32_t mask = -static_cast<int32_t>(bits >> 31) | 0x80000000u;
-        return bits ^ mask;
-    }
-
-    // Reverses floatToSortableUint().
-    float sortableUintToFloat(uint32_t bits)
-    {
-        uint32_t mask = ((bits >> 31) - 1u) | 0x80000000u;
-        bits ^= mask;
-        float value;
-        std::memcpy(&value, &bits, sizeof(value));
-        return value;
     }
 } // namespace
 
@@ -121,12 +101,22 @@ protected:
             vk::BufferUsageFlagBits::eTransferDst;
 
         // Ping-pong buffers: each radix sort pass reads one and writes the other.
-        m_elementsA = spock::BufferWrapper(
+        m_keysA = spock::BufferWrapper(
             m_foundry,
             elementsBytes,
             elementsUsage,
             vk::MemoryPropertyFlagBits::eDeviceLocal);
-        m_elementsB = spock::BufferWrapper(
+        m_keysB = spock::BufferWrapper(
+            m_foundry,
+            elementsBytes,
+            elementsUsage,
+            vk::MemoryPropertyFlagBits::eDeviceLocal);
+        m_valuesA = spock::BufferWrapper(
+            m_foundry,
+            elementsBytes,
+            elementsUsage,
+            vk::MemoryPropertyFlagBits::eDeviceLocal);
+        m_valuesB = spock::BufferWrapper(
             m_foundry,
             elementsBytes,
             elementsUsage,
@@ -147,13 +137,13 @@ protected:
 
         vk::raii::Device const& device = m_foundry->device();
         m_histogramSetLayout = spock::createDescriptorSetLayout(device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 2);
-        m_sortSetLayout = spock::createDescriptorSetLayout(device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 3);
+        m_sortSetLayout = spock::createDescriptorSetLayout(device, vk::ShaderStageFlagBits::eCompute, vk::DescriptorType::eStorageBuffer, 5);
 
         vk::PushConstantRange pushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(PushConstants)};
         std::array<vk::DescriptorSetLayout, 2> setLayouts{*m_histogramSetLayout, *m_sortSetLayout};
         m_pipelineLayout = std::move(vk::raii::PipelineLayout(device, {{}, setLayouts, pushConstantRange}));
 
-        m_descriptorPool = spock::createDescriptorPool(device, {{vk::DescriptorType::eStorageBuffer, 10}});
+        m_descriptorPool = spock::createDescriptorPool(device, {{vk::DescriptorType::eStorageBuffer, 14}});
 
         std::array<vk::DescriptorSetLayout, 2> histogramLayouts{*m_histogramSetLayout, *m_histogramSetLayout};
         vk::raii::DescriptorSets histogramSets(device, {m_descriptorPool, histogramLayouts});
@@ -165,11 +155,11 @@ protected:
         m_sortSetAtoB = std::move(sortSets[0]);
         m_sortSetBtoA = std::move(sortSets[1]);
 
-        spock::updateDescriptorSets(device, m_histogramSetForA, {m_elementsA, m_histograms}, {});
-        spock::updateDescriptorSets(device, m_histogramSetForB, {m_elementsB, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_histogramSetForA, {m_keysA, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_histogramSetForB, {m_keysB, m_histograms}, {});
 
-        spock::updateDescriptorSets(device, m_sortSetAtoB, {m_elementsA, m_elementsB, m_histograms}, {});
-        spock::updateDescriptorSets(device, m_sortSetBtoA, {m_elementsB, m_elementsA, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_sortSetAtoB, {m_keysA, m_keysB, m_valuesA, m_valuesB, m_histograms}, {});
+        spock::updateDescriptorSets(device, m_sortSetBtoA, {m_keysB, m_keysA, m_valuesB, m_valuesA, m_histograms}, {});
     }
 
     void createPipelines()
@@ -209,15 +199,25 @@ protected:
     void runRadixSort(bool multithreaded)
     {
         // Generate the input data on the CPU and compute the reference result.
-        std::vector<float> cpuValues(ELEMENT_COUNT);
+        std::vector<float> cpuKeys(ELEMENT_COUNT);
         std::mt19937 gen(std::random_device{}());
         std::uniform_real_distribution<float> distrib(-1.0e6f, 1.0e6f);
-        for (auto& value : cpuValues)
+        for (auto& value : cpuKeys)
         {
             value = distrib(gen);
         }
 
-        std::vector<float> cpuSorted = cpuValues;
+        // Create a vector of indices to sort the keys, so we can validate that the GPU sort is stable.
+        std::vector<uint32_t> cpuValues(ELEMENT_COUNT);
+        std::iota(cpuValues.begin(), cpuValues.end(), 0);
+
+        // Pairs compare the index after the key, which gives the same order as the GPU's stable sort.
+        std::vector<std::pair<float, uint32_t>> cpuSorted;
+        cpuSorted.reserve(ELEMENT_COUNT);
+        for (uint32_t i = 0; i < ELEMENT_COUNT; ++i)
+        {
+            cpuSorted.emplace_back(cpuKeys[i], i);
+        }
         std::chrono::steady_clock::time_point cpuSortBegin = std::chrono::steady_clock::now();
 
         if (multithreaded)
@@ -237,18 +237,17 @@ protected:
         std::chrono::steady_clock::time_point cpuSortEnd = std::chrono::steady_clock::now();
         double cpuSortMillis = std::chrono::duration<double, std::milli>(cpuSortEnd - cpuSortBegin).count();
 
-        std::vector<uint32_t> sortableKeys(ELEMENT_COUNT);
-        for (uint32_t i = 0; i < ELEMENT_COUNT; ++i)
-        {
-            sortableKeys[i] = floatToSortableUint(cpuValues[i]);
-        }
-
         // Upload the input buffer to the GPU.
-        m_elementsA.upload(
+        m_keysA.upload(
             m_foundry,
             m_foundry->computeCommandPool(),
             m_foundry->computeQueue(),
-            sortableKeys);
+            cpuKeys);
+        m_valuesA.upload(
+            m_foundry,
+            m_foundry->computeCommandPool(),
+            m_foundry->computeQueue(),
+            cpuValues);
 
         vk::PipelineLayout pipelineLayout = *m_pipelineLayout;
         vk::Pipeline histogramPipeline = *m_histogramPipeline;
@@ -257,7 +256,7 @@ protected:
         vk::DescriptorSet sortSets[2] = {*m_sortSetAtoB, *m_sortSetBtoA};
 
         // After an even number of passes, the sorted data ends up back in buffer A.
-        vk::Buffer sortedElements = (SHIFT_COUNT % 2 == 0) ? *m_elementsA.buffer() : *m_elementsB.buffer();
+        vk::Buffer sortedValues = (SHIFT_COUNT % 2 == 0) ? *m_valuesA.buffer() : *m_valuesB.buffer();
         vk::Buffer readbackBuffer = *m_readback.buffer();
         vk::DeviceSize elementsBytes = vk::DeviceSize(ELEMENT_COUNT) * sizeof(uint32_t);
 
@@ -313,29 +312,32 @@ protected:
                     nullptr,
                     nullptr);
 
-                commandBuffer.copyBuffer(sortedElements, readbackBuffer, vk::BufferCopy(0, 0, elementsBytes));
+                commandBuffer.copyBuffer(sortedValues, readbackBuffer, vk::BufferCopy(0, 0, elementsBytes));
             });
         m_foundry->computeQueue().waitIdle();
 
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         double gpuSortMillis = std::chrono::duration<double, std::milli>(end - begin).count();
 
-        uint32_t const* sortedKeys = static_cast<uint32_t const*>(m_readback.map());
-        std::vector<float> gpuSorted(ELEMENT_COUNT);
+        uint32_t const* readbackValues = static_cast<uint32_t const*>(m_readback.map());
+
+        bool allMatch = true;
         for (uint32_t i = 0; i < ELEMENT_COUNT; ++i)
         {
-            gpuSorted[i] = sortableUintToFloat(sortedKeys[i]);
+            if (readbackValues[i] != cpuSorted[i].second)
+            {
+                allMatch = false;
+                break;
+            }
         }
-        m_readback.unmap();
-
-        bool allMatch = (gpuSorted == cpuSorted);
 
         const std::string timings = "GPU sort: " + std::to_string(gpuSortMillis) + "ms, CPU sort: " + std::to_string(cpuSortMillis) + "ms.\n";
         const std::string message = (allMatch
-            ? "GPU radix sort of " + std::to_string(ELEMENT_COUNT) + " floats matched the CPU sort. "
+            ? "GPU radix sort of " + std::to_string(ELEMENT_COUNT) + " float-index pairs matched the CPU sort. "
             : "GPU radix sort FAILED validation against the CPU sort. ") + timings;
         spock::writeLog(message);
         std::cout << message;
+        m_readback.unmap();
     }
 
     void render(spock::FrameState &frame) override
@@ -346,8 +348,10 @@ protected:
 private:
     uint32_t m_numWorkgroups{0};
 
-    spock::BufferWrapper m_elementsA;
-    spock::BufferWrapper m_elementsB;
+    spock::BufferWrapper m_keysA;
+    spock::BufferWrapper m_valuesA;
+    spock::BufferWrapper m_keysB;
+    spock::BufferWrapper m_valuesB;
     spock::BufferWrapper m_histograms;
     spock::BufferWrapper m_readback;
 
